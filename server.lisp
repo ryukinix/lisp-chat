@@ -36,10 +36,12 @@
 (defun client-stream (c)
   (socket-stream (client-socket c)))
 
+
 (defun formated-message (message)
   (format nil "[~a]: ~a"
           (message-from message)
           (message-content message)))
+
 
 (defun push-message (from message)
   (sb-thread:with-mutex (*message-mutex*)
@@ -49,12 +51,8 @@
           *messages-stack*)
     (sb-thread:signal-semaphore *message-semaphore*)))
 
-(defun client-reader (client)
-  (loop for message = (read-line (client-stream client))
-        while (not (equal message "/quit"))
-        when (> (length message) 0)
-          do (push-message (client-name client)
-                           message))
+
+(defun client-delete (client)
   (push-message "@server"
                 (format nil "The user ~s exited from the party :(" (client-name client)))
   (sb-thread:with-mutex (*client-mutex*)
@@ -64,13 +62,29 @@
                                *clients*)))
   (debug-format t "Deleted user ~s ~%" (client-name client)))
 
+
+(defun client-reader-routine (client)
+  (loop for message = (read-line (client-stream client))
+        while (not (equal message "/quit"))
+        when (> (length message) 0)
+          do (push-message (client-name client)
+                           message)
+        finally (client-delete client)))
+
+(defun client-reader (client)
+  (handler-case (client-reader-routine client)
+    (end-of-file () (client-delete client))))
+
+
 (defun send-message (client message)
   (let ((stream (client-stream client)))
     (write-line message stream)
     (finish-output stream)))
 
+
 (defun create-client (connection)
-  (debug-format t "Incoming connection ~a ~%" connection)
+  (debug-format t "Incoming connection from ~{~a~^.~}\:~a ~%" (map 'list #'identity (get-peer-address connection))
+                                                             (get-peer-port connection))
   (let ((client-stream (socket-stream connection)))
     (write-line "> Type your username: " client-stream)
     (finish-output client-stream)
@@ -97,14 +111,27 @@
 
 (defun connection-handler ()
   (loop for connection = (socket-accept *global-socket*)
-        do (sb-thread:make-thread #'create-client :arguments (list connection))))
+        do (sb-thread:make-thread #'create-client
+                                  :arguments (list connection)
+                                  :name "create client")))
+
 
 (defun server-loop ()
   (format t "Running server... ~%")
   (let* ((connection-thread (sb-thread:make-thread #'connection-handler))
          (broadcast-thread (sb-thread:make-thread #'message-broadcast)))
     (sb-thread:join-thread connection-thread)
-    (sb-thread:join-thread broadcast-thread)
-    (socket-close *global-socket*)))
+    (sb-thread:join-thread broadcast-thread)))
 
-(server-loop)
+
+(defun main ()
+  (handler-case (server-loop)
+    (usocket:address-in-use-error () (format t "Address ~a\@~a already busy."
+                                             *host*
+                                             *port*))
+    (sb-sys:interactive-interrupt () (format t "Closing the server...")))
+
+  (socket-close *global-socket*)
+  (sb-ext:exit))
+
+(main)
