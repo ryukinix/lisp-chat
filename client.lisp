@@ -23,8 +23,9 @@
 
 (defun client-read (socket)
   (loop for message = (get-user-input)
-        while (not (equal message "/quit"))
-        do (send-message message socket))
+        do (send-message message socket)
+        when (equal message "/quit")
+          return nil)
   (sb-ext:exit))
 
 (defun client-write (socket)

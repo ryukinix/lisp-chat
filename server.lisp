@@ -54,7 +54,15 @@
         while (not (equal message "/quit"))
         when (> (length message) 0)
           do (push-message (client-name client)
-                           message)))
+                           message))
+  (push-message "@server"
+                (format nil "The user ~s exited from the party :(" (client-name client)))
+  (sb-thread:with-mutex (*client-mutex*)
+    (setf *clients* (remove-if (lambda (c)
+                                 (equal (client-name c)
+                                        (client-name client)))
+                               *clients*)))
+  (debug-format t "Deleted user ~s ~%" (client-name client)))
 
 (defun send-message (client message)
   (let ((stream (client-stream client)))
@@ -74,6 +82,7 @@
       (push-message "@server" (format nil "The user ~s joined to the party!" (client-name client)))
       (sb-thread:with-mutex (*client-read-mutex*)
         (push (sb-thread:make-thread #'client-reader
+                                     :name (format nil "~a reader thread" (client-name client))
                                      :arguments (list client))
               *client-read-threads*)))))
 
