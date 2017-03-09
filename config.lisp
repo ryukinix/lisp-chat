@@ -2,5 +2,5 @@
 ;; Manoel Vilela
 
 (defparameter *debug* t)
-(defparameter *host* "0.0.0.0")
+(defparameter *host* "ryukinix.tk")
 (defparameter *port* 5558)
