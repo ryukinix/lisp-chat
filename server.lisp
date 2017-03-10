@@ -110,7 +110,8 @@
                (let ((message (formated-message (pop *messages-stack*))))
                  (push message *messages-log*)
                  (loop for client in *clients*
-                       do (send-message client message))))))
+                    do (handler-case (send-message client message)
+                         (sb-int:simple-stream-error () (client-delete client)))))))
 
 (defun connection-handler ()
   (loop for connection = (socket-accept *global-socket*)
@@ -121,8 +122,10 @@
 
 (defun server-loop ()
   (format t "Running server... ~%")
-  (let* ((connection-thread (sb-thread:make-thread #'connection-handler))
-         (broadcast-thread (sb-thread:make-thread #'message-broadcast)))
+  (let* ((connection-thread (sb-thread:make-thread #'connection-handler
+                                                   :name "Connection handler"))
+         (broadcast-thread (sb-thread:make-thread #'message-broadcast
+                                                  :name "Message broadcast")))
     (sb-thread:join-thread connection-thread)
     (sb-thread:join-thread broadcast-thread)))
 
