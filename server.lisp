@@ -56,6 +56,7 @@
 (defun client-delete (client)
   (push-message "@server"
                 (format nil "The user ~s exited from the party :(" (client-name client)))
+  (socket-close (client-socket client))
   (sb-thread:with-mutex (*client-mutex*)
     (setf *clients* (remove-if (lambda (c)
                                  (equal (client-name c)
@@ -84,7 +85,7 @@
 
 
 (defun create-client (connection)
-  (debug-format t "Incoming connection from ~{~a~^.~}\:~a ~%" 
+  (debug-format t "Incoming connection from ~{~a~^.~}\:~a ~%"
                 (map 'list #'identity (get-peer-address connection))
                 (get-peer-port connection))
   (let ((client-stream (socket-stream connection)))
