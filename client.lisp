@@ -3,10 +3,11 @@
 
 (ql:quickload :usocket)
 
-(defpackage :lisp-chat
-  (:use :usocket :cl))
+(defpackage :lisp-chat-client
+  (:use :usocket :cl)
+  (:export :main))
 
-(in-package :lisp-chat)
+(in-package :lisp-chat-client)
 (load "./config.lisp")
 
 

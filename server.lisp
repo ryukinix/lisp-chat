@@ -3,10 +3,11 @@
 
 (ql:quickload :usocket)
 
-(defpackage :lisp-chat
-  (:use :usocket :cl))
+(defpackage :lisp-chat-server
+  (:use :usocket :cl)
+  (export :main))
 
-(in-package :lisp-chat)
+(in-package :lisp-chat-server)
 
 (load "./config.lisp") ;; *hosts* *port* *debug*
 
@@ -83,8 +84,9 @@
 
 
 (defun create-client (connection)
-  (debug-format t "Incoming connection from ~{~a~^.~}\:~a ~%" (map 'list #'identity (get-peer-address connection))
-                                                             (get-peer-port connection))
+  (debug-format t "Incoming connection from ~{~a~^.~}\:~a ~%" 
+                (map 'list #'identity (get-peer-address connection))
+                (get-peer-port connection))
   (let ((client-stream (socket-stream connection)))
     (write-line "> Type your username: " client-stream)
     (finish-output client-stream)
