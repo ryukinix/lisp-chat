@@ -111,7 +111,7 @@
                  (push message *messages-log*)
                  (loop for client in *clients*
                     do (handler-case (send-message client message)
-                         (sb-int:simple-stream-error () (client-delete client)))))))
+                         (sb-int:simple-stream-error () (client-delete client))))))))
 
 (defun connection-handler ()
   (loop for connection = (socket-accept *global-socket*)
