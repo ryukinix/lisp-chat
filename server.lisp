@@ -5,7 +5,7 @@
 
 (defpackage :lisp-chat-server
   (:use :usocket :cl)
-  (export :main))
+  (:export :main))
 
 (in-package :lisp-chat-server)
 
