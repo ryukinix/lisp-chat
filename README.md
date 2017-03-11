@@ -1,6 +1,6 @@
 # Lisp Chat
 
-An experimental chat over local network irc-like written in Lisp.
+An experimental chat irc-like written in Lisp.
 
 ![lisp-chat-screenshot](lisp-chat.png)
 
@@ -12,7 +12,7 @@ You need in your system:
 * [SBCL](http://www.sbcl.org/)
 * [Quicklisp](https://github.com/quicklisp/quicklisp-client)
 
-And make sure that `~/.sbclrc` has a entry calling the quicklisp setup.
+And make sure that `~/.sbclrc` has a entry calling to the quicklisp setup.
 
 ```common-lisp
 (load "~/quicklisp/setup.lisp")
