@@ -26,20 +26,25 @@
 
 (defstruct client name socket)
 
-(defstruct message from content timestamp)
+(defstruct message from content time)
 
 
 (defun debug-format (&rest args)
   (if *debug*
       (apply #'format args)))
 
+(defun get-time ()
+  (multiple-value-bind (second minute hour)
+      (get-decoded-time)
+    (format nil "~2,'0d:~2,'0d:~2,0d" hour minute second)))
 
 (defun client-stream (c)
   (socket-stream (client-socket c)))
 
 
 (defun formated-message (message)
-  (format nil "[~a]: ~a"
+  (format nil "|~a| [~a]: ~a"
+          (message-time message)
           (message-from message)
           (message-content message)))
 
@@ -48,7 +53,7 @@
   (sb-thread:with-mutex (*message-mutex*)
     (push (make-message :from from
                         :content message
-                        :timestamp "NOT IMPLEMENTED" )
+                        :time (get-time))
           *messages-stack*)
     (sb-thread:signal-semaphore *message-semaphore*)))
 
