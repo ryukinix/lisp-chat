@@ -36,7 +36,7 @@
 (defun get-time ()
   (multiple-value-bind (second minute hour)
       (get-decoded-time)
-    (format nil "~2,'0d:~2,'0d:~2,0d" hour minute second)))
+    (format nil "~2,'0d:~2,'0d:~2,'0d" hour minute second)))
 
 (defun client-stream (c)
   (socket-stream (client-socket c)))
