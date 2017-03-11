@@ -18,6 +18,11 @@ And make sure that `~/.sbclrc` has a entry calling to the quicklisp setup.
 (load "~/quicklisp/setup.lisp")
 ```
 
+## Tip for Quicklisp
+
+Clone the attached repository of Quicklisp and execute the `setup.lisp` with
+`sbcl --script setup.lisp`
+
 # Usage
 
 Load the server
@@ -30,7 +35,12 @@ Get a client
 $ sbcl --load client.lisp
 ```
 
-# Tip for Quicklisp
+# For Non-lispers
 
-Clone the attached repository of Quicklisp and execute the `setup.lisp` with
-`sbcl --script setup.lisp`
+If you wish test this and don't have the Lisp environment with SBCL and Quicklisp,
+you can try the client version written in Python using only the stdlib.
+
+```bash
+$ python client.py
+```
+
