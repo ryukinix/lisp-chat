@@ -11,35 +11,38 @@
 
 (load "./config.lisp") ;; *hosts* *port* *debug*
 
+;; global vars
 (defparameter *global-socket* (socket-listen *host* *port*))
-
 (defparameter *clients* nil)
-(defparameter *client-read-threads* nil)
 (defparameter *messages-stack* nil)
 (defparameter *messages-log* nil)
+(defparameter *commands-names* '("/users" "/help" "/log" "/quit"))
 
+;; thread control
 (defvar *message-semaphore* (sb-thread:make-semaphore :name "message semaphore" :count 0))
 (defvar *message-mutex* (sb-thread:make-mutex :name "message mutex"))
 (defvar *client-mutex* (sb-thread:make-mutex :name "client list mutex"))
-(defvar *client-read-mutex* (sb-thread:make-mutex :name "client read mutex"))
 
+
+
+(defstruct message from content time)
 
 (defstruct client name socket)
 
-(defstruct message from content time)
+
+(defun client-stream (c)
+  (socket-stream (client-socket c)))
 
 
 (defun debug-format (&rest args)
   (if *debug*
       (apply #'format args)))
 
+
 (defun get-time ()
   (multiple-value-bind (second minute hour)
       (get-decoded-time)
     (format nil "~2,'0d:~2,'0d:~2,'0d" hour minute second)))
-
-(defun client-stream (c)
-  (socket-stream (client-socket c)))
 
 
 (defun formated-message (message)
@@ -49,14 +52,34 @@
           (message-content message)))
 
 
-(defun push-message (from message)
+(defun command-message (content)
+  (let* ((from "@server")
+         (time (get-time))
+         (message (make-message :from from :content content :time time)))
+    (formated-message message)))
+
+
+;; user commands prefixed with /
+(defun /users ()
+  (command-message (format nil "~{~a~^, ~}" (mapcar #'client-name *clients*))))
+
+
+(defun /help ()
+  (command-message (format nil "~{~a~^, ~}" *commands-names*)))
+
+
+(defun /log (&optional (depth 15))
+  (format nil "~{~a~^~%~}" (reverse (subseq *messages-log* 0
+                                            (min depth (length *messages-log*))))))
+
+
+(defun push-message (from content)
   (sb-thread:with-mutex (*message-mutex*)
     (push (make-message :from from
-                        :content message
+                        :content content
                         :time (get-time))
           *messages-stack*)
     (sb-thread:signal-semaphore *message-semaphore*)))
-
 
 (defun client-delete (client)
   (push-message "@server"
@@ -69,24 +92,31 @@
                                *clients*)))
   (debug-format t "Deleted user ~s ~%" (client-name client)))
 
-
-(defun client-reader-routine (client)
-  (loop for message = (read-line (client-stream client))
-        while (not (equal message "/quit"))
-        when (> (length message) 0)
-          do (push-message (client-name client)
-                           message)
-        finally (client-delete client)))
-
-(defun client-reader (client)
-  (handler-case (client-reader-routine client)
-    (end-of-file () (client-delete client))))
-
-
 (defun send-message (client message)
   (let ((stream (client-stream client)))
     (write-line message stream)
     (finish-output stream)))
+
+
+(defun client-reader-routine (client)
+  (loop for message = (read-line (client-stream client))
+        while (not (equal message "/quit"))
+        when (equal message "/users")
+          do (send-message client (/users))
+        when (equal message "/log")
+          do (send-message client (/log))
+        when (equal message "/help")
+          do (send-message client (/help))
+        when (and (> (length message) 0)
+                  (not (member message *commands-names* :test #'equal)))
+          do (push-message (client-name client)
+                           message)
+        finally (client-delete client)))
+
+
+(defun client-reader (client)
+  (handler-case (client-reader-routine client)
+    (end-of-file () (client-delete client))))
 
 
 (defun create-client (connection)
@@ -102,11 +132,9 @@
         (debug-format t "Added new user ~s ~%" (client-name client))
         (push client *clients*))
       (push-message "@server" (format nil "The user ~s joined to the party!" (client-name client)))
-      (sb-thread:with-mutex (*client-read-mutex*)
-        (push (sb-thread:make-thread #'client-reader
-                                     :name (format nil "~a reader thread" (client-name client))
-                                     :arguments (list client))
-              *client-read-threads*)))))
+      (sb-thread:make-thread #'client-reader
+                             :name (format nil "~a reader thread" (client-name client))
+                             :arguments (list client)))))
 
 
 (defun message-broadcast ()
