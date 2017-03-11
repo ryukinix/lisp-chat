@@ -4,7 +4,7 @@
 
 (asdf/defsystem:defsystem :lisp-chat
   :author "Manoel Vilela"
-  :email "manoel_vilela@engineer.com"
+  :description "An experimental chat irc-like"
   :version "0.1"
   :license "MIT"
   :depends-on ("usocket")
