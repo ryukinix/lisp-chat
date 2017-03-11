@@ -1,8 +1,11 @@
 ;; Common Lisp Script
 ;; Manoel Vilela
 
-(ql:quickload :usocket)
-(load "config")
+(when (not (find-package :usocket))
+  (ql:quickload :usocket))
+
+(when (not (find-package :lisp-chat-config))
+  (load "config"))
 
 (defpackage :lisp-chat-server
   (:use :usocket :cl :lisp-chat-config)
