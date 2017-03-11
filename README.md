@@ -27,12 +27,12 @@ Clone the attached repository of Quicklisp and execute the `setup.lisp` with
 
 Load the server
 ```bash
-$ sbcl --load server.lisp --eval "(main)"
+$ sbcl --load server.lisp --eval "(lisp-chat-server:main)"
 ```
 
 Get a client
 ```bash
-$ sbcl --load client.lisp --eval "(main)"
+$ sbcl --load client.lisp --eval "(lisp-chat-client:main)"
 ```
 
 # For Non-lispers
