@@ -2,17 +2,16 @@
 ;; Manoel Vilela
 
 (ql:quickload :usocket)
+(load "config")
 
 (defpackage :lisp-chat-server
-  (:use :usocket :cl)
+  (:use :usocket :cl :lisp-chat-config)
   (:export :main))
 
 (in-package :lisp-chat-server)
 
-(load "./config.lisp") ;; *hosts* *port* *debug*
 
 ;; global vars
-(defparameter *global-socket* (socket-listen *host* *port*))
 (defparameter *clients* nil)
 (defparameter *messages-stack* nil)
 (defparameter *messages-log* nil)
@@ -146,16 +145,17 @@
                     do (handler-case (send-message client message)
                          (sb-int:simple-stream-error () (client-delete client))))))))
 
-(defun connection-handler ()
-  (loop for connection = (socket-accept *global-socket*)
+(defun connection-handler (socket-server)
+  (loop for connection = (socket-accept socket-server)
         do (sb-thread:make-thread #'create-client
                                   :arguments (list connection)
                                   :name "create client")))
 
 
-(defun server-loop ()
+(defun server-loop (socket-server)
   (format t "Running server... ~%")
   (let* ((connection-thread (sb-thread:make-thread #'connection-handler
+                                                   :arguments (list socket-server)
                                                    :name "Connection handler"))
          (broadcast-thread (sb-thread:make-thread #'message-broadcast
                                                   :name "Message broadcast")))
@@ -164,13 +164,12 @@
 
 
 (defun main ()
-  (handler-case (server-loop)
-    (usocket:address-in-use-error () (format t "Address ~a\@~a already busy."
-                                             *host*
-                                             *port*))
-    (sb-sys:interactive-interrupt () (format t "Closing the server...")))
-
-  (socket-close *global-socket*)
+  (let ((socket-server (socket-listen *host* *port*)))
+    (handler-case (server-loop socket-server)
+      (usocket:address-in-use-error () (format t "Address ~a\@~a already busy."
+                                               *host*
+                                               *port*))
+      (sb-sys:interactive-interrupt () (format t "Closing the server...")))
+    (socket-close socket-server))
   (sb-ext:exit))
 
-(main)

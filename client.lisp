@@ -2,13 +2,13 @@
 ;; Manoel Vilela
 
 (ql:quickload :usocket)
+(load "config")
 
 (defpackage :lisp-chat-client
-  (:use :usocket :cl)
+  (:use :usocket :cl :lisp-chat-config)
   (:export :main))
 
 (in-package :lisp-chat-client)
-(load "./config.lisp")
 
 
 (defun erase-last-line ()
@@ -70,7 +70,3 @@
     (sb-sys:interactive-interrupt () (sb-ext:exit))
     (usocket:connection-refused-error () (progn (format t "Run first the server.lisp")
                                                 (sb-ext:exit :code 1)))))
-
-(main)
-
-

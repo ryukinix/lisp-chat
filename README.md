@@ -27,12 +27,12 @@ Clone the attached repository of Quicklisp and execute the `setup.lisp` with
 
 Load the server
 ```bash
-$ sbcl --load server.lisp
+$ sbcl --load server.lisp --eval "(main)"
 ```
 
 Get a client
 ```bash
-$ sbcl --load client.lisp
+$ sbcl --load client.lisp --eval "(main)"
 ```
 
 # For Non-lispers
