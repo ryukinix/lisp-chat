@@ -32,6 +32,14 @@
 (defstruct client name socket)
 
 
+(defun socket-id (socket)
+  (format nil "~{~a~^.~}\:~a"
+          (map 'list #'identity (get-peer-address socket))
+          (get-peer-port socket)))
+
+(defun client-id (client)
+  (socket-id (client-socket client)))
+
 (defun client-stream (c)
   (socket-stream (client-socket c)))
 
@@ -53,13 +61,11 @@
           (message-from message)
           (message-content message)))
 
-
 (defun command-message (content)
   (let* ((from "@server")
          (time (get-time))
          (message (make-message :from from :content content :time time)))
     (formated-message message)))
-
 
 ;; user commands prefixed with /
 (defun /users ()
@@ -74,7 +80,6 @@
   (format nil "~{~a~^~%~}" (reverse (subseq *messages-log* 0
                                             (min depth (length *messages-log*))))))
 
-
 (defun push-message (from content)
   (sb-thread:with-mutex (*message-mutex*)
     (push (make-message :from from
@@ -84,21 +89,22 @@
     (sb-thread:signal-semaphore *message-semaphore*)))
 
 (defun client-delete (client)
-  (push-message "@server"
-                (format nil "The user ~s exited from the party :(" (client-name client)))
-  (socket-close (client-socket client))
   (sb-thread:with-mutex (*client-mutex*)
     (setf *clients* (remove-if (lambda (c)
-                                 (equal (client-name c)
-                                        (client-name client)))
+                                 (equal (client-id c)
+                                        (client-id client)))
                                *clients*)))
-  (debug-format t "Deleted user ~s ~%" (client-name client)))
+  (push-message "@server" (format nil "The user ~s exited from the party :("
+                                  (client-name client)))
+  (debug-format t "Deleted user ~a@~a~%"
+                (client-name client)
+                (client-id client))
+  (socket-close (client-socket client)))
 
 (defun send-message (client message)
   (let ((stream (client-stream client)))
     (write-line message stream)
     (finish-output stream)))
-
 
 (defun client-reader-routine (client)
   (loop for message = (read-line (client-stream client))
@@ -115,29 +121,26 @@
                            message)
         finally (client-delete client)))
 
-
 (defun client-reader (client)
   (handler-case (client-reader-routine client)
     (end-of-file () (client-delete client))))
 
-
 (defun create-client (connection)
-  (debug-format t "Incoming connection from ~{~a~^.~}\:~a ~%"
-                (map 'list #'identity (get-peer-address connection))
-                (get-peer-port connection))
+  (debug-format t "Incoming connection from ~a ~%" (socket-id connection))
   (let ((client-stream (socket-stream connection)))
     (write-line "> Type your username: " client-stream)
     (finish-output client-stream)
     (let ((client (make-client :name (read-line client-stream)
-                              :socket connection)))
+                               :socket connection)))
       (sb-thread:with-mutex (*client-mutex*)
-        (debug-format t "Added new user ~s ~%" (client-name client))
+        (debug-format t "Added new user ~a@~a ~%"
+                      (client-name client)
+                      (client-id client))
         (push client *clients*))
       (push-message "@server" (format nil "The user ~s joined to the party!" (client-name client)))
       (sb-thread:make-thread #'client-reader
                              :name (format nil "~a reader thread" (client-name client))
                              :arguments (list client)))))
-
 
 (defun message-broadcast ()
   (loop when (sb-thread:wait-on-semaphore *message-semaphore*)
@@ -154,7 +157,6 @@
                                   :arguments (list connection)
                                   :name "create client")))
 
-
 (defun server-loop (socket-server)
   (format t "Running server... ~%")
   (let* ((connection-thread (sb-thread:make-thread #'connection-handler
@@ -165,7 +167,6 @@
     (sb-thread:join-thread connection-thread)
     (sb-thread:join-thread broadcast-thread)))
 
-
 (defun main ()
   (let ((socket-server (socket-listen *host* *port*)))
     (handler-case (server-loop socket-server)
@@ -175,4 +176,3 @@
       (sb-sys:interactive-interrupt () (format t "Closing the server...")))
     (socket-close socket-server))
   (sb-ext:exit))
-
