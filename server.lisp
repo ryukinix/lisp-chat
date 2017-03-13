@@ -32,13 +32,13 @@
 (defstruct client name socket)
 
 
-(defun socket-id (socket)
+(defun socket-peer-address (socket)
   (format nil "~{~a~^.~}\:~a"
           (map 'list #'identity (get-peer-address socket))
           (get-peer-port socket)))
 
-(defun client-id (client)
-  (socket-id (client-socket client)))
+(defun client-address (client)
+  (socket-peer-address (client-socket client)))
 
 (defun client-stream (c)
   (socket-stream (client-socket c)))
@@ -91,14 +91,14 @@
 (defun client-delete (client)
   (sb-thread:with-mutex (*client-mutex*)
     (setf *clients* (remove-if (lambda (c)
-                                 (equal (client-id c)
-                                        (client-id client)))
+                                 (equal (client-address c)
+                                        (client-address client)))
                                *clients*)))
   (push-message "@server" (format nil "The user ~s exited from the party :("
                                   (client-name client)))
   (debug-format t "Deleted user ~a@~a~%"
                 (client-name client)
-                (client-id client))
+                (client-address client))
   (socket-close (client-socket client)))
 
 (defun send-message (client message)
@@ -123,10 +123,14 @@
 
 (defun client-reader (client)
   (handler-case (client-reader-routine client)
-    (end-of-file () (client-delete client))))
+    (end-of-file () (client-delete client))
+    (sb-int:simple-stream-error () (progn (debug-format t "~a@~a timed output"
+                                                        (client-name client)
+                                                        (client-address client))
+                                          (client-delete client)))))
 
 (defun create-client (connection)
-  (debug-format t "Incoming connection from ~a ~%" (socket-id connection))
+  (debug-format t "Incoming connection from ~a ~%" (socket-peer-address connection))
   (let ((client-stream (socket-stream connection)))
     (write-line "> Type your username: " client-stream)
     (finish-output client-stream)
@@ -135,7 +139,7 @@
       (sb-thread:with-mutex (*client-mutex*)
         (debug-format t "Added new user ~a@~a ~%"
                       (client-name client)
-                      (client-id client))
+                      (client-address client))
         (push client *clients*))
       (push-message "@server" (format nil "The user ~s joined to the party!" (client-name client)))
       (sb-thread:make-thread #'client-reader
