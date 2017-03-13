@@ -127,7 +127,11 @@
     (sb-int:simple-stream-error () (progn (debug-format t "~a@~a timed output"
                                                         (client-name client)
                                                         (client-address client))
-                                          (client-delete client)))))
+                                          (client-delete client)))
+    (sb-bsd-sockets:not-connected-error () (progn (debug-format t "~a@~a not connected more."
+                                                                (client-name client)
+                                                                (client-address client))
+                                                  (client-delete client)))))
 
 (defun create-client (connection)
   (debug-format t "Incoming connection from ~a ~%" (socket-peer-address connection))
