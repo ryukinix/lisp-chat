@@ -3,9 +3,13 @@
 
 import socket
 import threading
+import readline
 
 HOST = 'ryukinix.tk'
 PORT = 5558
+
+# set editing-mode on input
+readline.parse_and_bind('set editing-mode vi')
 
 s = socket.socket()
 s.connect((HOST, PORT))
@@ -21,8 +25,15 @@ def get_user_input():
 
 def server_reader():
     """Fetch lines from server and print"""
-    while not read_stream.closed:
-        print(read_stream.readline(), end='')
+    try:
+        while not read_stream.closed:
+            print(read_stream.readline(), end='')
+    except ValueError:
+        pass
+        # after the read_stream is closed, in the case
+        # the thread is running read_stream.readline()
+        # is running this will throw a exception of
+        # IO operation on closed file.
 
 
 def send_message(message):
