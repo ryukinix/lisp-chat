@@ -29,16 +29,13 @@
 
 (defstruct message from content time)
 
-(defstruct client name socket)
+(defstruct client name socket address)
 
 
 (defun socket-peer-address (socket)
   (format nil "~{~a~^.~}\:~a"
           (map 'list #'identity (get-peer-address socket))
           (get-peer-port socket)))
-
-(defun client-address (client)
-  (socket-peer-address (client-socket client)))
 
 (defun client-stream (c)
   (socket-stream (client-socket c)))
@@ -139,7 +136,8 @@
     (write-line "> Type your username: " client-stream)
     (finish-output client-stream)
     (let ((client (make-client :name (read-line client-stream)
-                               :socket connection)))
+                               :socket connection
+                               :address (socket-peer-address connection))))
       (sb-thread:with-mutex (*client-mutex*)
         (debug-format t "Added new user ~a@~a ~%"
                       (client-name client)
