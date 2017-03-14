@@ -157,7 +157,8 @@
                  (push message *messages-log*)
                  (loop for client in *clients*
                     do (handler-case (send-message client message)
-                         (sb-int:simple-stream-error () (client-delete client))))))))
+                         (sb-int:simple-stream-error () (client-delete client))
+                         (sb-bsd-sockets:not-connected-error () (client-delete client))))))))
 
 (defun connection-handler (socket-server)
   (loop for connection = (socket-accept socket-server)
