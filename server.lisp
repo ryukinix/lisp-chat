@@ -175,13 +175,13 @@
                (loop for client in *clients*
                      do (handler-case (send-message client message)
                           (sb-int:simple-stream-error () (client-delete client))
-                          (sb-bsd-sockets:not-connected-error () (client-delete client))))))
+                          (sb-bsd-sockets:not-connected-error () (client-delete client)))))))
 
-  (defun connection-handler (socket-server)
-    (loop for connection = (socket-accept socket-server)
-          do (sb-thread:make-thread #'create-client
-                                    :arguments (list connection)
-                                    :name "create client"))))
+(defun connection-handler (socket-server)
+  (loop for connection = (socket-accept socket-server)
+        do (sb-thread:make-thread #'create-client
+                                  :arguments (list connection)
+                                  :name "create client")))
 
 (defun server-loop (socket-server)
   (format t "Running server... ~%")
