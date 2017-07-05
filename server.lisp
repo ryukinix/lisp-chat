@@ -1,11 +1,12 @@
 ;; Common Lisp Script
 ;; Manoel Vilela
 
-(when (not (find-package :usocket))
+(when (not (find-package 'usocket))
   (ql:quickload :usocket))
 
-(when (not (find-package :lisp-chat-config))
+(when (not (find-package 'lisp-chat-config))
   (load "config"))
+
 
 (defpackage :lisp-chat-server
   (:use :usocket :cl :lisp-chat-config)
@@ -13,18 +14,23 @@
 
 (in-package :lisp-chat-server)
 
+;; time related
+(defparameter *uptime* (multiple-value-list (get-decoded-time)))
+(defparameter *day-names*
+  '("Monday" "Tuesday" "Wednesday"
+    "Thursday" "Friday" "Saturday"
+    "Sunday"))
 
 ;; global vars
 (defparameter *clients* nil)
 (defparameter *messages-stack* nil)
 (defparameter *messages-log* nil)
-(defparameter *commands-names* '("/users" "/help" "/log" "/quit"))
+(defparameter *commands-names* '("/users" "/help" "/log" "/quit" "/uptime"))
+
 
 ;; thread control
 (defvar *message-semaphore* (sb-thread:make-semaphore :name "message semaphore" :count 0))
-(defvar *message-mutex* (sb-thread:make-mutex :name "message mutex"))
 (defvar *client-mutex* (sb-thread:make-mutex :name "client list mutex"))
-
 
 
 (defstruct message from content time)
@@ -64,6 +70,9 @@
          (message (make-message :from from :content content :time time)))
     (formated-message message)))
 
+(defun call-command-by-name (string)
+  (funcall (find-symbol (string-upcase string) :lisp-chat-server)))
+
 ;; user commands prefixed with /
 (defun /users ()
   (command-message (format nil "~{~a~^, ~}" (mapcar #'client-name *clients*))))
@@ -77,13 +86,28 @@
   (format nil "~{~a~^~%~}" (reverse (subseq *messages-log* 0
                                             (min depth (length *messages-log*))))))
 
+(defun /uptime ()
+  (multiple-value-bind
+        (second minute hour date month year day-of-week dst-p tz)
+      (values-list *uptime*)
+    (declare (ignore dst-p))
+    (command-message (format nil "Server online since ~2,'0d:~2,'0d:~2,'0d of ~a, ~2,'0d/~2,'0d/~d (GMT~@d)"
+                             hour
+                             minute
+                             second
+                             (nth day-of-week *day-names*)
+                             month
+                             date
+                             year
+                             (- tz)))))
+
+
 (defun push-message (from content)
-  (sb-thread:with-mutex (*message-mutex*)
-    (push (make-message :from from
-                        :content content
-                        :time (get-time))
-          *messages-stack*)
-    (sb-thread:signal-semaphore *message-semaphore*)))
+  (push (make-message :from from
+                      :content content
+                      :time (get-time))
+        *messages-stack*)
+  (sb-thread:signal-semaphore *message-semaphore*))
 
 (defun client-delete (client)
   (sb-thread:with-mutex (*client-mutex*)
@@ -106,12 +130,8 @@
 (defun client-reader-routine (client)
   (loop for message = (read-line (client-stream client))
         while (not (equal message "/quit"))
-        when (equal message "/users")
-          do (send-message client (/users))
-        when (equal message "/log")
-          do (send-message client (/log))
-        when (equal message "/help")
-          do (send-message client (/help))
+        when (member message *commands-names* :test #'equal)
+          do (send-message client (call-command-by-name message))
         when (and (> (length message) 0)
                   (not (member message *commands-names* :test #'equal)))
           do (push-message (client-name client)
@@ -150,19 +170,18 @@
 
 (defun message-broadcast ()
   (loop when (sb-thread:wait-on-semaphore *message-semaphore*)
-          do (sb-thread:with-mutex (*message-mutex*)
-               (let ((message (formated-message (pop *messages-stack*))))
-                 (push message *messages-log*)
-                 (loop for client in *clients*
-                    do (handler-case (send-message client message)
-                         (sb-int:simple-stream-error () (client-delete client))
-                         (sb-bsd-sockets:not-connected-error () (client-delete client))))))))
+          do (let ((message (formated-message (pop *messages-stack*))))
+               (push message *messages-log*)
+               (loop for client in *clients*
+                     do (handler-case (send-message client message)
+                          (sb-int:simple-stream-error () (client-delete client))
+                          (sb-bsd-sockets:not-connected-error () (client-delete client))))))
 
-(defun connection-handler (socket-server)
-  (loop for connection = (socket-accept socket-server)
-        do (sb-thread:make-thread #'create-client
-                                  :arguments (list connection)
-                                  :name "create client")))
+  (defun connection-handler (socket-server)
+    (loop for connection = (socket-accept socket-server)
+          do (sb-thread:make-thread #'create-client
+                                    :arguments (list connection)
+                                    :name "create client"))))
 
 (defun server-loop (socket-server)
   (format t "Running server... ~%")
@@ -176,10 +195,10 @@
 
 (defun main ()
   (let ((socket-server (socket-listen *host* *port*)))
-    (handler-case (server-loop socket-server)
-      (usocket:address-in-use-error () (format t "Address ~a\@~a already busy."
-                                               *host*
-                                               *port*))
-      (sb-sys:interactive-interrupt () (format t "Closing the server...")))
-    (socket-close socket-server))
+    (unwind-protect (handler-case (server-loop socket-server)
+                      (usocket:address-in-use-error () (format t "Address ~a\@~a already busy."
+                                                               *host*
+                                                               *port*))
+                      (sb-sys:interactive-interrupt () (format t "Closing the server...")))
+      (socket-close socket-server)))
   (sb-ext:exit))
