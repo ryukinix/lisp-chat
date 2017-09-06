@@ -1,5 +1,7 @@
 # Lisp Chat
 
+<a href="https://app.codesponsor.io/link/jza5upfrcVSndCUAeCgb4ScS/ryukinix/decorating" rel="nofollow"><img src="https://app.codesponsor.io/embed/jza5upfrcVSndCUAeCgb4ScS/ryukinix/decorating.svg" style="width: 888px; height: 68px;" alt="Sponsor" /></a>
+
 An experimental chat irc-like written in Lisp.
 
 ![lisp-chat-screenshot](lisp-chat.png)
