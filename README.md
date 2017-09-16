@@ -37,6 +37,7 @@ Get a client
 $ sbcl --load client.lisp --eval "(lisp-chat-client:main)"
 ```
 
+
 # For Non-lispers
 
 If you wish test this and don't have the Lisp environment with SBCL and Quicklisp,
@@ -46,3 +47,12 @@ you can try the client version written in Python using only the stdlib.
 $ python client.py
 ```
 
+You can even just use `netcat`! A user called `Chris` in past days just logged in the server with the following message:
+
+```
+|16:30:37| [Chris]: Used netcad
+|16:30:41| [Chris]: netcat*
+|16:30:50| [Chris]: bye
+```
+
+So you can just type `netcat ryukinix.tk 5558` and go on! I tested and works fine! The main reason is because the communication between server and client just use raw data. 
