@@ -55,4 +55,4 @@ You can even just use `netcat`! A user called `Chris` in past days just logged i
 |16:30:50| [Chris]: bye
 ```
 
-So you can just type `netcat ryukinix.tk 5558` and go on! I tested and works fine! The main reason is because the communication between server and client just use raw data. 
+So you can just type `netcat ryukinix.tk 5558` and go on! I tested and works fine! The main reason is because the communication between server and client just use raw data. For better synchronization with text data from server while you typing, I suggest you to use [`rlwrap`](https://github.com/hanslub42/rlwrap) as `rlwrap netcat ryukinix.tk 5558`.
