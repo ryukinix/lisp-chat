@@ -4,6 +4,9 @@
 (when (not (find-package :usocket))
   (ql:quickload :usocket))
 
+(when (not (find-package :cl-readline))
+  (ql:quickload :cl-readline))
+
 (when (not (find-package :lisp-chat-config))
   (load "config"))
 
@@ -18,8 +21,10 @@
   (format t "~C[1A~C[2K" #\Esc #\Esc))
 
 
-(defun get-user-input ()
-  (prog1 (read-line)
+(defun get-user-input (username)
+  (prog1 (cl-readline:readline :prompt (format nil "[~A]: " username)
+                               :erase-empty-line t
+                               :add-history t)
          (erase-last-line)))
 
 
@@ -27,9 +32,27 @@
   (write-line message (socket-stream socket))
   (finish-output (socket-stream socket)))
 
+;; HACK: I don't know a better way to save state of cl-readline
+;; before printing messages from server, so I'm cleaning all the stuff
+;; before print a new message, and restore again. Maybe there is a
+;; better way for doing that.
+(defun receive-message (message)
+  (let ((line cl-readline:*line-buffer*)
+        (prompt cl-readline:+prompt+))
+    ;; erase
+    (cl-readline:replace-line "" nil)
+    (cl-readline:set-prompt "")
+    (cl-readline:redisplay)
+    ;; print message from server
+    (write-line message)
+    ;; restore
+    (cl-readline:replace-line line nil)
+    (setq cl-readline:*point* cl-readline:+end+)
+    (cl-readline:set-prompt prompt)
+    (cl-readline:redisplay)))
 
-(defun client-sender (socket)
-  (loop for message = (get-user-input)
+(defun client-sender (socket username)
+  (loop for message = (get-user-input username)
         do (send-message message socket)
         when (equal message "/quit")
           return nil)
@@ -39,7 +62,7 @@
 (defun server-listener (socket)
   (loop for message = (read-line (socket-stream socket))
         while (not (equal message "/quit"))
-        do (write-line message)))
+        do (receive-message message)))
 
 (defun server-broadcast (socket)
   (handler-case (server-listener socket)
@@ -61,7 +84,7 @@
     (format t "Connected as ~a\@~a\:~a ~%" username *host* *port*)
     (let ((sender (sb-thread:make-thread #'client-sender
                                        :name "client sender"
-                                       :arguments (list socket)))
+                                       :arguments (list socket username)))
           (broadcast (sb-thread:make-thread #'server-broadcast
                                       :name "server broadcast"
                                       :arguments (list socket))))

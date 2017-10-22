@@ -8,7 +8,7 @@
   :version "0.1"
   :mailto "manoel_vilela@engineer.com"
   :license "MIT"
-  :depends-on ("usocket")
+  :depends-on ("usocket" "cl-readline")
   :components ((:file "config")
                (:file "client" :depends-on ("config"))
                (:file "server" :depends-on ("config"))))
