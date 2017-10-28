@@ -1,13 +1,6 @@
 ;; Common Lisp Script
 ;; Manoel Vilela
 
-(when (not (find-package 'usocket))
-  (ql:quickload :usocket))
-
-(when (not (find-package 'lisp-chat-config))
-  (load "config"))
-
-
 (defpackage :lisp-chat-server
   (:use :usocket :cl :lisp-chat-config)
   (:export :main))
