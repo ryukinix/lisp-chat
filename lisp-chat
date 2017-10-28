@@ -3,5 +3,5 @@
 ;; Manoel Vilela
 
 (load "~/.sbclrc")
-(require :lisp-chat)
+(ql:quickload :lisp-chat)
 (lisp-chat-client:main)
