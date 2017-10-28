@@ -57,14 +57,16 @@ want to runs locally, you can just change.
 
 # For Non-lispers
 
-If you wish test this and don't have the Lisp environment with SBCL and Quicklisp,
-you can try the client version written in Python using only the stdlib.
+If you wish test this and don't have the Lisp environment with SBCL
+and Quicklisp, you can try the client version written in Python using
+only the stdlib.
 
 ```bash
 $ python client.py
 ```
 
-You can even just use `netcat`! A user called `Chris` in past days just logged in the server with the following message:
+You can even just use `netcat`! A user called `Chris` in past days
+just logged in the server with the following message:
 
 ```
 |16:30:37| [Chris]: Used netcad
@@ -72,4 +74,9 @@ You can even just use `netcat`! A user called `Chris` in past days just logged i
 |16:30:50| [Chris]: bye
 ```
 
-So you can just type `netcat ryukinix.tk 5558` and go on! I tested and works fine! The main reason is because the communication between server and client just use raw data. For better synchronization with text data from server while you typing, I suggest you to use [`rlwrap`](https://github.com/hanslub42/rlwrap) as `rlwrap netcat ryukinix.tk 5558`.
+So you can just type `netcat ryukinix.tk 5558` and go on! I tested and
+works fine! The main reason is because the communication between
+server and client just use raw data. For better synchronization with
+text data from server while you typing, I suggest you to
+use [`rlwrap`](https://github.com/hanslub42/rlwrap) as `rlwrap netcat
+ryukinix.tk 5558`.
