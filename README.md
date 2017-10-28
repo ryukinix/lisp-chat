@@ -9,33 +9,50 @@ An experimental chat irc-like written in Lisp.
 
 # Installation
 
-You need in your system:
+You'll need in your system:
 
 * [SBCL](http://www.sbcl.org/)
 * [Quicklisp](https://github.com/quicklisp/quicklisp-client)
 
-And make sure that `~/.sbclrc` has a entry calling to the quicklisp setup.
+Make sure that `~/.sbclrc` has a entry calling to the Quicklisp setup.
 
 ```common-lisp
-(load "~/quicklisp/setup.lisp")
+(load "~/.quicklisp/setup.lisp")
 ```
+
+Since that `~/.quicklisp` is the Quicklisp instalation distribution, clone this
+repository on:
+
+`git clone https://www.github.com/ryukinix/lisp-chat.git ~/.quicklisp/local-projects/lisp-chat`
 
 ## Tip for Quicklisp
 
-Clone the attached repository of Quicklisp and execute the `setup.lisp` with
-`sbcl --script setup.lisp`
+Clone the attached repository of Quicklisp and execute the
+`setup.lisp` with `sbcl --script setup.lisp`.
+
+In general Quicklisp distribution is provide on `~/quicklisp` instead
+of `~/.quicklisp`, but I personally don't like it much. So you can or
+edit your `.sbclrc` file to complains that and adjust the clone path
+or just rename the folder and use as I use.
 
 # Usage
 
+
 Load the server
 ```bash
-$ sbcl --load server.lisp --eval "(lisp-chat-server:main)"
+$ ./lisp-chat-server
 ```
 
 Get a client
 ```bash
-$ sbcl --load client.lisp --eval "(lisp-chat-client:main)"
+$ ./lisp-chat
 ```
+
+
+You can easilly setup your own configuration of `*port*` and
+`*domain*` for running a new instance of the server and client. For
+now we have a instance of lisp-chat as example running. If you sure
+want to runs locally, you can just change.
 
 
 # For Non-lispers
