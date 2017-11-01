@@ -10,5 +10,5 @@
 (in-package :lisp-chat-config)
 
 (defparameter *debug* t)
-(defparameter *host* "ryukinix.tk")
+(defparameter *host* "server.lerax.me")
 (defparameter *port* 5558)
