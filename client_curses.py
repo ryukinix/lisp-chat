@@ -74,7 +74,7 @@ class ChatUI(object):
         if j < 0:
             j = 0
         for i in range(min(h, len(self.linebuffer))):
-            self.win_chatbuffer.addstr(i, 0, self.linebuffer[j])
+            self.win_chatbuffer.insstr(i, 0, self.linebuffer[j])
             j += 1
         self.win_chatbuffer.refresh()
 
