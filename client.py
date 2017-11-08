@@ -5,7 +5,7 @@ import socket
 import threading
 import readline
 
-HOST = 'ryukinix.tk'
+HOST = 'chat.lerax.me'
 PORT = 5558
 
 # set editing-mode on input
