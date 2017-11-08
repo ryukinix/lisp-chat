@@ -161,6 +161,12 @@
                              :name (format nil "~a reader thread" (client-name client))
                              :arguments (list client)))))
 
+;; a function defined to handle the errors of client thread
+(defun safe-client-thread (connection)
+  (handler-case (create-client connection)
+    (end-of-file () nil)
+    (usocket:address-in-use-error () nil)))
+
 (defun message-broadcast ()
   (loop when (sb-thread:wait-on-semaphore *message-semaphore*)
           do (let ((message (formated-message (pop *messages-stack*))))
@@ -172,7 +178,7 @@
 
 (defun connection-handler (socket-server)
   (loop for connection = (socket-accept socket-server)
-        do (sb-thread:make-thread #'create-client
+        do (sb-thread:make-thread #'safe-client-thread
                                   :arguments (list connection)
                                   :name "create client")))
 
@@ -186,7 +192,7 @@
     (sb-thread:join-thread connection-thread)
     (sb-thread:join-thread broadcast-thread)))
 
-(defun main ()
+(defun main (&optional (retry 1000))
   (let ((socket-server (socket-listen *host* *port*)))
     (unwind-protect (handler-case (server-loop socket-server)
                       (usocket:address-in-use-error () (format t "Address ~a\@~a already busy."
@@ -194,4 +200,5 @@
                                                                *port*))
                       (sb-sys:interactive-interrupt () (format t "Closing the server...")))
       (socket-close socket-server)))
-  (sb-ext:exit))
+  (unless (zerop retry)
+    (main (1- retry))))
