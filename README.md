@@ -1,5 +1,7 @@
 <p align="center">
-  <img src="http://www.lisperati.com/lisplogo_warning2_256.png" width="128" />
+  <a href= http://chat.lerax.me>
+    <img src="http://www.lisperati.com/lisplogo_warning2_256.png" width="128" />
+  </a>
 </p>
 
 # Lisp Chat 
