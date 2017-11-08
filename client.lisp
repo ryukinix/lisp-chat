@@ -47,9 +47,10 @@
 
 (defun client-sender (socket username)
   (loop for message = (get-user-input username)
-        do (send-message message socket)
-        when (equal message "/quit")
-          return nil)
+        when (or (equal message "/quit")
+                 (equal message nil))
+          return nil
+        do (send-message message socket))
   (sb-ext:exit))
 
 
