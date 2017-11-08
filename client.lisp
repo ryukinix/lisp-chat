@@ -40,7 +40,7 @@
       ;; print message from server
       (write-line message)
       ;; restore
-      (cl-readline:replace-line line nil)
+      (cl-readline:replace-line (or line "") nil)
       (setq cl-readline:*point* cl-readline:+end+)
       (cl-readline:set-prompt prompt)
       (cl-readline:redisplay))))
