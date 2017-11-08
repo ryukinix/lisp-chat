@@ -7,6 +7,7 @@
 
 (in-package :lisp-chat-client)
 
+(defvar *io-mutex* (sb-thread:make-mutex :name "io mutex"))
 
 (defun erase-last-line ()
   (format t "~C[1A~C[2K" #\Esc #\Esc))
@@ -16,7 +17,8 @@
   (prog1 (cl-readline:readline :prompt (format nil "[~A]: " username)
                                :erase-empty-line t
                                :add-history t)
-         (erase-last-line)))
+    (sb-thread:with-mutex (*io-mutex*)
+      (erase-last-line))))
 
 
 (defun send-message (message socket)
@@ -28,19 +30,20 @@
 ;; before print a new message, and restore again. Maybe there is a
 ;; better way for doing that.
 (defun receive-message (message)
-  (let ((line cl-readline:*line-buffer*)
-        (prompt cl-readline:+prompt+))
-    ;; erase
-    (cl-readline:replace-line "" nil)
-    (cl-readline:set-prompt "")
-    (cl-readline:redisplay)
-    ;; print message from server
-    (write-line message)
-    ;; restore
-    (cl-readline:replace-line line nil)
-    (setq cl-readline:*point* cl-readline:+end+)
-    (cl-readline:set-prompt prompt)
-    (cl-readline:redisplay)))
+  (sb-thread:with-mutex (*io-mutex*)
+    (let ((line cl-readline:*line-buffer*)
+          (prompt cl-readline:+prompt+))
+      ;; erase
+      (cl-readline:replace-line "" nil)
+      (cl-readline:set-prompt "")
+      (cl-readline:redisplay)
+      ;; print message from server
+      (write-line message)
+      ;; restore
+      (cl-readline:replace-line line nil)
+      (setq cl-readline:*point* cl-readline:+end+)
+      (cl-readline:set-prompt prompt)
+      (cl-readline:redisplay))))
 
 (defun client-sender (socket username)
   (loop for message = (get-user-input username)
