@@ -89,5 +89,5 @@
 (defun main ()
   (handler-case (client-loop)
     (sb-sys:interactive-interrupt () (sb-ext:exit))
-    (usocket:connection-refused-error () (progn (format t "Run first the server.lisp")
+    (usocket:connection-refused-error () (progn (format t "Server offline. Run first the server.lisp")
                                                 (sb-ext:exit :code 1)))))
