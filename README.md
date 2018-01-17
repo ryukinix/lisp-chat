@@ -4,6 +4,8 @@
   </a>
 </p>
 
+[![Quicklisp dist](http://quickdocs.org/badge/lisp-chat.svg)](http://quickdocs.org/lisp-chat/)  
+
 # Lisp Chat 
 
 An experimental chat irc-like written in Lisp.
