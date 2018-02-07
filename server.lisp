@@ -90,13 +90,13 @@
      (format nil
              "Server online since ~2,'0d:~2,'0d:~2,'0d of ~a, ~2,'0d/~2,'0d/~d (GMT~@d)"
              hour
-             echo-stream-input-stream
-             serious-condition
+             minute
+             second
              (nth day-of-week +day-names+)
-                             month
-                             date
-                             year
-                             (- tz)))))
+             month
+             date
+             year
+             (- tz)))))
 
 
 (defun push-message (from content)
