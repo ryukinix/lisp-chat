@@ -8,6 +8,7 @@
 (in-package :lisp-chat-server)
 
 ;; constants
+;; (don't use defconstant because create a bug as ASDF system compile time)
 (defparameter +commands-names+ '("/users" "/help" "/log" "/quit" "/uptime"))
 (defparameter +day-names+ '("Monday" "Tuesday" "Wednesday"
                             "Thursday" "Friday" "Saturday" "Sunday"))
@@ -76,7 +77,7 @@
   (command-message (format nil "~{~a~^, ~}" +commands-names+)))
 
 
-(defun /log (&optional (depth 15))
+(defun /log (&optional (depth 20))
   (format nil "~{~a~^~%~}" (reverse (subseq *messages-log* 0
                                             (min depth (length *messages-log*))))))
 
@@ -85,11 +86,13 @@
         (second minute hour date month year day-of-week dst-p tz)
       (values-list +uptime+)
     (declare (ignore dst-p))
-    (command-message (format nil "Server online since ~2,'0d:~2,'0d:~2,'0d of ~a, ~2,'0d/~2,'0d/~d (GMT~@d)"
-                             hour
-                             minute
-                             second
-                             (nth day-of-week +day-names+)
+    (command-message
+     (format nil
+             "Server online since ~2,'0d:~2,'0d:~2,'0d of ~a, ~2,'0d/~2,'0d/~d (GMT~@d)"
+             hour
+             echo-stream-input-stream
+             serious-condition
+             (nth day-of-week +day-names+)
                              month
                              date
                              year
@@ -124,25 +127,27 @@
 (defun client-reader-routine (client)
   (loop for message = (read-line (client-stream client))
         while (not (equal message "/quit"))
-        when (member message +commands-names+ :test #'equal)
+        if (member message +commands-names+ :test #'equal)
           do (send-message client (call-command-by-name message))
-        when (and (> (length message) 0)
-                  (not (member message +commands-names+ :test #'equal)))
-          do (push-message (client-name client)
-                           message)
+        else
+          when (> (length message) 0)
+            do (push-message (client-name client)
+                             message)
         finally (client-delete client)))
 
 (defun client-reader (client)
   (handler-case (client-reader-routine client)
     (end-of-file () (client-delete client))
-    (sb-int:simple-stream-error () (progn (debug-format t "~a@~a timed output"
-                                                        (client-name client)
-                                                        (client-address client))
-                                          (client-delete client)))
-    (sb-bsd-sockets:not-connected-error () (progn (debug-format t "~a@~a not connected more."
-                                                                (client-name client)
-                                                                (client-address client))
-                                                  (client-delete client)))))
+    (sb-int:simple-stream-error ()
+      (progn (debug-format t "~a@~a timed output"
+                           (client-name client)
+                           (client-address client))
+             (client-delete client)))
+    (sb-bsd-sockets:not-connected-error ()
+      (progn (debug-format t "~a@~a not connected more."
+                           (client-name client)
+                           (client-address client))
+             (client-delete client)))))
 
 (defun create-client (connection)
   (debug-format t "Incoming connection from ~a ~%" (socket-peer-address connection))
