@@ -8,10 +8,10 @@
 (in-package :lisp-chat-server)
 
 ;; constants
-(defconstant +commands-names+ '("/users" "/help" "/log" "/quit" "/uptime"))
-(defconstant +day-names+ '("Monday" "Tuesday" "Wednesday"
+(defparameter +commands-names+ '("/users" "/help" "/log" "/quit" "/uptime"))
+(defparameter +day-names+ '("Monday" "Tuesday" "Wednesday"
                             "Thursday" "Friday" "Saturday" "Sunday"))
-(defconstant +uptime+ (multiple-value-list (get-decoded-time)))
+(defparameter +uptime+ (multiple-value-list (get-decoded-time)))
 
 ;; global vars
 (defparameter *clients* nil)
