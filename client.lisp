@@ -2,7 +2,7 @@
 ;; Manoel Vilela
 
 (defpackage :lisp-chat-client
-  (:use :usocket :cl :lisp-chat-config)
+  (:use :usocket :cl :lisp-chat-config :sb-ext)
   (:export :main))
 
 (in-package :lisp-chat-client)
@@ -51,7 +51,7 @@
                  (equal message nil))
           return nil
         do (send-message message socket))
-  (sb-ext:exit))
+  (exit))
 
 
 (defun server-listener (socket)
@@ -62,7 +62,8 @@
 (defun server-broadcast (socket)
   (handler-case (server-listener socket)
     (end-of-file () (progn (format t "Server down. ~%")
-                           (sb-ext:exit)))))
+                           (exit)))
+    (simple-error () (format t "A weird error happened ~%. Sorry"))))
 
 
 (defun login (socket)
@@ -88,6 +89,7 @@
 
 (defun main ()
   (handler-case (client-loop)
-    (sb-sys:interactive-interrupt () (sb-ext:exit))
-    (usocket:connection-refused-error () (progn (format t "Server offline. Run first the server.lisp")
-                                                (sb-ext:exit :code 1)))))
+    (sb-sys:interactive-interrupt () (exit))
+    (usocket:connection-refused-error ()
+      (progn (format t "Server offline. Run first the server.lisp")
+             (exit :code 1)))))
