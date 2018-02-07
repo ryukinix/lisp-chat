@@ -7,28 +7,29 @@
 
 (in-package :lisp-chat-server)
 
-;; time related
-(defparameter *uptime* (multiple-value-list (get-decoded-time)))
-(defparameter *day-names*
-  '("Monday" "Tuesday" "Wednesday"
-    "Thursday" "Friday" "Saturday"
-    "Sunday"))
+;; constants
+(defconstant +commands-names+ '("/users" "/help" "/log" "/quit" "/uptime"))
+(defconstant +day-names+ '("Monday" "Tuesday" "Wednesday"
+                            "Thursday" "Friday" "Saturday" "Sunday"))
+(defconstant +uptime+ (multiple-value-list (get-decoded-time)))
 
 ;; global vars
 (defparameter *clients* nil)
 (defparameter *messages-stack* nil)
 (defparameter *messages-log* nil)
-(defparameter *commands-names* '("/users" "/help" "/log" "/quit" "/uptime"))
 
 
 ;; thread control
-(defvar *message-semaphore* (sb-thread:make-semaphore :name "message semaphore" :count 0))
+(defvar *message-semaphore* (sb-thread:make-semaphore :name "message semaphore"
+                                                      :count 0))
 (defvar *client-mutex* (sb-thread:make-mutex :name "client list mutex"))
 
 
-(defstruct message from content time)
+(defstruct message
+  from content time)
 
-(defstruct client name socket address)
+(defstruct client
+  name socket address)
 
 
 (defun socket-peer-address (socket)
@@ -72,7 +73,7 @@
 
 
 (defun /help ()
-  (command-message (format nil "~{~a~^, ~}" *commands-names*)))
+  (command-message (format nil "~{~a~^, ~}" +commands-names+)))
 
 
 (defun /log (&optional (depth 15))
@@ -82,13 +83,13 @@
 (defun /uptime ()
   (multiple-value-bind
         (second minute hour date month year day-of-week dst-p tz)
-      (values-list *uptime*)
+      (values-list +uptime+)
     (declare (ignore dst-p))
     (command-message (format nil "Server online since ~2,'0d:~2,'0d:~2,'0d of ~a, ~2,'0d/~2,'0d/~d (GMT~@d)"
                              hour
                              minute
                              second
-                             (nth day-of-week *day-names*)
+                             (nth day-of-week +day-names+)
                              month
                              date
                              year
@@ -123,10 +124,10 @@
 (defun client-reader-routine (client)
   (loop for message = (read-line (client-stream client))
         while (not (equal message "/quit"))
-        when (member message *commands-names* :test #'equal)
+        when (member message +commands-names+ :test #'equal)
           do (send-message client (call-command-by-name message))
         when (and (> (length message) 0)
-                  (not (member message *commands-names* :test #'equal)))
+                  (not (member message +commands-names+ :test #'equal)))
           do (push-message (client-name client)
                            message)
         finally (client-delete client)))
