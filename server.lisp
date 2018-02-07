@@ -2,7 +2,7 @@
 ;; Manoel Vilela
 
 (defpackage :lisp-chat-server
-  (:use :usocket :cl :lisp-chat-config)
+  (:use :usocket :cl :lisp-chat-config :sb-ext)
   (:export :main))
 
 (in-package :lisp-chat-server)
@@ -196,10 +196,13 @@
 (defun main (&optional (retry 1000))
   (let ((socket-server (socket-listen *host* *port*)))
     (unwind-protect (handler-case (server-loop socket-server)
-                      (usocket:address-in-use-error () (format t "Address ~a\@~a already busy."
-                                                               *host*
-                                                               *port*))
-                      (sb-sys:interactive-interrupt () (format t "Closing the server...")))
+                      (usocket:address-in-use-error ()
+                        (format t "Address ~a\@~a already busy."
+                                *host*
+                                *port*))
+                      (sb-sys:interactive-interrupt ()
+                        (format t "Closing the server...")
+                        (exit)))
       (socket-close socket-server)))
   (unless (zerop retry)
     (main (1- retry))))
