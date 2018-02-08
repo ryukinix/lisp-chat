@@ -9,6 +9,6 @@
   :mailto "manoel_vilela@engineer.com"
   :license "MIT"
   :depends-on ("usocket" "cl-readline")
-  :components ((:file "config")
-               (:file "client" :depends-on ("config"))
-               (:file "server" :depends-on ("config"))))
+  :components ((:file "src/config")
+               (:file "src/client" :depends-on ("src/config"))
+               (:file "src/server" :depends-on ("src/config"))))
