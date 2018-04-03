@@ -1,8 +1,5 @@
-<p align="center">
-  <a href= http://chat.lerax.me>
-    <img src="http://www.lisperati.com/lisplogo_warning2_256.png" width="128" />
-  </a>
-</p>
+<p align="center"><img src="logo/horizontal.png" alt="lisp-chat" height="150px"></p>
+
 
 [![Quicklisp dist](http://quickdocs.org/badge/lisp-chat.svg)](http://quickdocs.org/lisp-chat/)  
 
@@ -97,3 +94,8 @@ server and client just use raw data. For better synchronization with
 text data from server while you typing, I suggest you to
 use a readline wrapper like [`rlwrap`](https://github.com/hanslub42/rlwrap) calling as `rlwrap netcat
 ryukinix.tk 5558`.
+<p align="center">
+  <a href= http://chat.lerax.me>
+    <img src="http://www.lisperati.com/lisplogo_warning2_256.png" width="128" />
+  </a>
+</p>
