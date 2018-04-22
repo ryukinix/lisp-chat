@@ -3,5 +3,15 @@
 ;; Manoel Vilela
 
 (load "~/.sbclrc")
-(ql:quickload :lisp-chat)
+(require :lisp-chat)
+
+(defparameter host (cadr *posix-argv*))
+(defparameter port (caddr *posix-argv*))
+
+(when host
+  (setq lisp-chat-config:*host* host))
+
+(when port
+  (setq lisp-chat-config:*port* port))
+
 (lisp-chat-client:main)
