@@ -12,6 +12,6 @@
   (setq lisp-chat-config:*host* host))
 
 (when port
-  (setq lisp-chat-config:*port* port))
+  (setq lisp-chat-config:*port* (parse-integer port)))
 
 (lisp-chat-client:main)
