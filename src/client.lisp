@@ -61,11 +61,11 @@
 
 (defun server-broadcast (socket)
   (handler-case (server-listener socket)
-    (end-of-file ()
-      (write-line "Server down. ~%")
+    (end-of-file (e)
+      (format t "~%Server down. ~%")
       (exit))
-    (simple-error ()
-      (write-line"A weird error happened ~%. Sorry"))))
+    (simple-error (e)
+      (server-broadcast socket))))
 
 
 (defun login (socket)
@@ -93,5 +93,5 @@
   (handler-case (client-loop)
     (sb-sys:interactive-interrupt () (exit))
     (usocket:connection-refused-error ()
-      (progn (write-line "Server offline. Run first the server.lisp")
+      (progn (write-line "Server seems offline. Run first the server.lisp.")
              (exit :code 1)))))

@@ -10,5 +10,5 @@
 (in-package :lisp-chat-config)
 
 (defparameter *debug* t)
-(defparameter *host* "chat.lerax.me")
+(defparameter *host* "0.0.0.0")
 (defparameter *port* 5558)
