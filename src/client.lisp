@@ -7,13 +7,16 @@
 
 (in-package :lisp-chat-client)
 
-(defvar *io-mutex* (sb-thread:make-mutex :name "io mutex"))
+(defvar *io-mutex* (sb-thread:make-mutex :name "io mutex")
+  "I/O Mutex for avoid terminal race conditions")
 
 (defun erase-last-line ()
+  "Erase the last line by using ANSI Escape codes"
   (format t "~C[1A~C[2K" #\Esc #\Esc))
 
 
 (defun get-user-input (username)
+  "Get the user input by using readline"
   (prog1 (cl-readline:readline :prompt (format nil "[~A]: " username)
                                :erase-empty-line t
                                :add-history t)
@@ -22,6 +25,7 @@
 
 
 (defun send-message (message socket)
+  "Send a MESSAGE string through a SOCKET instance"
   (write-line message (socket-stream socket))
   (finish-output (socket-stream socket)))
 
@@ -30,6 +34,7 @@
 ;; before print a new message, and restore again. Maybe there is a
 ;; better way for doing that.
 (defun receive-message (message)
+  "Receive a message and print in the terminal carefully with IO race conditions"
   (sb-thread:with-mutex (*io-mutex*)
     (let ((line cl-readline:*line-buffer*)
           (prompt cl-readline:+prompt+))
@@ -46,6 +51,7 @@
       (cl-readline:redisplay))))
 
 (defun client-sender (socket username)
+  "Routine to check new messages being typed by the user"
   (loop for message = (get-user-input username)
         when (or (equal message "/quit")
                  (equal message nil))
@@ -55,11 +61,13 @@
 
 
 (defun server-listener (socket)
+  "Routine to check new messages coming from the server"
   (loop for message = (read-line (socket-stream socket))
         while (not (equal message "/quit"))
         do (receive-message message)))
 
 (defun server-broadcast (socket)
+  "Call server-listener treating exceptional cases"
   (handler-case (server-listener socket)
     (end-of-file (e)
       (format t "~%Server down. ~%")
@@ -69,6 +77,7 @@
 
 
 (defun login (socket)
+  "Do the login of the application given a SOCKET instances"
   (princ (read-line (socket-stream socket)))
   (finish-output)
   (let ((username (read-line)))
@@ -77,6 +86,7 @@
 
 
 (defun client-loop ()
+  "Dispatch client threads for basic functioning system"
   (let* ((socket (socket-connect *host* *port*))
          (username (login socket)))
     (format t "Connected as ~a\@~a\:~a ~%" username *host* *port*)
@@ -90,6 +100,7 @@
       (sb-thread:join-thread broadcast))))
 
 (defun main ()
+  "Main function of client"
   (handler-case (client-loop)
     (sb-sys:interactive-interrupt () (exit))
     (usocket:connection-refused-error ()
