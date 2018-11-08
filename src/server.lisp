@@ -237,7 +237,7 @@ exceptions."
    defined on *clients* when *messages-semaphore* is signalized.
    The second procedure is a general connection-handler for new
    clients trying connecting to the server."
-  (format t "Running server... ~%")
+  (format t "Running server at ~a:~a... ~%" *host* *port*)
   (let* ((connection-thread (make-thread #'connection-handler
                                                    :arguments (list socket-server)
                                                    :name "Connection handler"))
@@ -248,12 +248,16 @@ exceptions."
 
 (defun main ()
   "Well, this function run all the necessary shits."
-  (let ((socket-server (socket-listen *host* *port*)))
-    (unwind-protect (handler-case (server-loop socket-server)
-                      (usocket:address-in-use-error ()
-                        (format t "Address ~a\@~a already busy."
-                                *host*
-                                *port*))
-                      (sb-sys:interactive-interrupt ()
-                        (format t "Closing the server...")))
-      (socket-close socket-server))))
+  (let ((socket-server nil))
+    (unwind-protect
+         (handler-case
+             (progn (setq socket-server (socket-listen *host* *port*))
+                    (server-loop socket-server))
+           (usocket:address-in-use-error ()
+             (format t "Address:port at ~a\:~a already busy."
+                     *host*
+                     *port*))
+           (sb-sys:interactive-interrupt ()
+             (format t "Closing the server...")))
+      (when socket-server
+        (socket-close socket-server)))))
