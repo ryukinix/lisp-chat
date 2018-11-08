@@ -21,7 +21,7 @@
 
 ;; thread control
 (defvar *message-semaphore* (make-semaphore :name "message semaphore"
-                                                      :count 0))
+                                            :count 0))
 (defvar *client-mutex* (make-mutex :name "client list mutex"))
 
 
@@ -127,10 +127,7 @@
 
 (defun /nick (client &optional (new-nick nil) &rest args)
   (if new-nick
-      (progn (push-message "@server" (format nil "Now user ~a is known as ~a"
-                                             (client-name client)
-                                             new-nick))
-             (setf (client-name client) new-nick)
+      (progn (setf (client-name client) new-nick)
              (command-message (format nil "Your new nick is: ~a" new-nick)))
       (command-message (format nil "/nick <new-nickname>"))))
 
