@@ -127,7 +127,10 @@
 
 (defun /nick (client &optional (new-nick nil))
   (if new-nick
-      (progn (setf (client-name client) new-nick)
+      (progn (push-message "@server" (format nil "Now ~a is known as ~a"
+                                             (client-name client)
+                                             new-nick))
+             (setf (client-name client) new-nick)
              (command-message (format nil "Your new nick is: ~a" new-nick)))
       (command-message (format nil "/nick <new-nickname>"))))
 
