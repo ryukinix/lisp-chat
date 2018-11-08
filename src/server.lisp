@@ -12,11 +12,12 @@
 (defvar *day-names* '("Monday" "Tuesday" "Wednesday"
                       "Thursday" "Friday" "Saturday" "Sunday"))
 (defvar *uptime* (multiple-value-list (get-decoded-time)))
-(defparameter *commands-names* '("/users" "/help" "/log" "/quit" "/uptime"))
+(defparameter *commands-names* '("/users" "/help" "/log" "/quit" "/uptime" "/nick"))
 (defparameter *clients* nil)
 (defparameter *messages-stack* nil)
 (defparameter *messages-log* nil)
 (defparameter *server-nickname* "@server")
+
 
 ;; thread control
 (defvar *message-semaphore* (make-semaphore :name "message semaphore"
@@ -84,29 +85,33 @@
          (message (make-message :from from :content content :time time)))
     (formated-message message)))
 
-(defun call-command-by-name (string)
+(defun call-command-by-name (string params)
   "Wow, this is a horrible hack to get a string as symbol for functions/command
   like /help /users /log and so on."
-  (funcall (find-symbol (string-upcase string) :lisp-chat-server)))
+  (let ((command-function (find-symbol (string-upcase string) :lisp-chat-server)))
+    (when command-function
+      (apply command-function params))))
 
 ;; user commands prefixed with /
-(defun /users ()
+(defun /users (client &rest args)
   "Return a list separated by commas of the currently logged users"
   (command-message (format nil "~{~a~^, ~}" (mapcar #'client-name *clients*))))
 
 
-(defun /help ()
+(defun /help (client &rest args)
   "Show a list of the available commands of lisp-chat"
   (command-message (format nil "~{~a~^, ~}" *commands-names*)))
 
 
-(defun /log (&optional (depth 20))
+(defun /log (client &optional (depth "20") &rest args)
   "Show the last messages typed on the server.
    DEPTH is optional number of messages frames from log"
-  (format nil "~{~a~^~%~}" (reverse (subseq *messages-log* 0
-                                            (min depth (length *messages-log*))))))
+  (let ((messages (min (or (parse-integer depth :junk-allowed t) 20)
+                       (length *messages-log*))))
+    (format nil "~{~a~^~%~}" (reverse (subseq *messages-log* 0
+                                              messages)))))
 
-(defun /uptime ()
+(defun /uptime (client &rest args)
   "Return a string nice encoded to preset the uptime since the server started."
   (multiple-value-bind
         (second minute hour date month year day-of-week dst-p tz)
@@ -119,6 +124,12 @@
              (nth day-of-week *day-names*)
              month date year
              (- tz)))))
+
+(defun /nick (client &optional (new-nick nil))
+  (if new-nick
+      (progn (setf (client-name client) new-nick)
+             (command-message (format nil "Your new nick is: ~a" new-nick)))
+      (command-message (format nil "/nick <new-nickname>"))))
 
 
 (defun push-message (from content)
@@ -149,14 +160,41 @@
     (write-line message stream)
     (finish-output stream)))
 
+(defun startswith (string substring)
+  (let ((l1 (length string))
+        (l2 (length substring)))
+    (when (and (> l2 0)
+               (>= l1 l2))
+      (loop for c1 across string
+            for c2 across substring
+            always (equal c1 c2)))))
+
+(defun split (string delimiterp)
+  (loop :for beg = (position-if-not delimiterp string)
+          :then (position-if-not delimiterp string :start (1+ end))
+        :for end = (and beg (position-if delimiterp string :start beg))
+        :when beg :collect (subseq string beg end)
+          :while end))
+
+(defun extract-params (string)
+  (subseq (split string (lambda (c) (eql c #\Space)))
+          1))
+
+(defun call-command (client message)
+  (let ((command (find message *commands-names* :test #'startswith)))
+    (when command
+      (call-command-by-name command (cons client
+                                          (extract-params message))))))
+
 (defun client-reader-routine (client)
   "This function create a IO-bound procedure to act
    by reading the events of a specific CLIENT.
    On this software each client talks on your own thread."
   (loop for message = (read-line (client-stream client))
         while (not (equal message "/quit"))
-        if (member message *commands-names* :test #'equal)
-          do (send-message client (call-command-by-name message))
+        for response := (call-command client message)
+        if response
+          do (send-message client response)
         else
           when (> (length message) 0)
             do (push-message (client-name client)
