@@ -125,9 +125,9 @@
              month date year
              (- tz)))))
 
-(defun /nick (client &optional (new-nick nil))
+(defun /nick (client &optional (new-nick nil) &rest args)
   (if new-nick
-      (progn (push-message "@server" (format nil "Now ~a is known as ~a"
+      (progn (push-message "@server" (format nil "Now user ~a is known as ~a"
                                              (client-name client)
                                              new-nick))
              (setf (client-name client) new-nick)
