@@ -10,13 +10,17 @@
 
 ;; global vars
 (defvar *day-names* '("Monday" "Tuesday" "Wednesday"
-                      "Thursday" "Friday" "Saturday" "Sunday"))
-(defvar *uptime* (multiple-value-list (get-decoded-time)))
-(defparameter *commands-names* '("/users" "/help" "/log" "/quit" "/uptime" "/nick"))
-(defparameter *clients* nil)
-(defparameter *messages-stack* nil)
-(defparameter *messages-log* nil)
-(defparameter *server-nickname* "@server")
+                      "Thursday" "Friday" "Saturday" "Sunday")
+  "Day names")
+(defvar *uptime* (multiple-value-list (get-decoded-time))
+  "Uptime of server variable")
+(defparameter *commands-names*
+  '("/users" "/help" "/log" "/quit" "/uptime" "/nick")
+  "Allowed command names to be called by client user")
+(defparameter *clients* nil "List of clients")
+(defparameter *messages-stack* nil "Messages pending to be send by broadcasting")
+(defparameter *messages-log* nil  "Messages log")
+(defparameter *server-nickname* "@server" "The server nickname")
 
 
 ;; thread control
@@ -126,6 +130,7 @@
              (- tz)))))
 
 (defun /nick (client &optional (new-nick nil) &rest args)
+  "Change the client-name given a NEW-NICK which should be a string"
   (if new-nick
       (progn (setf (client-name client) new-nick)
              (command-message (format nil "Your new nick is: ~a" new-nick)))
@@ -161,6 +166,7 @@
     (finish-output stream)))
 
 (defun startswith (string substring)
+  "Check if STRING starts with SUBSTRING."
   (let ((l1 (length string))
         (l2 (length substring)))
     (when (and (> l2 0)
@@ -170,6 +176,7 @@
             always (equal c1 c2)))))
 
 (defun split (string delimiterp)
+  "Split a string by a delimiterp function character checking"
   (loop :for beg = (position-if-not delimiterp string)
           :then (position-if-not delimiterp string :start (1+ end))
         :for end = (and beg (position-if delimiterp string :start beg))
