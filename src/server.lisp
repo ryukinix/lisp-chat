@@ -299,7 +299,7 @@ exceptions."
              (progn (setq socket-server (socket-listen *host* *port*))
                     (server-loop socket-server))
            (usocket:address-in-use-error ()
-             (format t "Address:port at ~a\:~a already busy."
+             (format t "Address:port at ~a\:~a already busy.~%"
                      *host*
                      *port*))
            (sb-sys:interactive-interrupt ()
