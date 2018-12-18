@@ -55,13 +55,13 @@ $ ./lisp-chat
 
 
 You can easilly setup your own configuration of `*port*` and
-`*domain*` for running a new instance of the server and client. For
+`*host*` for running a new instance of the server and client. For
 now we have a instance of lisp-chat as example running. If you really
-want to runs locally, you can just change the `*domain*` variable to `"localhost"` as:
+want to runs locally, you can just change the `*host*` variable to `"localhost"` as:
 
 ```lisp
 (require 'lisp-chat)
-(setq lisp-chat-config:*domain* "localhost")
+(setq lisp-chat-config:*host* "localhost")
 ```
 
 
