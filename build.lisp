@@ -1,12 +1,13 @@
-(pushnew (truename (sb-unix:posix-getcwd/)) ql:*local-project-directories*)
-(ql:register-local-projects)
-(ql:quickload '(:lisp-chat :cffi))
+(defparameter *compression* 9 "Compression level of the executable binary.")
+(defparameter *debug* nil "Debug information")
 
-(eval-when (:compile-toplevel :execute)
-    (defconstant +debug+ nil))
+(eval-when (:execute)
+  (pushnew (truename (sb-unix:posix-getcwd/)) ql:*local-project-directories*)
+  (ql:register-local-projects)
+  (ql:quickload '(:lisp-chat :cffi)))
 
 (defmacro debug-format (&rest body)
-  (when +debug+
+  (when *debug*
     `(format t ,@body)))
 
 (defun import-foreign-libraries ()
@@ -25,11 +26,12 @@
   (import-foreign-libraries)
   (lisp-chat-client:main))
 
-;; close currently foreign libraries loaded
-(loop for library in (cffi:list-foreign-libraries :loaded-only t)
-      do (cffi:close-foreign-library library))
 
-(sb-ext:save-lisp-and-die "lisp-chat"
-                          :toplevel #'main
-                          :executable t
-                          :compression 1)
+(eval-when (:execute)
+  ;; close currently foreign libraries loaded
+  (loop for library in (cffi:list-foreign-libraries :loaded-only t)
+        do (cffi:close-foreign-library library))
+  (sb-ext:save-lisp-and-die "lisp-chat"
+                            :toplevel #'main
+                            :executable t
+                            :compression *compression*))
