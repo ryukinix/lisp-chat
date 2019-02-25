@@ -1,0 +1,45 @@
+#!/bin/sh
+#|-*- mode:lisp -*-|#
+#|
+exec ros -Q -- $0 "$@"
+|#
+(progn ;;init forms
+  (ros:ensure-asdf)
+  #+quicklisp(ql:quickload '(:lisp-chat) :silent t)
+  )
+
+(defpackage :ros.script.lisp-chat-server
+  (:use :cl))
+(in-package :ros.script.lisp-chat-server)
+
+
+(defparameter *usage*
+  (format nil
+          "usage: lisp-chat-server [-h|--help] [host] [port]
+
+OPTIONS
+    host          server host, default: ~a
+    port          server port, default: ~a
+    -h | --help   show this message
+" lisp-chat-config:*host*
+  lisp-chat-config:*port*))
+
+(defun help (argv)
+  (when (loop for arg in argv
+                thereis (or (equal arg "-h")
+                            (equal arg "--help")))
+    (princ *usage*)))
+
+(defun main (&rest argv)
+  (declare (ignorable argv))
+
+  (let ((host (car argv))
+        (port (cadr argv)))
+    (when host
+      (setq lisp-chat-config:*host* host))
+    (when port
+      (setq lisp-chat-config:*port* (parse-integer port))))
+
+  (unless (help argv)
+    (lisp-chat-server:main)))
+;;; vim: set ft=lisp lisp:
