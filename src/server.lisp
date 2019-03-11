@@ -1,11 +1,11 @@
 ;; Common Lisp Script
 ;; Manoel Vilela
 
-(defpackage :lisp-chat-server
-  (:use :usocket :cl :lisp-chat-config :sb-thread)
+(defpackage :lisp-chat/server
+  (:use :usocket :cl :lisp-chat/config :sb-thread )
   (:export :main))
 
-(in-package :lisp-chat-server)
+(in-package :lisp-chat/server)
 
 
 ;; global vars
@@ -99,6 +99,7 @@
 ;; user commands prefixed with /
 (defun /users (client &rest args)
   "Return a list separated by commas of the currently logged users"
+  (declare (ignorable client args))
   (command-message (format nil "~{~a~^, ~}" (mapcar #'client-name *clients*))))
 
 
@@ -177,11 +178,11 @@
 
 (defun split (string delimiterp)
   "Split a string by a delimiterp function character checking"
-  (loop :for beg = (position-if-not delimiterp string)
-          :then (position-if-not delimiterp string :start (1+ end))
-        :for end = (and beg (position-if delimiterp string :start beg))
-        :when beg :collect (subseq string beg end)
-          :while end))
+  (loop for beg = (position-if-not delimiterp string)
+          then (position-if-not delimiterp string :start (1+ end))
+        for end = (and beg (position-if delimiterp string :start beg))
+        when beg collect (subseq string beg end)
+          while end))
 
 (defun extract-params (string)
   (subseq (split string (lambda (c) (eql c #\Space)))
@@ -261,8 +262,10 @@ exceptions."
                (push message *messages-log*)
                (loop for client in *clients*
                      do (handler-case (send-message client message)
-                          (sb-int:simple-stream-error () (client-delete client))
-                          (sb-bsd-sockets:not-connected-error () (client-delete client)))))))
+                          (sb-int:simple-stream-error ()
+                            (client-delete client))
+                          (sb-bsd-sockets:not-connected-error ()
+                            (client-delete client)))))))
 
 (defun connection-handler (socket-server)
   "This is a special thread just for accepting connections from SOCKET-SERVER
@@ -291,18 +294,27 @@ exceptions."
     (join-thread connection-thread)
     (join-thread broadcast-thread)))
 
-(defun main ()
+(defun main (&key (host *host*) (port *port*))
   "Well, this function run all the necessary shits."
-  (let ((socket-server nil))
+  (let ((socket-server nil)
+        (error-code 0))
     (unwind-protect
          (handler-case
-             (progn (setq socket-server (socket-listen *host* *port*))
+             (progn (setq socket-server (socket-listen host port))
                     (server-loop socket-server))
            (usocket:address-in-use-error ()
-             (format t "Address:port at ~a\:~a already busy.~%"
+             (format *error-output*
+                     "error: Address:port at ~a\:~a already busy.~%"
                      *host*
-                     *port*))
+                     *port*)
+             (setq error-code 1))
+           (usocket:address-not-available-error ()
+             (format *error-output*
+                     "error: There is no way to use ~a as host to run the server.~%"
+                     *host*)
+             (setq error-code 2))
            (sb-sys:interactive-interrupt ()
-             (format t "Closing the server...")))
+             (format t "~%Closing the server...~%")))
       (when socket-server
-        (socket-close socket-server)))))
+        (socket-close socket-server))
+      (sb-ext:exit :code error-code))))

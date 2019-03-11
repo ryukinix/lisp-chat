@@ -1,11 +1,11 @@
 ;; Common Lisp Script
 ;; Manoel Vilela
 
-(defpackage :lisp-chat-client
-  (:use :usocket :cl :lisp-chat-config :sb-ext)
+(defpackage :lisp-chat/client
+  (:use :usocket :cl :lisp-chat/config :sb-ext)
   (:export :main))
 
-(in-package :lisp-chat-client)
+(in-package :lisp-chat/client)
 
 (defvar *io-mutex* (sb-thread:make-mutex :name "io mutex")
   "I/O Mutex for avoid terminal race conditions")
@@ -85,9 +85,9 @@
     username))
 
 
-(defun client-loop ()
+(defun client-loop (host port)
   "Dispatch client threads for basic functioning system"
-  (let* ((socket (socket-connect *host* *port*))
+  (let* ((socket (socket-connect host port))
          (username (login socket)))
     (format t "Connected as ~a\@~a\:~a ~%" username *host* *port*)
     (let ((sender (sb-thread:make-thread #'client-sender
@@ -99,9 +99,9 @@
       (sb-thread:join-thread sender)
       (sb-thread:join-thread broadcast))))
 
-(defun main ()
+(defun main (&key (host *host*) (port *port*))
   "Main function of client"
-  (handler-case (client-loop)
+  (handler-case (client-loop host port)
     (sb-sys:interactive-interrupt () (exit))
     (usocket:connection-refused-error ()
       (progn (write-line "Server seems offline. Run first the server.lisp.")

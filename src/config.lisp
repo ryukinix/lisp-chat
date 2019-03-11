@@ -1,13 +1,13 @@
 ;; Common Lisp Script
 ;; Manoel Vilela
 
-(defpackage :lisp-chat-config
+(defpackage :lisp-chat/config
   (:use :cl)
   (:export :*debug*
            :*host*
            :*port*))
 
-(in-package :lisp-chat-config)
+(in-package :lisp-chat/config)
 
 (defparameter *debug* t "Run application in debug mode with extra info in terminal")
 (defparameter *host* "server.lerax.me" "Host used in server and client")
