@@ -24,7 +24,7 @@
 
 (defun main()
   (import-foreign-libraries)
-  (lisp-chat-client:main))
+  (lisp-chat/client:main))
 
 
 (eval-when (:execute)
