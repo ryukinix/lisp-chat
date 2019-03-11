@@ -21,8 +21,12 @@ After that just type:
 ros install ryukinix/lisp-chat
 ```
 
-Lisp-chat it's on Quicklisp as well, but only have for now support for
-SBCL. It's planned at least ECL support for it. Take a look at the issues.
+Lisp-chat it's on Quicklisp as well, tested on the following
+implementations:
+
+* SBCL
+* CCL
+* ECL
 
 # Usage
 
