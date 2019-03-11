@@ -95,7 +95,7 @@
 (defun call-command-by-name (string params)
   "Wow, this is a horrible hack to get a string as symbol for functions/command
   like /help /users /log and so on."
-  (let ((command-function (find-symbol (string-upcase string) :lisp-chat-server)))
+  (let ((command-function (find-symbol (string-upcase string) :lisp-chat/server)))
     (when command-function
       (apply command-function params))))
 
