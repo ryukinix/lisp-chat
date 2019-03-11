@@ -72,8 +72,8 @@
 (defun server-broadcast (socket)
   "Call server-listener treating exceptional cases"
   (handler-case (server-listener socket)
-    (end-of-file ()
-      (format t "~%Server down. ~%")
+    (end-of-file (e)
+      (format t "~%End of connection: ~a~%" e)
       (uiop:quit 1))
     (simple-error ()
       (server-broadcast socket))))
