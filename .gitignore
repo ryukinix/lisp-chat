@@ -1,5 +1,5 @@
-.fasl
-.FASL
+*.fasl
+*.FASL
 __pycache__
 system-index.txt
 lisp-chat
