@@ -33,12 +33,12 @@ implementations:
 
 Load the server
 ```bash
-$ ./lisp-chat-server localhost
+$ lisp-chat-server localhost
 ```
 
 Create a client
 ```bash
-$ ./lisp-chat localhost
+$ lisp-chat localhost
 ```
 
 As alternative of `localhost` you can use `server.lerax.me`  which
