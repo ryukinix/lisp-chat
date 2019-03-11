@@ -2,12 +2,15 @@
 ;; Manoel Vilela
 
 (defpackage :lisp-chat/client
-  (:use :usocket :cl :lisp-chat/config :sb-ext)
+  (:use #:usocket
+        #:cl
+        #:lisp-chat/config
+        #:bordeaux-threads)
   (:export :main))
 
 (in-package :lisp-chat/client)
 
-(defvar *io-mutex* (sb-thread:make-mutex :name "io mutex")
+(defvar *io-lock* (make-lock "io mutex")
   "I/O Mutex for avoid terminal race conditions")
 
 (defun erase-last-line ()
@@ -20,7 +23,7 @@
   (prog1 (cl-readline:readline :prompt (format nil "[~A]: " username)
                                :erase-empty-line t
                                :add-history t)
-    (sb-thread:with-mutex (*io-mutex*)
+    (with-mutex-held (*io-lock*)
       (erase-last-line))))
 
 
@@ -35,7 +38,7 @@
 ;; better way for doing that.
 (defun receive-message (message)
   "Receive a message and print in the terminal carefully with IO race conditions"
-  (sb-thread:with-mutex (*io-mutex*)
+  (with-mutex-held (*io-lock*)
     (let ((line cl-readline:*line-buffer*)
           (prompt cl-readline:+prompt+))
       ;; erase
@@ -90,19 +93,22 @@
   (let* ((socket (socket-connect host port))
          (username (login socket)))
     (format t "Connected as ~a\@~a\:~a ~%" username *host* *port*)
-    (let ((sender (sb-thread:make-thread #'client-sender
-                                       :name "client sender"
-                                       :arguments (list socket username)))
-          (broadcast (sb-thread:make-thread #'server-broadcast
-                                      :name "server broadcast"
-                                      :arguments (list socket))))
-      (sb-thread:join-thread sender)
-      (sb-thread:join-thread broadcast))))
+    (let ((sender (make-thread (lambda () (client-sender socket username))
+                               :name "client sender"))
+          (broadcast (make-thread (lambda () (server-broadcast socket))
+                                  :name "server broadcast")))
+      (join-thread sender)
+      (join-thread broadcast))))
 
 (defun main (&key (host *host*) (port *port*))
   "Main function of client"
   (handler-case (client-loop host port)
-    (sb-sys:interactive-interrupt () (exit))
+    (#+sbcl sb-sys:interactive-interrupt
+     #+ccl  ccl:interrupt-signal-condition
+     #+clisp system::simple-interrupt-condition
+     #+ecl ext:interactive-interrupt
+     #+allegro excl:interrupt-signal ()
+      (uiop:quit 0))
     (usocket:connection-refused-error ()
       (progn (write-line "Server seems offline. Run first the server.lisp.")
-             (exit :code 1)))))
+             (uiop:quit 1)))))

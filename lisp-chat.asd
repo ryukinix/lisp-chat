@@ -8,7 +8,8 @@
   :version "0.2.0"
   :mailto "manoel_vilela@engineer.com"
   :license "MIT"
-  :depends-on ("usocket")
+  :depends-on ("usocket"
+               "bordeaux-threads")
   :pathname "src"
   :components ((:file "config")
                (:file "server" :depends-on ("config"))))
@@ -18,7 +19,9 @@
   :description "An experimental chat irc-like: client"
   :version "0.2.0"
   :license "MIT"
-  :depends-on ("usocket" "cl-readline")
+  :depends-on ("usocket"
+               "cl-readline"
+               "bordeaux-threads")
   :pathname "src"
   :components ((:file "config")
                (:file "client" :depends-on ("config"))))

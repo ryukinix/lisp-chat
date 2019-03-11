@@ -1,9 +1,12 @@
 ;; Common Lisp Script
 ;; Manoel Vilela
 
-(defpackage :lisp-chat/server
-  (:use :usocket :cl :lisp-chat/config :sb-thread )
-  (:export :main))
+(defpackage #:lisp-chat/server
+  (:use #:usocket
+        #:cl
+        #:lisp-chat/config
+        #:bordeaux-threads)
+  (:export #:main))
 
 (in-package :lisp-chat/server)
 
@@ -26,7 +29,7 @@
 ;; thread control
 (defvar *message-semaphore* (make-semaphore :name "message semaphore"
                                             :count 0))
-(defvar *client-mutex* (make-mutex :name "client list mutex"))
+(defvar *client-lock* (make-lock "client list lock"))
 
 
 
@@ -148,7 +151,7 @@
 
 (defun client-delete (client)
   "Delete a CLIENT from the list *clients*"
-  (with-mutex (*client-mutex*)
+  (with-lock-held (*client-lock*)
     (setf *clients* (remove-if (lambda (c)
                                  (equal (client-address c)
                                         (client-address client)))
@@ -181,8 +184,9 @@
   (loop for beg = (position-if-not delimiterp string)
           then (position-if-not delimiterp string :start (1+ end))
         for end = (and beg (position-if delimiterp string :start beg))
-        when beg collect (subseq string beg end)
-          while end))
+        when beg
+          collect (subseq string beg end)
+        while end))
 
 (defun extract-params (string)
   (subseq (split string (lambda (c) (eql c #\Space)))
@@ -198,7 +202,7 @@
   "This function create a IO-bound procedure to act
    by reading the events of a specific CLIENT.
    On this software each client talks on your own thread."
-  (loop for message = (read-line (client-stream client))
+  (loop for message := (read-line (client-stream client))
         while (not (equal message "/quit"))
         for response := (call-command client message)
         if response
@@ -214,12 +218,16 @@
    treating all the possible errors based on HANDLER-CASE macro."
   (handler-case (client-reader-routine client)
     (end-of-file () (client-delete client))
-    (sb-int:simple-stream-error ()
+    (#+sbcl sb-int:simple-stream-error
+     #-sbcl error
+     ()
       (progn (debug-format t "~a@~a timed output"
                            (client-name client)
                            (client-address client))
              (client-delete client)))
-    (sb-bsd-sockets:not-connected-error ()
+    (#+sbcl sb-bsd-sockets:not-connected-error
+     #-sbcl error
+     ()
       (progn (debug-format t "~a@~a not connected more."
                            (client-name client)
                            (client-address client))
@@ -236,15 +244,14 @@
     (let ((client (make-client :name (read-line client-stream)
                                :socket connection
                                :address (socket-peer-address connection))))
-      (with-mutex (*client-mutex*)
+      (with-lock-held (*client-lock*)
         (debug-format t "Added new user ~a@~a ~%"
                       (client-name client)
                       (client-address client))
         (push client *clients*))
       (push-message "@server" (format nil "The user ~s joined to the party!" (client-name client)))
-      (make-thread #'client-reader
-                             :name (format nil "~a reader thread" (client-name client))
-                             :arguments (list client)))))
+      (make-thread (lambda () (client-reader client))
+                   :name (format nil "~a reader thread" (client-name client))))))
 
 ;; a function defined to handle the errors of client thread
 (defun safe-client-thread (connection)
@@ -262,17 +269,18 @@ exceptions."
                (push message *messages-log*)
                (loop for client in *clients*
                      do (handler-case (send-message client message)
-                          (sb-int:simple-stream-error ()
+                          (#+sbcl sb-int:simple-stream-error
+                           #-sbcl error ()
                             (client-delete client))
-                          (sb-bsd-sockets:not-connected-error ()
+                          (#+sbcl sb-bsd-sockets:not-connected-error
+                           #-sbcl error ()
                             (client-delete client)))))))
 
 (defun connection-handler (socket-server)
   "This is a special thread just for accepting connections from SOCKET-SERVER
    and creating new clients from it."
   (loop for connection = (socket-accept socket-server)
-        do (make-thread #'safe-client-thread
-                        :arguments (list connection)
+        do (make-thread (lambda () (safe-client-thread connection))
                         :name "create client")))
 
 (defun server-loop (socket-server)
@@ -286,11 +294,10 @@ exceptions."
    The second procedure is a general connection-handler for new
    clients trying connecting to the server."
   (format t "Running server at ~a:~a... ~%" *host* *port*)
-  (let* ((connection-thread (make-thread #'connection-handler
-                                                   :arguments (list socket-server)
-                                                   :name "Connection handler"))
+  (let* ((connection-thread (make-thread (lambda () (connection-handler socket-server))
+                                         :name "Connection handler"))
          (broadcast-thread (make-thread #'message-broadcast
-                                                  :name "Message broadcast")))
+                                        :name "Message broadcast")))
     (join-thread connection-thread)
     (join-thread broadcast-thread)))
 
@@ -313,8 +320,12 @@ exceptions."
                      "error: There is no way to use ~a as host to run the server.~%"
                      *host*)
              (setq error-code 2))
-           (sb-sys:interactive-interrupt ()
+           (#+sbcl sb-sys:interactive-interrupt
+            #+ccl  ccl:interrupt-signal-condition
+            #+clisp system::simple-interrupt-condition
+            #+ecl ext:interactive-interrupt
+            #+allegro excl:interrupt-signal ()
              (format t "~%Closing the server...~%")))
       (when socket-server
         (socket-close socket-server))
-      (sb-ext:exit :code error-code))))
+      (uiop:quit error-code))))
