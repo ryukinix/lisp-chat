@@ -23,7 +23,7 @@
   (prog1 (cl-readline:readline :prompt (format nil "[~A]: " username)
                                :erase-empty-line t
                                :add-history t)
-    (with-mutex-held (*io-lock*)
+    (with-lock-held (*io-lock*)
       (erase-last-line))))
 
 
@@ -38,7 +38,7 @@
 ;; better way for doing that.
 (defun receive-message (message)
   "Receive a message and print in the terminal carefully with IO race conditions"
-  (with-mutex-held (*io-lock*)
+  (with-lock-held (*io-lock*)
     (let ((line cl-readline:*line-buffer*)
           (prompt cl-readline:+prompt+))
       ;; erase
@@ -60,7 +60,7 @@
                  (equal message nil))
           return nil
         do (send-message message socket))
-  (exit))
+  (uiop:quit))
 
 
 (defun server-listener (socket)
@@ -72,10 +72,10 @@
 (defun server-broadcast (socket)
   "Call server-listener treating exceptional cases"
   (handler-case (server-listener socket)
-    (end-of-file (e)
+    (end-of-file ()
       (format t "~%Server down. ~%")
-      (exit))
-    (simple-error (e)
+      (uiop:quit 1))
+    (simple-error ()
       (server-broadcast socket))))
 
 
