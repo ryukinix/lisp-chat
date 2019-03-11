@@ -108,12 +108,14 @@
 
 (defun /help (client &rest args)
   "Show a list of the available commands of lisp-chat"
+  (declare (ignorable client args))
   (command-message (format nil "~{~a~^, ~}" *commands-names*)))
 
 
 (defun /log (client &optional (depth "20") &rest args)
   "Show the last messages typed on the server.
    DEPTH is optional number of messages frames from log"
+  (declare (ignorable client args))
   (let ((messages (min (or (parse-integer depth :junk-allowed t) 20)
                        (length *messages-log*))))
     (format nil "~{~a~^~%~}" (reverse (subseq *messages-log* 0
@@ -121,6 +123,7 @@
 
 (defun /uptime (client &rest args)
   "Return a string nice encoded to preset the uptime since the server started."
+  (declare (ignorable client args))
   (multiple-value-bind
         (second minute hour date month year day-of-week dst-p tz)
       (values-list *uptime*)
@@ -135,6 +138,7 @@
 
 (defun /nick (client &optional (new-nick nil) &rest args)
   "Change the client-name given a NEW-NICK which should be a string"
+  (declare (ignorable args))
   (if new-nick
       (progn (setf (client-name client) new-nick)
              (command-message (format nil "Your new nick is: ~a" new-nick)))
