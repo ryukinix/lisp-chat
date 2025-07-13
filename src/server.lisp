@@ -18,7 +18,7 @@
 (defvar *uptime* (multiple-value-list (get-decoded-time))
   "Uptime of server variable")
 (defparameter *commands-names*
-  '("/users" "/help" "/log" "/quit" "/uptime" "/nick")
+  '("/users" "/help" "/log" "/quit" "/uptime" "/nick" "/ping")
   "Allowed command names to be called by client user")
 (defparameter *clients* nil "List of clients")
 (defparameter *messages-stack* nil "Messages pending to be send by broadcasting")
@@ -104,6 +104,11 @@
   "Return a list separated by commas of the currently logged users"
   (declare (ignorable client args))
   (command-message (format nil "~{~a~^, ~}" (mapcar #'client-name *clients*))))
+
+(defun /ping (client &rest args)
+  "Return a list separated by commas of the currently logged users"
+  (declare (ignorable client args))
+  (command-message (format nil "pong ~a" args)))
 
 
 (defun /help (client &rest args)
