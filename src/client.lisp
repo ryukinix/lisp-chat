@@ -23,9 +23,15 @@
   "Erase the last line by using ANSI Escape codes"
   (format t "~C[1A~C[2K" #\Esc #\Esc))
 
+(defun exit (&optional (code 0))
+  #-swank
+  (uiop:quit code))
 
 (defun get-user-input (username)
   "Get the user input by using readline"
+  (declare (ignore username))
+  #+swank (read-line)
+  #-swank
   (prog1 (cl-readline:readline :prompt (format nil "[~A]: " username)
                                :erase-empty-line t
                                :add-history t)
@@ -46,6 +52,7 @@
 ;; before printing messages from server, so I'm cleaning all the stuff
 ;; before print a new message, and restore again. Maybe there is a
 ;; better way for doing that.
+#-swank
 (defun receive-message (message)
   "Receive a message and print in the terminal carefully with IO race conditions"
   (with-lock-held (*io-lock*)
@@ -64,6 +71,13 @@
        (cl-readline:set-prompt prompt)
        (cl-readline:redisplay)))))
 
+#+swank
+(defun receive-message (message)
+  "Receive a message and print in the terminal carefully with IO race conditions"
+  (unless (system-pongp message)
+    (format t "~a~%" message)))
+
+
 (defun client-sender (socket username)
   "Routine to check new messages being typed by the user"
   (loop for message = (get-user-input username)
@@ -71,7 +85,7 @@
                  (equal message nil))
           return nil
         do (send-message message socket))
-  (uiop:quit))
+  (exit))
 
 
 (defun server-listener (socket)
@@ -85,7 +99,7 @@
   (handler-case (server-listener socket)
     (end-of-file (e)
       (format t "~%End of connection: ~a~%" e)
-      (uiop:quit 1))
+      (exit 1))
     (simple-error ()
       (server-broadcast socket))))
 
@@ -112,15 +126,14 @@ The systematic pong is consumed and the @server response is not shown in the ter
   (let* ((socket (socket-connect host port))
          (username (login socket)))
     (format t "Connected as ~a\@~a\:~a ~%" username *host* *port*)
-    (let ((sender (make-thread (lambda () (client-sender socket username))
-                               :name "client sender"))
-          (broadcast (make-thread (lambda () (server-broadcast socket))
+    (let ((broadcast (make-thread (lambda () (server-broadcast socket))
                                   :name "server broadcast"))
           (background-ping (make-thread (lambda () (client-background-ping socket))
                                         :name "background ping")))
-      (join-thread background-ping)
-      (join-thread sender)
-      (join-thread broadcast))))
+      (client-sender socket username)
+      (destroy-thread background-ping)
+      (destroy-thread broadcast)
+      (socket-close socket))))
 
 (defun main (&key (host *host*) (port *port*))
   "Main function of client"
@@ -130,7 +143,7 @@ The systematic pong is consumed and the @server response is not shown in the ter
      #+clisp system::simple-interrupt-condition
      #+ecl ext:interactive-interrupt
      #+allegro excl:interrupt-signal ()
-      (uiop:quit 0))
+      (exit 0))
     (usocket:connection-refused-error ()
       (progn (write-line "Server seems offline. Run first the server.lisp.")
-             (uiop:quit 1)))))
+             (exit 1)))))
