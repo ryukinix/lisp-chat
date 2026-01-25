@@ -5,14 +5,19 @@
 (asdf/defsystem:defsystem :lisp-chat/server
   :author "Manoel Vilela"
   :description "An experimental chat irc-like: server"
-  :version "0.2.0"
+  :version "0.3.0"
   :mailto "manoel_vilela@engineer.com"
   :license "MIT"
   :depends-on ("usocket"
-               "bordeaux-threads")
+               "bordeaux-threads"
+               "clack"
+               "websocket-driver")
   :pathname "src"
   :components ((:file "config")
-               (:file "server" :depends-on ("config"))))
+               (:file "server" :depends-on ("config"))
+               (:module "static"
+                :components
+                        ((:static-file "index.html")))))
 
 (asdf/defsystem:defsystem :lisp-chat/client
   :author "Manoel Vilela"
