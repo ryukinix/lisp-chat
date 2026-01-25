@@ -4,16 +4,26 @@ const input = document.getElementById('message-input');
 const userList = document.getElementById('user-list');
 let ws;
 let loggedIn = false;
+let username = '';
 let fetchUsersInterval;
 let backgroundRequestsPending = 0;
 
 function addMessage(text) {
-
     const linesArray = text.split('\n');
-
     for (const line of linesArray) {
+        if (line === "> Type your username: " && username) {
+            ws.send(username);
+            loggedIn = true;
+            // Restart periodic updates if not already running
+            if (!fetchUsersInterval) {
+                fetchUsersInterval = setInterval(requestUserList, 5000);
+                setTimeout(requestUserList, 500);
+            }
+            continue;
+        }
 
         // Check if it's a response from @server
+
         // Format: |HH:MM:SS| [from]: content
 
         const match = line.match(/^\|(\d{2}:\d{2}):(\d{2})\| \[(.*?)\]: (.*)$/);
@@ -120,6 +130,7 @@ form.addEventListener('submit', (e) => {
     e.preventDefault();
     if (input.value && ws && ws.readyState === WebSocket.OPEN) {
         if (!loggedIn) {
+            username = input.value;
             loggedIn = true;
             // Start periodic user list updates after login
             fetchUsersInterval = setInterval(requestUserList, 5000);
