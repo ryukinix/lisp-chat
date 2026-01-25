@@ -140,5 +140,13 @@ form.addEventListener('submit', (e) => {
         input.value = '';
     }
 });
+input.addEventListener("focus", () => {
+    setTimeout(() => {
+        input.scrollIntoView({
+            behavior: "smooth",
+            block: "center"
+        });
+    }, 300); // delay lets the keyboard open first
+});
 
 connect();
