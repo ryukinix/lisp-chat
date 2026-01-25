@@ -6,6 +6,16 @@
         #:cl
         #:lisp-chat/config
         #:bordeaux-threads)
+  (:import-from #:websocket-driver
+                #:make-server
+                #:ws
+                #:on
+                #:send
+                #:ready-state
+                #:start-connection)
+  (:import-from #:clack
+                #:clackup
+                #:stop)
   (:export #:main))
 
 (in-package :lisp-chat/server)
@@ -30,6 +40,7 @@
 (defvar *message-semaphore* (make-semaphore :name "message semaphore"
                                             :count 0))
 (defvar *client-lock* (make-lock "client list lock"))
+(defvar *messages-lock* (make-lock "messages stack lock"))
 
 
 
@@ -152,31 +163,46 @@
 
 (defun push-message (from content)
   "Push a messaged FROM as CONTENT into the *messages-stack*"
-  (push (make-message :from from
-                      :content content
-                      :time (get-time))
-        *messages-stack*)
+  (with-lock-held (*messages-lock*)
+    (push (make-message :from from
+                        :content content
+                        :time (get-time))
+          *messages-stack*))
   (signal-semaphore *message-semaphore*))
+
+(defun client-close (client)
+  (let ((socket (client-socket client)))
+    (typecase socket
+      (usocket:stream-usocket
+       (socket-close socket))
+      (t
+       (websocket-driver:close-connection socket)))))
 
 (defun client-delete (client)
   "Delete a CLIENT from the list *clients*"
-  (with-lock-held (*client-lock*)
-    (setf *clients* (remove-if (lambda (c)
-                                 (equal (client-address c)
-                                        (client-address client)))
-                               *clients*)))
-  (push-message "@server" (format nil "The user ~s exited from the party :("
-                                  (client-name client)))
-  (debug-format t "Deleted user ~a@~a~%"
-                (client-name client)
-                (client-address client))
-  (socket-close (client-socket client)))
+  (let ((removed? nil))
+    (with-lock-held (*client-lock*)
+      (when (member client *clients*)
+        (setf *clients* (remove client *clients*))
+        (setf removed? t)))
+    (when removed?
+      (push-message "@server" (format nil "The user ~s exited from the party :("
+                                      (client-name client)))
+      (debug-format t "Deleted user ~a@~a~%"
+                    (client-name client)
+                    (client-address client))
+      (client-close client))))
 
 (defun send-message (client message)
   "Send to CLIENT a MESSAGE :type string"
-  (let ((stream (client-stream client)))
-    (write-line message stream)
-    (finish-output stream)))
+  (let ((socket (client-socket client)))
+    (typecase socket
+      (usocket:stream-usocket
+       (let ((stream (socket-stream socket)))
+         (write-line message stream)
+         (finish-output stream)))
+      (t
+       (websocket-driver:send socket message)))))
 
 (defun startswith (string substring)
   "Check if STRING starts with SUBSTRING."
@@ -274,16 +300,73 @@ exceptions."
   "This procedure is a general independent thread to run brodcasting
    all the clients when a message is ping on this server"
   (loop when (wait-on-semaphore *message-semaphore*)
-          do (let ((message (formated-message (pop *messages-stack*))))
+          do (let ((message (with-lock-held (*messages-lock*)
+                              (formated-message (pop *messages-stack*)))))
                (push message *messages-log*)
-               (loop for client in *clients*
-                     do (handler-case (send-message client message)
-                          (#+sbcl sb-int:simple-stream-error
-                           #-sbcl error ()
-                            (client-delete client))
-                          (#+sbcl sb-bsd-sockets:not-connected-error
-                           #-sbcl error ()
-                            (client-delete client)))))))
+               (let ((clients (with-lock-held (*client-lock*) (copy-list *clients*))))
+                 (loop for client in clients
+                       do (handler-case (send-message client message)
+                            (error (e)
+                              (debug-format t "Error broadcasting to ~a: ~a~%" (client-name client) e)
+                              (client-delete client))))))))
+
+(defun ws-app (env)
+  (let ((ws (make-server env))
+        (client nil))
+    (on :message ws
+        (lambda (message)
+          ;; (debug-format t "Received WS message: ~s~%" message)
+          (if (null client)
+              (let ((name (string-trim '(#\Space #\Return #\Newline) message)))
+                (if (zerop (length name))
+                    (send ws "> Name cannot be empty. Try again: ")
+                    (progn
+                      (setf client (make-client :name name
+                                                :socket ws
+                                                :address (getf env :remote-addr)))
+                      (with-lock-held (*client-lock*)
+                        (push client *clients*))
+                      (push-message "@server" (format nil "The user ~s joined to the party!" name))
+                      (debug-format t "New web-socket user ~a@~a~%" name (client-address client)))))
+              (let ((response (call-command client message)))
+                (if response
+                    (send-message client response)
+                    (when (> (length message) 0)
+                      (push-message (client-name client) message)))))))
+    (on :open ws
+        (lambda ()
+          (send ws "> Type your username: ")))
+    (on :close ws
+        (lambda (&key code reason)
+          (declare (ignore code reason))
+          (when client
+            (client-delete client))))
+    (lambda (responder)
+      (declare (ignore responder))
+      (start-connection ws))))
+
+(defun static-app (path)
+  (let* ((file (merge-pathnames (subseq path 1) (merge-pathnames "src/static/"
+                                                                (asdf:system-source-directory :lisp-chat))))
+         (extension (pathname-type file))
+         (content-type (cond
+                         ((string= extension "html") "text/html")
+                         ((string= extension "css") "text/css")
+                         ((string= extension "js") "application/javascript")
+                         (t "text/plain"))))
+    (if (probe-file file)
+        `(200 (:content-type ,content-type) ,file)
+        '(404 (:content-type "text/plain") ("Not Found")))))
+
+(defun web-handler (env)
+  (let ((path (getf env :path-info)))
+    (cond
+      ((string= path "/ws")
+       (ws-app env))
+      ((string= path "/")
+       (static-app "/index.html"))
+      (t
+       (static-app path)))))
 
 (defun connection-handler (socket-server)
   "This is a special thread just for accepting connections from SOCKET-SERVER
@@ -303,12 +386,37 @@ exceptions."
    The second procedure is a general connection-handler for new
    clients trying connecting to the server."
   (format t "Running server at ~a:~a... ~%" *host* *port*)
-  (let* ((connection-thread (make-thread (lambda () (connection-handler socket-server))
-                                         :name "Connection handler"))
-         (broadcast-thread (make-thread #'message-broadcast
-                                        :name "Message broadcast")))
-    (join-thread connection-thread)
-    (join-thread broadcast-thread)))
+  (format t "Running web server at http://~a:~a... ~%" *host* *websocket-port*)
+  (let (connection-thread
+        broadcast-thread
+        web-handler)
+    (unwind-protect
+         (progn
+           (setf connection-thread (make-thread (lambda () (connection-handler socket-server))
+                                                :name "Connection handler"))
+           (setf broadcast-thread (make-thread #'message-broadcast
+                                               :name "Message broadcast"))
+           (setf web-handler (clackup #'web-handler
+                                      :address *host*
+                                      :port *websocket-port*
+                                      :use-thread t))
+           (join-thread connection-thread)
+           (join-thread broadcast-thread))
+      (progn
+        (debug-format t "~%Shutting down...~%")
+        (when web-handler
+          (debug-format t "Stopping web server...~%")
+          (handler-case (stop web-handler)
+            (error (c) (debug-format t "Error stopping web server: ~a~%" c))))
+        (when (and connection-thread (thread-alive-p connection-thread))
+          (debug-format t "Stopping connection handler...~%")
+          (destroy-thread connection-thread))
+        (when (and broadcast-thread (thread-alive-p broadcast-thread))
+          (debug-format t "Stopping message broadcast...~%")
+          (destroy-thread broadcast-thread))
+        (let ((clients (with-lock-held (*client-lock*) (copy-list *clients*))))
+          (loop for client in clients
+                do (client-close client)))))))
 
 (defun main (&key (host *host*) (port *port*))
   "Well, this function run all the necessary shits."

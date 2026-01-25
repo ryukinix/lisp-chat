@@ -41,10 +41,14 @@ Create a client
 $ lisp-chat localhost
 ```
 
-As alternative of `localhost` you can use `server.lerax.me`  which
-points to a lisp-chat server running in the port 5558.
+# Web Interface
 
+A web interface is now available! You can access the public instance at:
+[https://chat.manoel.dev](https://chat.manoel.dev)
 
+When running the server locally, the web interface is accessible at `http://localhost:5559`.
+
+![lisp-chat-web](lisp-chat-web.png)
 
 # Alternative clients
 
@@ -72,16 +76,16 @@ following message:
 |16:30:50| [Chris]: bye
 ```
 
-So you can type `netcat server.lerax.me 5558` and go on! I tested on
+So you can type `netcat <server> 5558` and go on! I tested on
 my machine and works fine! The main reason is because the
 communication between server and client just use raw data. For better
 synchronization with text data from server while you typing, I suggest
 you to use a readline wrapper like
 [`rlwrap`](https://github.com/hanslub42/rlwrap) calling as `rlwrap
-netcat server.lerax.me 5558`.
+netcat <server> 5558`.
 
 <p align="center">
-  <a href= http://chat.lerax.me>
+  <a href="https://chat.manoel.dev">
     <img src="http://www.lisperati.com/lisplogo_warning2_256.png" width="128" />
   </a>
 </p>

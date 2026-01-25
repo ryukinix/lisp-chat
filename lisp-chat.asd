@@ -1,24 +1,39 @@
 ;; Common Lisp Script
 ;; Manoel Vilela
 
+(defpackage :lisp-chat/system
+  (:use :cl :asdf :uiop))
 
-(asdf/defsystem:defsystem :lisp-chat/server
-  :author "Manoel Vilela"
+(in-package :lisp-chat/system)
+
+(defvar *lisp-chat-author* "Manoel Vilela")
+(defvar *lisp-chat-version* "0.3.0")
+(defvar *lisp-chat-license* "MIT")
+
+(defsystem :lisp-chat/server
+  :author #.*lisp-chat-author*
   :description "An experimental chat irc-like: server"
-  :version "0.2.0"
-  :mailto "manoel_vilela@engineer.com"
-  :license "MIT"
+  :version #.*lisp-chat-version*
+  :license #.*lisp-chat-license*
   :depends-on ("usocket"
-               "bordeaux-threads")
+               "bordeaux-threads"
+               "clack"
+               "websocket-driver")
   :pathname "src"
   :components ((:file "config")
-               (:file "server" :depends-on ("config"))))
+               (:file "server" :depends-on ("config"))
+               (:module "static"
+                :components
+                        ((:static-file "index.html")
+                         (:static-file "chat.js")
+                         (:static-file "style.css")
+                         (:static-file "favicon.ico")))))
 
-(asdf/defsystem:defsystem :lisp-chat/client
-  :author "Manoel Vilela"
+(defsystem :lisp-chat/client
+  :author #.*lisp-chat-author*
   :description "An experimental chat irc-like: client"
-  :version "0.2.0"
-  :license "MIT"
+  :version #.*lisp-chat-version*
+  :license #.*lisp-chat-license*
   :depends-on ("usocket"
                "cl-readline"
                "bordeaux-threads")
@@ -26,10 +41,10 @@
   :components ((:file "config")
                (:file "client" :depends-on ("config"))))
 
-(asdf/defsystem:defsystem :lisp-chat
-  :author "Manoel Vilela"
+(defsystem :lisp-chat
+  :author #.*lisp-chat-author*
   :description "An experimental chat irc-like"
-  :version "0.2.0"
-  :license "MIT"
+  :version #.*lisp-chat-version*
+  :license #.*lisp-chat-license*
   :depends-on ("lisp-chat/client"
                "lisp-chat/server"))

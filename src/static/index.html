@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lisp Chat Web</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <div id="main">
+      <div id="chat"></div>
+      <form id="input-area">
+        <input type="text" id="message-input" placeholder="Type a message..." autocomplete="off" autofocus>
+        <button type="submit">Send</button>
+      </form>
+    </div>
+    <div id="sidebar">
+      <h3>Online Users</h3>
+      <ul id="user-list"></ul>
+    </div>
+    <script src="chat.js"></script>
+  </body>
+</html>
