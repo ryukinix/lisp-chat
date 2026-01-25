@@ -40,6 +40,7 @@
 (defvar *message-semaphore* (make-semaphore :name "message semaphore"
                                             :count 0))
 (defvar *client-lock* (make-lock "client list lock"))
+(defvar *messages-lock* (make-lock "messages stack lock"))
 
 
 
@@ -162,10 +163,11 @@
 
 (defun push-message (from content)
   "Push a messaged FROM as CONTENT into the *messages-stack*"
-  (push (make-message :from from
-                      :content content
-                      :time (get-time))
-        *messages-stack*)
+  (with-lock-held (*messages-lock*)
+    (push (make-message :from from
+                        :content content
+                        :time (get-time))
+          *messages-stack*))
   (signal-semaphore *message-semaphore*))
 
 (defun client-close (client)
@@ -178,17 +180,18 @@
 
 (defun client-delete (client)
   "Delete a CLIENT from the list *clients*"
-  (with-lock-held (*client-lock*)
-    (setf *clients* (remove-if (lambda (c)
-                                 (equal (client-address c)
-                                        (client-address client)))
-                               *clients*)))
-  (push-message "@server" (format nil "The user ~s exited from the party :("
-                                  (client-name client)))
-  (debug-format t "Deleted user ~a@~a~%"
-                (client-name client)
-                (client-address client))
-  (client-close client))
+  (let ((removed? nil))
+    (with-lock-held (*client-lock*)
+      (when (member client *clients*)
+        (setf *clients* (remove client *clients*))
+        (setf removed? t)))
+    (when removed?
+      (push-message "@server" (format nil "The user ~s exited from the party :("
+                                      (client-name client)))
+      (debug-format t "Deleted user ~a@~a~%"
+                    (client-name client)
+                    (client-address client))
+      (client-close client))))
 
 (defun send-message (client message)
   "Send to CLIENT a MESSAGE :type string"
@@ -297,13 +300,15 @@ exceptions."
   "This procedure is a general independent thread to run brodcasting
    all the clients when a message is ping on this server"
   (loop when (wait-on-semaphore *message-semaphore*)
-          do (let ((message (formated-message (pop *messages-stack*))))
+          do (let ((message (with-lock-held (*messages-lock*)
+                              (formated-message (pop *messages-stack*)))))
                (push message *messages-log*)
-               (loop for client in *clients*
-                     do (handler-case (send-message client message)
-                          (error (e)
-                            (debug-format t "Error broadcasting to ~a: ~a~%" (client-name client) e)
-                            (client-delete client)))))))
+               (let ((clients (with-lock-held (*client-lock*) (copy-list *clients*))))
+                 (loop for client in clients
+                       do (handler-case (send-message client message)
+                            (error (e)
+                              (debug-format t "Error broadcasting to ~a: ~a~%" (client-name client) e)
+                              (client-delete client))))))))
 
 (defun ws-app (env)
   (let ((ws (make-server env))
