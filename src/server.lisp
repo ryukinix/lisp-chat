@@ -341,10 +341,16 @@ exceptions."
       (start-connection ws))))
 
 (defun static-app (path)
-  (let ((file (merge-pathnames (subseq path 1) (merge-pathnames "src/static/"
-                                                                (asdf:system-source-directory :lisp-chat)))))
+  (let* ((file (merge-pathnames (subseq path 1) (merge-pathnames "src/static/"
+                                                                (asdf:system-source-directory :lisp-chat))))
+         (extension (pathname-type file))
+         (content-type (cond
+                         ((string= extension "html") "text/html")
+                         ((string= extension "css") "text/css")
+                         ((string= extension "js") "application/javascript")
+                         (t "text/plain"))))
     (if (probe-file file)
-        `(200 (:content-type "text/html") ,file)
+        `(200 (:content-type ,content-type) ,file)
         '(404 (:content-type "text/plain") ("Not Found")))))
 
 (defun web-handler (env)

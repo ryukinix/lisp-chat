@@ -4,25 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lisp Chat Web</title>
-    <style>
-        body { font-family: monospace; background: #222; color: #eee; display: flex; height: 100vh; height: 100dvh; margin: 0; overflow: hidden; font-size: 14px; }
-        #main { flex: 1; display: flex; flex-direction: column; border-right: 1px solid #444; min-width: 0; }
-        #chat { flex: 1; overflow-y: auto; padding: 10px; border-bottom: 1px solid #444; }
-        #input-area { display: flex; padding: 10px; flex-shrink: 0; }
-        #sidebar { width: 200px; padding: 10px; overflow-y: auto; background: #1a1a1a; flex-shrink: 0; }
-        #sidebar h3 { border-bottom: 1px solid #444; padding-bottom: 5px; margin-top: 0; }
-        #user-list { list-style: none; padding: 0; margin: 0; }
-        .user-item { padding: 5px 0; border-bottom: 1px solid #333; }
-        #message-input { flex: 1; background: #333; border: 1px solid #555; color: #fff; padding: 10px; }
-        button { background: #555; color: #fff; border: none; padding: 10px 20px; cursor: pointer; }
-        button:hover { background: #666; }
-        .message { margin-bottom: 5px; word-wrap: break-word; }
-
-        @media (max-width: 600px) {
-            #sidebar { display: none; }
-            #main { border-right: none; }
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="main">
@@ -36,108 +18,6 @@
         <h3>Online Users</h3>
         <ul id="user-list"></ul>
     </div>
-
-    <script>
-        const chat = document.getElementById('chat');
-        const form = document.getElementById('input-area');
-        const input = document.getElementById('message-input');
-        const userList = document.getElementById('user-list');
-        let ws;
-        let loggedIn = false;
-        let fetchUsersInterval;
-        let backgroundRequestsPending = 0;
-
-        function addMessage(text) {
-            const linesArray = text.split('\n');
-            for (const line of linesArray) {
-                // Check if it's a response from @server
-                // Format: |HH:MM:SS| [@server]: content
-                const match = line.match(/^\|\d{2}:\d{2}:\d{2}\| \[@server\]: (.*)$/);
-                if (match) {
-                    const content = match[1];
-                    const isSystemMessage = content.includes("joined to the party") || 
-                                            content.includes("exited from the party") || 
-                                            content.includes("Your new nick is");
-                    const isHelpOrUptime = content.startsWith("Server online since") || 
-                                           content.startsWith("/users, /help");
-
-                    if (isSystemMessage) {
-                        requestUserList(); // Refresh sidebar on join/part/nick
-                    } else if (!isHelpOrUptime) {
-                        // This is likely the response to /users
-                        updateUserList(content);
-                        if (backgroundRequestsPending > 0) {
-                            backgroundRequestsPending--;
-                            continue; // Swallow background updates
-                        }
-                    }
-                }
-
-                const div = document.createElement('div');
-                div.className = 'message';
-                div.textContent = line;
-                chat.appendChild(div);
-            }
-            chat.scrollTop = chat.scrollHeight;
-        }
-
-        function updateUserList(usersString) {
-            const users = usersString.split(',').map(u => u.trim()).filter(u => u.length > 0);
-            userList.innerHTML = '';
-            users.forEach(user => {
-                const li = document.createElement('li');
-                li.className = 'user-item';
-                li.textContent = user;
-                userList.appendChild(li);
-            });
-        }
-
-        function requestUserList() {
-            if (ws && ws.readyState === WebSocket.OPEN && loggedIn) {
-                backgroundRequestsPending++;
-                ws.send('/users');
-            }
-        }
-
-        function connect() {
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
-
-            ws.onopen = () => {
-                addMessage("Connected to server.");
-            };
-
-            ws.onmessage = (event) => {
-                addMessage(event.data);
-            };
-
-            ws.onclose = () => {
-                loggedIn = false;
-                if (fetchUsersInterval) clearInterval(fetchUsersInterval);
-                addMessage("Disconnected. Reconnecting in 3s...");
-                setTimeout(connect, 3000);
-            };
-
-            ws.onerror = (err) => {
-                console.error("WS Error", err);
-            };
-        }
-
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            if (input.value && ws && ws.readyState === WebSocket.OPEN) {
-                if (!loggedIn) {
-                    loggedIn = true;
-                    // Start periodic user list updates after login
-                    fetchUsersInterval = setInterval(requestUserList, 5000);
-                    setTimeout(requestUserList, 500); // Initial fetch
-                }
-                ws.send(input.value);
-                input.value = '';
-            }
-        });
-
-        connect();
-    </script>
+    <script src="chat.js"></script>
 </body>
 </html>
