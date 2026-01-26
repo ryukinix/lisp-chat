@@ -2,6 +2,7 @@ const chat = document.getElementById('chat');
 const form = document.getElementById('input-area');
 const input = document.getElementById('message-input');
 const userList = document.getElementById('user-list');
+
 let ws;
 let loggedIn = false;
 let username = '';
@@ -129,6 +130,11 @@ function connect() {
 form.addEventListener('submit', (e) => {
     e.preventDefault();
     if (input.value && ws && ws.readyState === WebSocket.OPEN) {
+        if (input.value == "/clear") {
+            chat.innerHTML = ""
+            input.value = "";
+            return
+        }
         if (!loggedIn) {
             username = input.value;
             loggedIn = true;
