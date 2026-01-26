@@ -1,16 +1,16 @@
-const chat = document.getElementById('chat');
-const form = document.getElementById('input-area');
-const input = document.getElementById('message-input');
-const userList = document.getElementById('user-list');
+const chat = document.getElementById("chat");
+const form = document.getElementById("input-area");
+const input = document.getElementById("message-input");
+const userList = document.getElementById("user-list");
 
 let ws;
 let loggedIn = false;
-let username = '';
+let username = "";
 let fetchUsersInterval;
 let backgroundRequestsPending = 0;
 
 function addMessage(text) {
-    const linesArray = text.split('\n');
+    const linesArray = text.split("\n");
     for (const line of linesArray) {
         if (line === "> Type your username: " && username) {
             ws.send(username);
@@ -31,7 +31,7 @@ function addMessage(text) {
 
         if (match) {
             const [_, timeHM, timeS, from, content] = match;
-            if (from === '@server') {
+            if (from === "@server") {
                 const isSystemMessage = content.includes("joined to the party") ||
                     content.includes("exited from the party") ||
                     content.includes("Your new nick is");
@@ -53,21 +53,21 @@ function addMessage(text) {
 
             }
 
-            const div = document.createElement('div');
+            const div = document.createElement("div");
 
 
-            div.className = 'message';
+            div.className = "message";
 
-            const timeSpan = document.createElement('span');
-            timeSpan.className = 'timestamp';
+            const timeSpan = document.createElement("span");
+            timeSpan.className = "timestamp";
             timeSpan.innerHTML = `${timeHM}<span class="timestamp-seconds">:${timeS}</span>`;
 
-            const fromSpan = document.createElement('span');
-            fromSpan.className = from == '@server'? 'msg-from-server': 'msg-from';
+            const fromSpan = document.createElement("span");
+            fromSpan.className = from == "@server"? "msg-from-server": "msg-from";
             fromSpan.textContent = `[${from}]: `; // Corrected from "[${from}]: "
 
-            const contentSpan = document.createElement('span');
-            contentSpan.className = 'msg-content';
+            const contentSpan = document.createElement("span");
+            contentSpan.className = "msg-content";
             contentSpan.textContent = content;
 
             div.appendChild(timeSpan);
@@ -77,8 +77,8 @@ function addMessage(text) {
             continue;
         }
 
-        const div = document.createElement('div');
-        div.className = 'message';
+        const div = document.createElement("div");
+        div.className = "message";
         div.textContent = line;
         chat.appendChild(div);
     }
@@ -86,11 +86,11 @@ function addMessage(text) {
 }
 
 function updateUserList(usersString) {
-    const users = usersString.split(',').map(u => u.trim()).filter(u => u.length > 0);
-    userList.innerHTML = '';
+    const users = usersString.split(",").map(u => u.trim()).filter(u => u.length > 0);
+    userList.innerHTML = "";
     users.forEach(user => {
-        const li = document.createElement('li');
-        li.className = 'user-item';
+        const li = document.createElement("li");
+        li.className = "user-item";
         li.textContent = user;
         userList.appendChild(li);
     });
@@ -99,12 +99,12 @@ function updateUserList(usersString) {
 function requestUserList() {
     if (ws && ws.readyState === WebSocket.OPEN && loggedIn) {
         backgroundRequestsPending++;
-        ws.send('/users');
+        ws.send("/users");
     }
 }
 
 function connect() {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
 
     ws.onopen = () => {
@@ -127,7 +127,7 @@ function connect() {
     };
 }
 
-form.addEventListener('submit', (e) => {
+form.addEventListener("submit", (e) => {
     e.preventDefault();
     if (input.value && ws && ws.readyState === WebSocket.OPEN) {
         if (input.value == "/clear") {
@@ -143,7 +143,7 @@ form.addEventListener('submit', (e) => {
             setTimeout(requestUserList, 500); // Initial fetch
         }
         ws.send(input.value);
-        input.value = '';
+        input.value = "";
     }
 });
 input.addEventListener("focus", () => {
