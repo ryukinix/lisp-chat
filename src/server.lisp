@@ -86,7 +86,7 @@
     (format nil "~2,'0d:~2,'0d:~2,'0d" hour minute second)))
 
 
-(defun formated-message (message)
+(defun formatted-message (message)
   "The default message format of this server. MESSAGE is a string
    Changing this reflects all the layout from client/server.
    Probably this would be the MFRP: Manoel Fucking Raw Protocol.
@@ -96,12 +96,18 @@
           (message-from message)
           (message-content message)))
 
+(defun user-messages ()
+  "Return only user messages, discard all messsages from @server"
+  (mapcar #'formatted-message
+          (remove-if #'(lambda (m) (equal (message-from m) "@server"))
+                     *messages-log*)))
+
 (defun command-message (content)
   "This function prepare the CONTENT as a message by the @server"
   (let* ((from *server-nickname*)
          (time (get-time))
          (message (make-message :from from :content content :time time)))
-    (formated-message message)))
+    (formatted-message message)))
 
 (defun call-command-by-name (string params)
   "Wow, this is a horrible hack to get a string as symbol for functions/command
@@ -127,15 +133,15 @@
   (declare (ignorable client args))
   (command-message (format nil "~{~a~^, ~}" *commands-names*)))
 
-
 (defun /log (client &optional (depth "20") &rest args)
   "Show the last messages typed on the server.
    DEPTH is optional number of messages frames from log"
   (declare (ignorable client args))
-  (let ((messages (min (or (parse-integer depth :junk-allowed t) 20)
-                       (length *messages-log*))))
-    (format nil "~{~a~^~%~}" (reverse (subseq *messages-log* 0
-                                              messages)))))
+  (let* ((messages (user-messages))
+         (log-size (min (or (parse-integer depth :junk-allowed t) 20)
+                        (length messages))))
+    (format nil "~{~a~^~%~}" (reverse (subseq messages 0
+                                              log-size)))))
 
 (defun /uptime (client &rest args)
   "Return a string nice encoded to preset the uptime since the server started."
@@ -300,9 +306,10 @@ exceptions."
   "This procedure is a general independent thread to run brodcasting
    all the clients when a message is ping on this server"
   (loop when (wait-on-semaphore *message-semaphore*)
-          do (let ((message (with-lock-held (*messages-lock*)
-                              (formated-message (pop *messages-stack*)))))
-               (push message *messages-log*)
+          do (let* ((message-raw (with-lock-held (*messages-lock*)
+                                   (pop *messages-stack*)))
+                    (message (formatted-message message-raw)))
+               (push message-raw *messages-log*)
                (let ((clients (with-lock-held (*client-lock*) (copy-list *clients*))))
                  (loop for client in clients
                        do (handler-case (send-message client message)
