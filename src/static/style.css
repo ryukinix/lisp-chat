@@ -29,6 +29,7 @@ body {
     display: flex;
     padding: 10px;
     flex-shrink: 0;
+    align-items: center;
 }
 
 #sidebar {

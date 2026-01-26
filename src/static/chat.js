@@ -9,12 +9,47 @@ let username = "";
 let fetchUsersInterval;
 let backgroundRequestsPending = 0;
 
+const availableColors = [
+    "#ff7675", "#fab1a0", "#fdcb6e", "#e17055", "#d63031",
+    "#00b894", "#00cec9", "#0984e3", "#6c5ce7", "#e84393",
+    "#ffeaa7", "#55efc4", "#81ecec", "#74b9ff", "#a29bfe"
+];
+
+function getUserColor(name) {
+    if (name === "@server") return "#bb2222";
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % availableColors.length;
+    return availableColors[index];
+}
+
+function updateUsernamePrefix() {
+    let prefix = document.getElementById("username-prefix");
+    if (!prefix) {
+        prefix = document.createElement("span");
+        prefix.id = "username-prefix";
+        form.insertBefore(prefix, input);
+    }
+    if (username && loggedIn) {
+        prefix.textContent = `[${username}]: `;
+        prefix.style.color = getUserColor(username);
+        prefix.style.fontWeight = "bold";
+        prefix.style.marginRight = "5px";
+        input.placeholder = "";
+    } else {
+        prefix.textContent = "";
+    }
+}
+
 function addMessage(text) {
     const linesArray = text.split("\n");
     for (const line of linesArray) {
         if (line === "> Type your username: " && username) {
             ws.send(username);
             loggedIn = true;
+            updateUsernamePrefix();
             // Restart periodic updates if not already running
             if (!fetchUsersInterval) {
                 fetchUsersInterval = setInterval(requestUserList, 5000);
@@ -37,6 +72,14 @@ function addMessage(text) {
                     content.includes("Your new nick is");
                 const isHelpOrUptime = content.startsWith("Server online since") ||
                     content.startsWith("/users, /help");
+
+                if (content.includes("Your new nick is")) {
+                    const nickMatch = content.match(/Your new nick is: (.*)/);
+                    if (nickMatch) {
+                        username = nickMatch[1].trim();
+                        updateUsernamePrefix();
+                    }
+                }
 
                 if (isSystemMessage) {
                     requestUserList(); // Refresh sidebar on join/part/nick
@@ -65,6 +108,9 @@ function addMessage(text) {
             const fromSpan = document.createElement("span");
             fromSpan.className = from == "@server"? "msg-from-server": "msg-from";
             fromSpan.textContent = `[${from}]: `; // Corrected from "[${from}]: "
+            if (from !== "@server") {
+                fromSpan.style.color = getUserColor(from);
+            }
 
             const contentSpan = document.createElement("span");
             contentSpan.className = "msg-content";
@@ -92,6 +138,7 @@ function updateUserList(usersString) {
         const li = document.createElement("li");
         li.className = "user-item";
         li.textContent = user;
+        li.style.color = getUserColor(user);
         userList.appendChild(li);
     });
 }
@@ -117,6 +164,7 @@ function connect() {
 
     ws.onclose = () => {
         loggedIn = false;
+        updateUsernamePrefix();
         if (fetchUsersInterval) clearInterval(fetchUsersInterval);
         addMessage("Disconnected. Reconnecting in 3s...");
         setTimeout(connect, 3000);
@@ -136,8 +184,9 @@ form.addEventListener("submit", (e) => {
             return
         }
         if (!loggedIn) {
-            username = input.value;
+            username = input.value.trim();
             loggedIn = true;
+            updateUsernamePrefix();
             // Start periodic user list updates after login
             fetchUsersInterval = setInterval(requestUserList, 5000);
             setTimeout(requestUserList, 500); // Initial fetch
