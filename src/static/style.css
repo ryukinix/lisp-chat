@@ -58,6 +58,7 @@ body {
 }
 
 #message-input {
+    font-family: monospace;
     flex: 1;
     background: #333;
     border: 1px solid #555;
@@ -92,11 +93,6 @@ button:hover {
 
 .msg-from {
     color: #74b9ff;
-    font-weight: bold;
-}
-
-.msg-from-server {
-    color: #bb2222;
     font-weight: bold;
 }
 

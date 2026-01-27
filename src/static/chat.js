@@ -106,11 +106,8 @@ function addMessage(text) {
             timeSpan.innerHTML = `${timeHM}<span class="timestamp-seconds">:${timeS}</span>`;
 
             const fromSpan = document.createElement("span");
-            fromSpan.className = from == "@server"? "msg-from-server": "msg-from";
-            fromSpan.textContent = `[${from}]: `; // Corrected from "[${from}]: "
-            if (from !== "@server") {
-                fromSpan.style.color = getUserColor(from);
-            }
+            fromSpan.textContent = `[${from}]: `;
+            fromSpan.style.color = getUserColor(from);
 
             const contentSpan = document.createElement("span");
             contentSpan.className = "msg-content";
