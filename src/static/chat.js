@@ -163,6 +163,14 @@ function requestUserList() {
 }
 
 function connect() {
+    if (ws) {
+        ws.onclose = null;
+        ws.onmessage = null;
+        ws.onerror = null;
+        ws.onopen = null;
+        ws.close();
+    }
+
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
 
@@ -174,7 +182,9 @@ function connect() {
         addMessage(event.data);
     };
 
-    ws.onclose = () => {
+    ws.onclose = (event) => {
+        if (ws && ws !== event.target) return;
+
         loggedIn = false;
         updateUsernamePrefix();
         if (fetchUsersInterval) {
