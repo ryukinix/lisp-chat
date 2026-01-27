@@ -18,8 +18,9 @@ const availableColors = [
 function getUserColor(name) {
     if (name === "@server") return "#bb2222";
     let hash = 0;
+    const hashShift = 12;
     for (let i = 0; i < name.length; i++) {
-        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        hash = name.charCodeAt(i) + ((hash << hashShift) - hash);
     }
     const index = Math.abs(hash) % availableColors.length;
     return availableColors[index];
