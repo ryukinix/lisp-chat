@@ -30,6 +30,7 @@ body {
     padding: 10px;
     flex-shrink: 0;
     align-items: center;
+    gap: 1em;
 }
 
 #sidebar {
