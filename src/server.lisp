@@ -120,12 +120,12 @@
 (defun /users (client &rest args)
   "Return a list separated by commas of the currently logged users"
   (declare (ignorable client args))
-  (command-message (format nil "~{~a~^, ~}" (mapcar #'client-name *clients*))))
+  (command-message (format nil "users: ~{~a~^, ~}" (mapcar #'client-name *clients*))))
 
 (defun /ping (client &rest args)
   "Return a list separated by commas of the currently logged users"
   (declare (ignorable client args))
-  (command-message (format nil "pong ~a" args)))
+  (command-message (format nil "pong ~a" (or args (client-name client)))))
 
 
 (defun /help (client &rest args)

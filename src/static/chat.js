@@ -9,6 +9,20 @@ let username = "";
 let fetchUsersInterval;
 let backgroundRequestsPending = 0;
 
+const keepAliveWorker = new Worker(URL.createObjectURL(new Blob([`
+    let interval;
+    self.onmessage = e => {
+        if (e.data === 'start') {
+            if (!interval) interval = setInterval(() => self.postMessage('tick'), 5000);
+        } else if (e.data === 'stop') {
+            clearInterval(interval);
+            interval = null;
+        }
+    };
+`], {type: 'application/javascript'})));
+
+keepAliveWorker.onmessage = () => requestUserList();
+
 const availableColors = [
     "#ff7675", "#fab1a0", "#fdcb6e", "#e17055", "#d63031",
     "#00b894", "#00cec9", "#0984e3", "#6c5ce7", "#e84393",
@@ -53,7 +67,8 @@ function addMessage(text) {
             updateUsernamePrefix();
             // Restart periodic updates if not already running
             if (!fetchUsersInterval) {
-                fetchUsersInterval = setInterval(requestUserList, 5000);
+                keepAliveWorker.postMessage('start');
+                fetchUsersInterval = true;
                 setTimeout(requestUserList, 500);
             }
             continue;
@@ -71,8 +86,7 @@ function addMessage(text) {
                 const isSystemMessage = content.includes("joined to the party") ||
                     content.includes("exited from the party") ||
                     content.includes("Your new nick is");
-                const isHelpOrUptime = content.startsWith("Server online since") ||
-                    content.startsWith("/users, /help");
+                const isUsersListResponse = content.startsWith("users: ")
 
                 if (content.includes("Your new nick is")) {
                     const nickMatch = content.match(/Your new nick is: (.*)/);
@@ -84,7 +98,7 @@ function addMessage(text) {
 
                 if (isSystemMessage) {
                     requestUserList(); // Refresh sidebar on join/part/nick
-                } else if (!isHelpOrUptime) {
+                } else if (isUsersListResponse) {
                     // This is likely the response to /users
                     updateUserList(content);
                     if (backgroundRequestsPending > 0) {
@@ -130,7 +144,7 @@ function addMessage(text) {
 }
 
 function updateUserList(usersString) {
-    const users = usersString.split(",").map(u => u.trim()).filter(u => u.length > 0);
+    const users = usersString.replace("users: ", "").split(",").map(u => u.trim()).filter(u => u.length > 0);
     userList.innerHTML = "";
     users.forEach(user => {
         const li = document.createElement("li");
@@ -149,6 +163,14 @@ function requestUserList() {
 }
 
 function connect() {
+    if (ws) {
+        ws.onclose = null;
+        ws.onmessage = null;
+        ws.onerror = null;
+        ws.onopen = null;
+        ws.close();
+    }
+
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
 
@@ -160,10 +182,15 @@ function connect() {
         addMessage(event.data);
     };
 
-    ws.onclose = () => {
+    ws.onclose = (event) => {
+        if (ws && ws !== event.target) return;
+
         loggedIn = false;
         updateUsernamePrefix();
-        if (fetchUsersInterval) clearInterval(fetchUsersInterval);
+        if (fetchUsersInterval) {
+            keepAliveWorker.postMessage('stop');
+            fetchUsersInterval = null;
+        }
         addMessage("Disconnected. Reconnecting in 3s...");
         setTimeout(connect, 3000);
     };
@@ -186,7 +213,8 @@ form.addEventListener("submit", (e) => {
             loggedIn = true;
             updateUsernamePrefix();
             // Start periodic user list updates after login
-            fetchUsersInterval = setInterval(requestUserList, 5000);
+            keepAliveWorker.postMessage('start');
+            fetchUsersInterval = true;
             setTimeout(requestUserList, 500); // Initial fetch
         }
         ws.send(input.value);
