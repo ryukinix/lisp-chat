@@ -21,7 +21,15 @@
                "websocket-driver")
   :pathname "src"
   :components ((:file "config")
-               (:file "server" :depends-on ("config"))
+               (:module "server"
+                :depends-on ("config")
+                :components ((:file "package")
+                             (:file "base" :depends-on ("package"))
+                             (:file "protocol" :depends-on ("base"))
+                             (:file "net" :depends-on ("protocol" "base"))
+                             (:file "tcp" :depends-on ("net" "base"))
+                             (:file "web" :depends-on ("net" "base"))
+                             (:file "main" :depends-on ("tcp" "web" "net"))))
                (:module "static"
                 :components
                         ((:static-file "index.html")
