@@ -48,10 +48,9 @@ function updateUsernamePrefix() {
         form.insertBefore(prefix, input);
     }
     if (username && loggedIn) {
-        prefix.textContent = `[${username}]: `;
+        prefix.textContent = `[${username}]:`;
         prefix.style.color = getUserColor(username);
         prefix.style.fontWeight = "bold";
-        prefix.style.marginRight = "5px";
         input.placeholder = "";
     } else {
         prefix.textContent = "";
