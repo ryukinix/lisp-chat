@@ -35,7 +35,10 @@
                         ((:static-file "index.html")
                          (:static-file "chat.js")
                          (:static-file "style.css")
-                         (:static-file "favicon.ico")))))
+                         (:static-file "favicon.ico")
+                         (:static-file "logo.png")
+                         (:static-file "manifest.json")
+                         (:static-file "sw.js")))))
 
 (defsystem :lisp-chat/client
   :author #.*lisp-chat-author*
