@@ -6,6 +6,13 @@
         #:cl
         #:lisp-chat/config
         #:bordeaux-threads)
+  (:import-from #:websocket-driver
+                #:start-connection
+                #:send
+                #:on
+                #:close-connection)
+  (:import-from #:websocket-driver-client
+                #:make-client)
   (:export :main))
 
 (in-package :lisp-chat/client)
@@ -19,9 +26,31 @@
 (defvar *stop* nil
   "Stop sign to end the client")
 
+;; WebSocket Support Types
+(defstruct safe-queue
+  (items '())
+  (lock (make-lock "queue-lock"))
+  (cvar (make-condition-variable :name "queue-cvar")))
+
+(defun queue-push (q item)
+  (with-lock-held ((safe-queue-lock q))
+    (setf (safe-queue-items q) (append (safe-queue-items q) (list item)))
+    (condition-notify (safe-queue-cvar q))))
+
+(defun queue-pop (q)
+  (with-lock-held ((safe-queue-lock q))
+    (loop while (null (safe-queue-items q))
+          do (condition-wait (safe-queue-cvar q) (safe-queue-lock q)))
+    (pop (safe-queue-items q))))
+
+(defstruct ws-connection
+  client
+  queue)
+
 (defun erase-last-line ()
   "Erase the last line by using ANSI Escape codes"
-  (format t "~C[1A~C[2K" #\Esc #\Esc))
+  (format t "~C[1A~C[2K" #\Esc #\Esc)
+  (finish-output))
 
 (defun exit (&optional (code 0))
   #-swank
@@ -38,11 +67,22 @@
     (with-lock-held (*io-lock*)
       (erase-last-line))))
 
-
 (defun send-message (message socket)
   "Send a MESSAGE string through a SOCKET instance"
-  (write-line message (socket-stream socket))
-  (finish-output (socket-stream socket)))
+  (typecase socket
+    (usocket:usocket
+     (write-line message (socket-stream socket))
+     (finish-output (socket-stream socket)))
+    (ws-connection
+     (send (ws-connection-client socket) message))))
+
+(defun fetch-message (socket)
+  "Fetch a message from the SOCKET (TCP or WS)"
+  (typecase socket
+    (usocket:usocket
+     (read-line (socket-stream socket) nil :eof))
+    (ws-connection
+     (queue-pop (ws-connection-queue socket)))))
 
 (defun system-pongp (message)
   "SYSTEM-PONGP detect if a pong response was received as systematic send"
@@ -90,23 +130,28 @@
 
 (defun server-listener (socket)
   "Routine to check new messages coming from the server"
-  (loop for message = (read-line (socket-stream socket))
-        while (not (equal message "/quit"))
-        do (receive-message message)))
+  (loop for message = (fetch-message socket)
+        do (cond
+             ((eq message :eof)
+              (format t "~%End of connection~%")
+              (exit 1))
+             ((equal message "/quit")
+              (return))
+             (t (receive-message message)))))
 
 (defun server-broadcast (socket)
   "Call server-listener treating exceptional cases"
   (handler-case (server-listener socket)
-    (end-of-file (e)
-      (format t "~%End of connection: ~a~%" e)
-      (exit 1))
     (simple-error ()
       (server-broadcast socket))))
 
 
 (defun login (socket)
   "Do the login of the application given a SOCKET instances"
-  (princ (read-line (socket-stream socket)))
+  (let ((msg (fetch-message socket)))
+    (if (eq msg :eof)
+        (exit 1)
+        (princ msg)))
   (finish-output)
   (let ((username (read-line)))
     (send-message username socket)
@@ -121,11 +166,9 @@ The systematic pong is consumed and the @server response is not shown in the ter
         (ignore-errors
          (send-message "/ping system" socket))))
 
-(defun client-loop (host port)
-  "Dispatch client threads for basic functioning system"
-  (let* ((socket (socket-connect host port))
-         (username (login socket)))
-    (format t "Connected as ~a\@~a\:~a ~%" username *host* *port*)
+(defun process-connection (socket host port)
+  (let ((username (login socket)))
+    (format t "Connected as ~a@~a:~a ~%" username host port)
     (let ((broadcast (make-thread (lambda () (server-broadcast socket))
                                   :name "server broadcast"))
           (background-ping (make-thread (lambda () (client-background-ping socket))
@@ -133,7 +176,23 @@ The systematic pong is consumed and the @server response is not shown in the ter
       (client-sender socket username)
       (destroy-thread background-ping)
       (destroy-thread broadcast)
-      (socket-close socket))))
+      (typecase socket
+        (usocket:usocket (socket-close socket))
+        (ws-connection (close-connection (ws-connection-client socket)))))))
+
+(defun client-loop (host port)
+  "Dispatch client threads for basic functioning system"
+  (if (or (search "ws://" host) (search "wss://" host))
+      (let* ((queue (make-safe-queue))
+             (client (make-client host))
+             (connection (make-ws-connection :client client :queue queue)))
+        (on :message client
+            (lambda (message)
+              (queue-push queue message)))
+        (start-connection client)
+        (process-connection connection host port))
+      (let ((socket (socket-connect host port)))
+        (process-connection socket host port))))
 
 (defun main (&key (host *host*) (port *port*))
   "Main function of client"

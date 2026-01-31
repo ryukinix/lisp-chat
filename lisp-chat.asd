@@ -47,7 +47,8 @@
   :license #.*lisp-chat-license*
   :depends-on ("usocket"
                "cl-readline"
-               "bordeaux-threads")
+               "bordeaux-threads"
+               "websocket-driver-client")
   :pathname "src"
   :components ((:file "config")
                (:file "client" :depends-on ("config"))))
