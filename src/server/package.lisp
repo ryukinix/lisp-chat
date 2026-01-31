@@ -16,4 +16,24 @@
   (:import-from #:clack
                 #:clackup
                 #:stop)
-  (:export #:main))
+  (:export #:main
+           #:*clients*
+           #:*uptime*
+           #:*day-names*
+           #:*messages-log*
+           #:*server-nickname*
+           #:client-name
+           #:message-from
+           #:message-time
+           #:message-content
+           #:get-time
+           #:command-message
+           #:user-messages
+           #:startswith
+           #:split))
+
+(defpackage #:lisp-chat/commands
+  (:use #:cl #:lisp-chat/server)
+  (:export #:get-command
+           #:get-commands
+           #:call-command))

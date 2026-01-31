@@ -6,7 +6,7 @@
    On this software each client talks on your own thread."
   (loop for message := (read-line (client-stream client))
         while (not (equal message "/quit"))
-        for response := (call-command client message)
+        for response := (lisp-chat/commands:call-command client message)
         if response
           do (send-message client response)
         else

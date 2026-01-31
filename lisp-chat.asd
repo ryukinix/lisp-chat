@@ -25,10 +25,10 @@
                 :depends-on ("config")
                 :components ((:file "package")
                              (:file "base" :depends-on ("package"))
-                             (:file "protocol" :depends-on ("base"))
-                             (:file "net" :depends-on ("protocol" "base"))
-                             (:file "tcp" :depends-on ("net" "base"))
-                             (:file "web" :depends-on ("net" "base"))
+                             (:file "commands" :depends-on ("package" "base"))
+                             (:file "net" :depends-on ("base"))
+                             (:file "tcp" :depends-on ("net" "base" "commands"))
+                             (:file "web" :depends-on ("net" "base" "commands"))
                              (:file "main" :depends-on ("tcp" "web" "net"))))
                (:module "static"
                 :components

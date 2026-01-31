@@ -1,38 +1,29 @@
-(in-package :lisp-chat/server)
+(in-package :lisp-chat/commands)
 
-(defparameter *commands-names*
-  '("/users" "/help" "/log" "/quit" "/uptime" "/nick" "/ping")
-  "Allowed command names to be called by client user")
+(defun get-commands ()
+  "Returns a list of all available command strings."
+  (let ((commands '()))
+    (do-symbols (s (find-package :lisp-chat/commands))
+      (when (and (eq (symbol-package s) (find-package :lisp-chat/commands))
+                 (fboundp s)
+                 (char= (char (symbol-name s) 0) #\/))
+        (push (string-downcase (symbol-name s)) commands)))
+    (sort commands #'string<)))
 
-(defun formatted-message (message)
-  "The default message format of this server. MESSAGE is a string
-   Changing this reflects all the layout from client/server.
-   Probably this would be the MFRP: Manoel Fucking Raw Protocol.
-   Because this we can still use netcat as client for lisp-chat."
-  (format nil "|~a| [~a]: ~a"
-          (message-time message)
-          (message-from message)
-          (message-content message)))
+(defun get-command (command-string)
+  "Returns the function symbol for a given command string."
+  (find-symbol (string-upcase command-string) :lisp-chat/commands))
 
-(defun user-messages ()
-  "Return only user messages, discard all messsages from @server"
-  (mapcar #'formatted-message
-          (remove-if #'(lambda (m) (equal (message-from m) "@server"))
-                     *messages-log*)))
+(defun extract-params (string)
+  (subseq (split string (lambda (c) (eql c #\Space)))
+          1))
 
-(defun command-message (content)
-  "This function prepare the CONTENT as a message by the @server"
-  (let* ((from *server-nickname*)
-         (time (get-time))
-         (message (make-message :from from :content content :time time)))
-    (formatted-message message)))
-
-(defun call-command-by-name (string params)
-  "Wow, this is a horrible hack to get a string as symbol for functions/command
-  like /help /users /log and so on."
-  (let ((command-function (find-symbol (string-upcase string) :lisp-chat/server)))
-    (when command-function
-      (apply command-function params))))
+(defun call-command (client message)
+  (let ((command (find message (get-commands) :test #'startswith)))
+    (when command
+      (let ((command-function (get-command command)))
+        (when command-function
+          (apply command-function (cons client (extract-params message))))))))
 
 ;; user commands prefixed with /
 (defun /users (client &rest args)
@@ -49,7 +40,7 @@
 (defun /help (client &rest args)
   "Show a list of the available commands of lisp-chat"
   (declare (ignorable client args))
-  (command-message (format nil "~{~a~^, ~}" *commands-names*)))
+  (command-message (format nil "~{~a~^, ~}" (get-commands))))
 
 (defun /log (client &optional (depth "20") &rest args)
   "Show the last messages typed on the server.
@@ -77,19 +68,25 @@
              (- tz)))))
 
 (defun /nick (client &optional (new-nick nil) &rest args)
+
   "Change the client-name given a NEW-NICK which should be a string"
+
   (declare (ignorable args))
+
   (if new-nick
+
       (progn (setf (client-name client) new-nick)
+
              (command-message (format nil "Your new nick is: ~a" new-nick)))
+
       (command-message (format nil "/nick <new-nickname>"))))
 
-(defun extract-params (string)
-  (subseq (split string (lambda (c) (eql c #\Space)))
-          1))
 
-(defun call-command (client message)
-  (let ((command (find message *commands-names* :test #'startswith)))
-    (when command
-      (call-command-by-name command (cons client
-                                          (extract-params message))))))
+
+(defun /quit (client &rest args)
+
+  "Quit the chat"
+
+  (declare (ignore client args))
+
+  (command-message "Bye!"))

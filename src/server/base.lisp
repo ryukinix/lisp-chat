@@ -70,6 +70,26 @@
             for c2 across substring
             always (equal c1 c2)))))
 
+(defun formatted-message (message)
+  "The default message format of this server. MESSAGE is a struct message"
+  (format nil "|~a| [~a]: ~a"
+          (message-time message)
+          (message-from message)
+          (message-content message)))
+
+(defun user-messages ()
+  "Return only user messages, discard all messsages from @server"
+  (mapcar #'formatted-message
+          (remove-if #'(lambda (m) (equal (message-from m) "@server"))
+                     *messages-log*)))
+
+(defun command-message (content)
+  "This function prepare the CONTENT as a message by the @server"
+  (let* ((from *server-nickname*)
+         (time (get-time))
+         (message (make-message :from from :content content :time time)))
+    (formatted-message message)))
+
 (defun split (string delimiterp)
   "Split a string by a delimiterp function character checking"
   (loop for beg = (position-if-not delimiterp string)
