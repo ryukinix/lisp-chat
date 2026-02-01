@@ -37,10 +37,20 @@
   (command-message (format nil "pong ~a" (or args (client-name client)))))
 
 
-(defun /help (client &rest args)
-  "Show a list of the available commands of lisp-chat"
+(defun /help (client &optional command-name &rest args)
+  "Show a list of the available commands of lisp-chat.
+   If COMMAND-NAME is provided, show its documentation."
   (declare (ignorable client args))
-  (command-message (format nil "~{~a~^, ~}" (get-commands))))
+  (if command-name
+      (let* ((cmd (if (char= (char command-name 0) #\/)
+                      command-name
+                      (concatenate 'string "/" command-name)))
+             (sym (get-command cmd)))
+        (if (and sym (fboundp sym))
+            (command-message (or (documentation sym 'function)
+                                 (format nil "No documentation for ~a" cmd)))
+            (command-message (format nil "Command ~a not found." cmd))))
+      (command-message (format nil "Available commands: ~{~a~^, ~}" (get-commands)))))
 
 (defun /log (client &optional (depth "20") &rest args)
   "Show the last messages typed on the server.
