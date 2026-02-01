@@ -41,6 +41,12 @@ Create a client
 $ lisp-chat localhost
 ```
 
+Online version with connection through web sockets instead raw tcp sockets:
+
+```
+$ lisp-chat wss://chat.manoel.dev/ws
+```
+
 # Web Interface
 
 A web interface is now available! You can access the public instance at:
