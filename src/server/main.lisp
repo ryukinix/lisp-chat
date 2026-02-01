@@ -39,7 +39,7 @@
         (when (and broadcast-thread (thread-alive-p broadcast-thread))
           (debug-format t "Stopping message broadcast...~%")
           (destroy-thread broadcast-thread))
-        (let ((clients (with-lock-held (*client-lock*) (copy-list *clients*))))
+        (let ((clients *clients*))
           (loop for client in clients
                 do (client-close client)))))))
 
