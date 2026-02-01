@@ -59,30 +59,47 @@
 (defun get-user-input (username)
   "Get the user input by using readline"
   (declare (ignore username))
-  #+swank (read-line)
-  #-swank
-  (prog1 (cl-readline:readline :prompt (format nil "[~A]: " username)
-                               :erase-empty-line t
-                               :add-history t)
-    (with-lock-held (*io-lock*)
-      (erase-last-line))))
+  (let* ((prompt (format nil "[~A]: " (or username "unknown")))
+         (input (#+swank read-line
+                 #-swank cl-readline:readline
+                 :prompt prompt
+                 :erase-empty-line t
+                 :add-history t))
+         (message (and input (string-trim '(#\Return #\Newline) input))))
+    (prog1 message
+      (with-lock-held (*io-lock*)
+        (erase-last-line)))))
 
 (defun send-message (message socket)
   "Send a MESSAGE string through a SOCKET instance"
-  (typecase socket
-    (usocket:usocket
-     (write-line message (socket-stream socket))
-     (finish-output (socket-stream socket)))
-    (ws-connection
-     (send (ws-connection-client socket) message))))
+  (handler-case
+      (typecase socket
+        (usocket:usocket
+         (write-line message (socket-stream socket))
+         (finish-output (socket-stream socket)))
+        (ws-connection
+         (send (ws-connection-client socket) message)))
+    (error (c)
+      (format t "~%Error sending message: ~a~%" c)
+      (exit 1))))
 
 (defun fetch-message (socket)
   "Fetch a message from the SOCKET (TCP or WS)"
-  (typecase socket
-    (usocket:usocket
-     (read-line (socket-stream socket) nil :eof))
-    (ws-connection
-     (queue-pop (ws-connection-queue socket)))))
+  (handler-case
+      (typecase socket
+        (usocket:usocket
+         (read-line (socket-stream socket) nil :eof))
+        (ws-connection
+         (queue-pop (ws-connection-queue socket))))
+    (error (c)
+      (let ((decoding-error (find-symbol "CHARACTER-DECODING-ERROR" :babel-encodings)))
+        (if (and decoding-error (typep c decoding-error))
+            (progn
+              (format t "~%[Warning]: Decoding error from server: ~a (skipping line)~%" c)
+              nil) ;; Return nil to skip this message
+            (progn
+              (format t "~%Error fetching message: ~a~%" c)
+              (exit 1)))))))
 
 (defun system-pongp (message)
   "SYSTEM-PONGP detect if a pong response was received as systematic send"
@@ -135,27 +152,40 @@
              ((eq message :eof)
               (format t "~%End of connection~%")
               (exit 1))
+             ((null message) nil) ;; Skip nil messages (decoding errors)
              ((equal message "/quit")
               (return))
              (t (receive-message message)))))
 
-(defun server-broadcast (socket)
+(defun server-broadcast (socket &optional (retries 0))
   "Call server-listener treating exceptional cases"
   (handler-case (server-listener socket)
-    (simple-error ()
-      (server-broadcast socket))))
+    (error (c)
+      (if (< retries 10)
+          (progn
+            (format t "~%[Warning]: Communication error (~a). Retrying...~%" c)
+            (server-broadcast socket (1+ retries)))
+          (progn
+            (format t "~%Fatal error in listener: ~a~%" c)
+            (exit 1))))))
 
 
 (defun login (socket)
   "Do the login of the application given a SOCKET instances"
-  (let ((msg (fetch-message socket)))
-    (if (eq msg :eof)
-        (exit 1)
-        (princ msg)))
-  (finish-output)
-  (let ((username (read-line)))
-    (send-message username socket)
-    username))
+  (handler-case
+      (let ((msg (fetch-message socket)))
+        (cond
+          ((or (eq msg :eof) (null msg))
+           (format t "~%Connection lost during login.~%")
+           (exit 1))
+          (t (princ msg)))
+        (finish-output)
+        (let ((username (string-trim '(#\Return #\Newline) (read-line))))
+          (send-message username socket)
+          username))
+    (error (c)
+      (format t "~%Error during login: ~a~%" c)
+      (exit 1))))
 
 (defun client-background-ping (socket)
   "Maintain TCP/IP connection by sending periodic ping to maintain connection alive.
