@@ -29,6 +29,7 @@
            (join-thread broadcast-thread))
       (progn
         (debug-format t "~%Shutting down...~%")
+        (sleep 1)
         (when web-handler
           (debug-format t "Stopping web server...~%")
           (handler-case (stop web-handler)
