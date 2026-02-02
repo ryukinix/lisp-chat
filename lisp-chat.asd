@@ -59,4 +59,15 @@
   :version #.*lisp-chat-version*
   :license #.*lisp-chat-license*
   :depends-on ("lisp-chat/client"
-               "lisp-chat/server"))
+               "lisp-chat/server")
+  :in-order-to ((test-op (test-op "lisp-chat/tests"))))
+
+(defsystem :lisp-chat/tests
+  :author #.*lisp-chat-author*
+  :license #.*lisp-chat-license*
+  :depends-on ("lisp-chat/server"
+               "lisp-chat/client"
+               "fiveam")
+  :pathname "tests"
+  :components ((:file "integration"))
+  :perform (test-op (o c) (symbol-call :lisp-chat/tests :run-tests)))

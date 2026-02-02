@@ -1,4 +1,4 @@
-name: Docker Build Test
+name: Tests
 
 on:
   pull_request:
@@ -10,5 +10,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build Docker Image
-        run: make docker-build
+      - name: Build Docker Image & Run integration tests
+        run: make docker-check

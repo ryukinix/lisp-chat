@@ -25,4 +25,10 @@ deploy: docker-publish
 	ssh starfox bash /home/lerax/Deploy/lisp-chat.sh
 
 
-.PHONY: check docker-build docs appimage
+.PHONY: check docker-build docs appimage docker-check
+
+check:
+	ros -s lisp-chat/tests -e '(asdf:test-system :lisp-chat)'
+
+docker-check: docker-build
+	docker run --rm --entrypoint=ros $(DOCKER_IMG) -s lisp-chat/tests -e '(asdf:test-system :lisp-chat)'
