@@ -108,15 +108,17 @@ function addMessage(text) {
 
         if (match) {
             // De-duplication: skip if we've already seen this exact message line
+            const [_, timeHM, timeS, from, content] = match;
             if (messageCache.has(line)) continue;
-            messageCache.add(line);
-            messageHistory.push(line);
+            if (from != "@server") {
+                messageCache.add(line);
+                messageHistory.push(line);
+            }
             if (messageHistory.length > MAX_CACHE_SIZE) {
                 const old = messageHistory.shift();
                 messageCache.delete(old);
             }
 
-            const [_, timeHM, timeS, from, content] = match;
             if (from === "@server") {
                 const isSystemMessage = content.includes("joined to the party") ||
                     content.includes("exited from the party") ||
