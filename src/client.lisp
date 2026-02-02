@@ -95,7 +95,7 @@
       (let ((decoding-error (find-symbol "CHARACTER-DECODING-ERROR" :babel-encodings)))
         (if (and decoding-error (typep c decoding-error))
             (progn
-              (format t "~%[Warning]: Decoding error from server: ~a (skipping line)~%" c)
+              ; (format t "~%[Warning]: Decoding error from server: ~a (skipping line)~%" c)
               nil) ;; Return nil to skip this message
             (progn
               (format t "~%Error fetching message: ~a~%" c)
@@ -149,12 +149,10 @@
   "Routine to check new messages coming from the server"
   (loop for message = (fetch-message socket)
         do (cond
-             ((eq message :eof)
-              (format t "~%End of connection~%")
-              (exit 1))
+             ((eq message :eof) (format t "~%End of connection~%")
+                                (exit 1))
              ((null message) nil) ;; Skip nil messages (decoding errors)
-             ((equal message "/quit")
-              (return))
+             ((equal message "/quit") (return))
              (t (receive-message message)))))
 
 (defun server-broadcast (socket &optional (retries 0))
@@ -163,7 +161,7 @@
     (error (c)
       (if (< retries 10)
           (progn
-            (format t "~%[Warning]: Communication error (~a). Retrying...~%" c)
+            ; (format t "~%[Warning]: Communication error (~a). Retrying...~%" c)
             (server-broadcast socket (1+ retries)))
           (progn
             (format t "~%Fatal error in listener: ~a~%" c)
@@ -210,19 +208,29 @@ The systematic pong is consumed and the @server response is not shown in the ter
         (usocket:usocket (socket-close socket))
         (ws-connection (close-connection (ws-connection-client socket)))))))
 
+(defun websocket-p (host port)
+  (or (search "ws://" host) (search "wss://" host)))
+
+(defun client-loop-web (host port)
+  (let* ((queue (make-safe-queue))
+         (client (make-client host))
+         (connection (make-ws-connection :client client :queue queue)))
+    (on :message client
+        (lambda (message)
+          (queue-push queue message)))
+    (start-connection client)
+    (process-connection connection host port)))
+
+(defun client-loop-tcp (host port)
+  (let ((socket (socket-connect host port)))
+    (process-connection socket host port)))
+
 (defun client-loop (host port)
   "Dispatch client threads for basic functioning system"
-  (if (or (search "ws://" host) (search "wss://" host))
-      (let* ((queue (make-safe-queue))
-             (client (make-client host))
-             (connection (make-ws-connection :client client :queue queue)))
-        (on :message client
-            (lambda (message)
-              (queue-push queue message)))
-        (start-connection client)
-        (process-connection connection host port))
-      (let ((socket (socket-connect host port)))
-        (process-connection socket host port))))
+  (if (websocket-p host port)
+      (client-loop-web host port)
+      (client-loop-tcp host port)))
+
 
 (defun main (&key (host *host*) (port *port*))
   "Main function of client"
@@ -234,5 +242,6 @@ The systematic pong is consumed and the @server response is not shown in the ter
      #+allegro excl:interrupt-signal ()
       (exit 0))
     (usocket:connection-refused-error ()
-      (progn (write-line "Server seems offline. Run first the server.lisp.")
+      (progn (format t "Server over ~a:~a seems offline. Run first the server.~%"
+                     host port)
              (exit 1)))))
