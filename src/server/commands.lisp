@@ -27,18 +27,18 @@
 
 ;; user commands prefixed with /
 (defun /users (client &rest args)
-  "Return a list separated by commas of the currently logged users"
+  "/users returns a list separated by commas of the currently logged users"
   (declare (ignorable client args))
   (command-message (format nil "users: ~{~a~^, ~}" (mapcar #'client-name *clients*))))
 
 (defun /ping (client &rest args)
-  "Return a list separated by commas of the currently logged users"
+  "/ping returns a list separated by commas of the currently logged users"
   (declare (ignorable client args))
   (command-message (format nil "pong ~a" (or args (client-name client)))))
 
 
 (defun /help (client &optional command-name &rest args)
-  "Show a list of the available commands of lisp-chat.
+  "/help shows a list of the available commands of lisp-chat.
    If COMMAND-NAME is provided, show its documentation."
   (declare (ignorable client args))
   (if command-name
@@ -53,7 +53,7 @@
       (command-message (format nil "Available commands: ~{~a~^, ~}" (get-commands)))))
 
 (defun /log (client &optional (depth "20") &rest args)
-  "Show the last messages typed on the server.
+  "/log shows the last messages sent to the server.
    DEPTH is optional number of messages frames from log"
   (declare (ignorable client args))
   (let* ((messages (user-messages))
@@ -63,7 +63,7 @@
                                               log-size)))))
 
 (defun /uptime (client &rest args)
-  "Return a string nice encoded to preset the uptime since the server started."
+  "/uptime returns a human-readable string to preset the uptime since the server started."
   (declare (ignorable client args))
   (multiple-value-bind
         (second minute hour date month year day-of-week dst-p tz)
@@ -71,32 +71,16 @@
     (declare (ignore dst-p))
     (command-message
      (format nil
-             "Server online since ~2,'0d:~2,'0d:~2,'0d of ~a, ~2,'0d/~2,'0d/~d (GMT~@d)"
+             "Server online since ~2,'0d:~2,'0d:~2,'0d of ~a, ~2,'0d-~2,'0d-~d (GMT~@d)"
              hour minute second
              (nth day-of-week *day-names*)
-             month date year
+             year month date
              (- tz)))))
 
 (defun /nick (client &optional (new-nick nil) &rest args)
-
-  "Change the client-name given a NEW-NICK which should be a string"
-
+  "/nick changes the client-name given a NEW-NICK which should be a string"
   (declare (ignorable args))
-
   (if new-nick
-
       (progn (setf (client-name client) new-nick)
-
              (command-message (format nil "Your new nick is: ~a" new-nick)))
-
       (command-message (format nil "/nick <new-nickname>"))))
-
-
-
-(defun /quit (client &rest args)
-
-  "Quit the chat"
-
-  (declare (ignore client args))
-
-  (command-message "Bye!"))
