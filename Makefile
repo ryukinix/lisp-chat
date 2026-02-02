@@ -8,6 +8,12 @@ client:
 server:
 	./roswell/lisp-chat-server.ros
 
+compile:
+	APP_ENV=PROD ros build ./roswell/lisp-chat.ros
+
+appimage: compile
+	bash scripts/appimage.sh
+
 docker-build:
 	docker build -t $(DOCKER_IMG) .
 

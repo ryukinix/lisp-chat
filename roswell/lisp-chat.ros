@@ -11,6 +11,10 @@ exec ros -Q -- $0 "$@"
   (:use :cl))
 (in-package :ros.script.lisp-chat)
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (when (equal (uiop:getenv "APP_ENV") "PROD")
+    (setq lisp-chat/config:*host* "wss://chat.manoel.dev/ws")))
+
 (defparameter *usage*
   (format nil
           "usage: lisp-chat [-h|--help] [host] [port]
