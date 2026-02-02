@@ -49,7 +49,7 @@
 
 (defun erase-last-line ()
   "Erase the last line by using ANSI Escape codes"
-  (format t "~C[1A~C[2K" #\Esc #\Esc)
+  #-swank (format t "~C[1A~C[2K" #\Esc #\Esc)
   (finish-output))
 
 (defun exit (&optional (code 0))
