@@ -71,7 +71,7 @@
     (declare (ignore dst-p))
     (command-message
      (format nil
-             "Server online since ~2,'0d:~2,'0d:~2,'0d of ~a, ~2,'0d-~2,'0d-~d (GMT~@d)"
+             "Server online since ~2,'0d:~2,'0d:~2,'0d of ~a, ~4,'0d-~2,'0d-~2,'0d (GMT~@d)"
              hour minute second
              (nth day-of-week *day-names*)
              year month date
