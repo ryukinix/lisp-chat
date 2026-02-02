@@ -1,11 +1,5 @@
 (in-package :lisp-chat/server)
 
-;; global vars
-(defvar *day-names* '("Monday" "Tuesday" "Wednesday"
-                      "Thursday" "Friday" "Saturday" "Sunday")
-  "Day names")
-(defvar *uptime* (multiple-value-list (get-decoded-time))
-  "Uptime of server variable")
 (defparameter *clients* nil "List of clients")
 (defparameter *messages-stack* nil "Messages pending to be send by broadcasting")
 (defparameter *messages-log* nil  "Messages log")

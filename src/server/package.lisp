@@ -18,8 +18,6 @@
                 #:stop)
   (:export #:main
            #:*clients*
-           #:*uptime*
-           #:*day-names*
            #:*messages-log*
            #:*server-nickname*
            #:client-name

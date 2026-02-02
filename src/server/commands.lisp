@@ -1,5 +1,12 @@
 (in-package :lisp-chat/commands)
 
+;; global vars
+(defvar *day-names* '("Monday" "Tuesday" "Wednesday"
+                      "Thursday" "Friday" "Saturday" "Sunday")
+  "Day names")
+(defvar *uptime* (multiple-value-list (get-decoded-time))
+  "Uptime of server variable")
+
 (defun get-commands ()
   "Returns a list of all available command strings."
   (let ((commands '()))
