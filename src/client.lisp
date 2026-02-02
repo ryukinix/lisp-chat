@@ -60,11 +60,11 @@
   "Get the user input by using readline"
   (declare (ignore username))
   (let* ((prompt (format nil "[~A]: " (or username "unknown")))
-         (input (#+swank read-line
-                 #-swank cl-readline:readline
-                 :prompt prompt
-                 :erase-empty-line t
-                 :add-history t))
+         (input #+swank (read-line)
+                #-swank (cl-readline:readline
+                         :prompt prompt
+                         :erase-empty-line t
+                         :add-history t))
          (message (and input (string-trim '(#\Return #\Newline) input))))
     (prog1 message
       (with-lock-held (*io-lock*)
