@@ -29,21 +29,22 @@
            (join-thread broadcast-thread))
       (progn
         (debug-format t "~%Shutting down...~%")
+        (sleep 1)
         (when web-handler
           (debug-format t "Stopping web server...~%")
           (handler-case (stop web-handler)
-            (error (c) (debug-format t "Error stopping web server: ~a~%" c))))
+            (condition (c) (debug-format t "Error stopping web server: ~a~%" c))))
         (when (and connection-thread (thread-alive-p connection-thread))
           (debug-format t "Stopping connection handler...~%")
           (destroy-thread connection-thread))
         (when (and broadcast-thread (thread-alive-p broadcast-thread))
           (debug-format t "Stopping message broadcast...~%")
           (destroy-thread broadcast-thread))
-        (let ((clients (with-lock-held (*client-lock*) (copy-list *clients*))))
+        (let ((clients *clients*))
           (loop for client in clients
                 do (client-close client)))))))
 
-(defun main (&key (host *host*) (port *port*))
+(defun main (&key (host *host*) (port *port*) (should-quit t))
   "Well, this function run all the necessary shits."
   (let ((socket-server nil)
         (error-code 0))
@@ -70,4 +71,5 @@
              (format t "~%Closing the server...~%")))
       (when socket-server
         (socket-close socket-server))
-      (uiop:quit error-code))))
+      (when should-quit
+        (uiop:quit error-code)))))

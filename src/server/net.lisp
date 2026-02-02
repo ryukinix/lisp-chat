@@ -51,7 +51,7 @@
                                    (pop *messages-stack*)))
                     (message (formatted-message message-raw)))
                (push message-raw *messages-log*)
-               (let ((clients (with-lock-held (*client-lock*) (copy-list *clients*))))
+               (let ((clients *clients*))
                  (loop for client in clients
                        do (handler-case (send-message client message)
                             (error (e)

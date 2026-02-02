@@ -24,5 +24,13 @@ docker-publish: docker-build
 deploy: docker-publish
 	ssh starfox bash /home/lerax/Deploy/lisp-chat.sh
 
+dep-tree:
+	ros -s asdf-dependency-graph -e '(asdf-dependency-graph:generate "tree.png" "lisp-chat/client")'
 
-.PHONY: check docker-build docs appimage
+.PHONY: check docker-build docs appimage docker-check
+
+check:
+	ros -s lisp-chat/tests -e '(asdf:test-system :lisp-chat)'
+
+docker-check: docker-build
+	docker run --rm --entrypoint=ros $(DOCKER_IMG) -s lisp-chat/tests -e '(asdf:test-system :lisp-chat)'

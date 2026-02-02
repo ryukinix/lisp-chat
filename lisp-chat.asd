@@ -25,10 +25,10 @@
                 :depends-on ("config")
                 :components ((:file "package")
                              (:file "base" :depends-on ("package"))
-                             (:file "protocol" :depends-on ("base"))
-                             (:file "net" :depends-on ("protocol" "base"))
-                             (:file "tcp" :depends-on ("net" "base"))
-                             (:file "web" :depends-on ("net" "base"))
+                             (:file "commands" :depends-on ("package" "base"))
+                             (:file "net" :depends-on ("base"))
+                             (:file "tcp" :depends-on ("net" "base" "commands"))
+                             (:file "web" :depends-on ("net" "base" "commands"))
                              (:file "main" :depends-on ("tcp" "web" "net"))))
                (:module "static"
                 :components
@@ -47,7 +47,8 @@
   :license #.*lisp-chat-license*
   :depends-on ("usocket"
                "cl-readline"
-               "bordeaux-threads")
+               "bordeaux-threads"
+               "websocket-driver-client")
   :pathname "src"
   :components ((:file "config")
                (:file "client" :depends-on ("config"))))
@@ -58,4 +59,15 @@
   :version #.*lisp-chat-version*
   :license #.*lisp-chat-license*
   :depends-on ("lisp-chat/client"
-               "lisp-chat/server"))
+               "lisp-chat/server")
+  :in-order-to ((test-op (test-op "lisp-chat/tests"))))
+
+(defsystem :lisp-chat/tests
+  :author #.*lisp-chat-author*
+  :license #.*lisp-chat-license*
+  :depends-on ("lisp-chat/server"
+               "lisp-chat/client"
+               "parachute")
+  :pathname "tests"
+  :components ((:file "integration"))
+  :perform (test-op (o c) (symbol-call :lisp-chat/tests :run-tests)))

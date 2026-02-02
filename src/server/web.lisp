@@ -18,7 +18,7 @@
                         (push client *clients*))
                       (push-message "@server" (format nil "The user ~s joined to the party!" name))
                       (debug-format t "New web-socket user ~a@~a~%" name (client-address client)))))
-              (let ((response (call-command client message)))
+              (let ((response (lisp-chat/commands:call-command client message)))
                 (if response
                     (send-message client response)
                     (when (> (length message) 0)

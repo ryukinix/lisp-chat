@@ -3,11 +3,36 @@ const form = document.getElementById("input-area");
 const input = document.getElementById("message-input");
 const userList = document.getElementById("user-list");
 
+function setCookie(name, value, days) {
+    let expires = "";
+    if (days) {
+        const date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        expires = "; expires=" + date.toUTCString();
+    }
+    document.cookie = name + "=" + (value || "") + expires + "; path=/";
+}
+
+function getCookie(name) {
+    const nameEQ = name + "=";
+    const ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+    }
+    return null;
+}
+
 let ws;
 let loggedIn = false;
-let username = "";
+let username = getCookie("username") || "";
 let fetchUsersInterval;
 let backgroundRequestsPending = 0;
+const messageCache = new Set();
+const messageHistory = [];
+const MAX_CACHE_SIZE = 200;
+const LOG_HISTORY_SIZE = 50;
 
 const keepAliveWorker = new Worker(URL.createObjectURL(new Blob([`
     let interval;
@@ -64,6 +89,8 @@ function addMessage(text) {
             ws.send(username);
             loggedIn = true;
             updateUsernamePrefix();
+            // Fetch recent history to fill potential gaps from disconnection
+            ws.send(`/log ${LOG_HISTORY_SIZE}`);
             // Restart periodic updates if not already running
             if (!fetchUsersInterval) {
                 keepAliveWorker.postMessage('start');
@@ -80,7 +107,18 @@ function addMessage(text) {
         const match = line.match(/^\|(\d{2}:\d{2}):(\d{2})\| \[(.*?)\]: (.*)$/);
 
         if (match) {
+            // De-duplication: skip if we've already seen this exact message line
             const [_, timeHM, timeS, from, content] = match;
+            if (messageCache.has(line)) continue;
+            if (from != "@server") {
+                messageCache.add(line);
+                messageHistory.push(line);
+            }
+            if (messageHistory.length > MAX_CACHE_SIZE) {
+                const old = messageHistory.shift();
+                messageCache.delete(old);
+            }
+
             if (from === "@server") {
                 const isSystemMessage = content.includes("joined to the party") ||
                     content.includes("exited from the party") ||
@@ -91,6 +129,7 @@ function addMessage(text) {
                     const nickMatch = content.match(/Your new nick is: (.*)/);
                     if (nickMatch) {
                         username = nickMatch[1].trim();
+                        setCookie("username", username, 30);
                         updateUsernamePrefix();
                     }
                 }
@@ -203,14 +242,20 @@ form.addEventListener("submit", (e) => {
     e.preventDefault();
     if (input.value && ws && ws.readyState === WebSocket.OPEN) {
         if (input.value == "/clear") {
-            chat.innerHTML = ""
+            chat.innerHTML = "";
+            messageCache.clear();
+            messageHistory.length = 0;
             input.value = "";
-            return
+            return;
         }
         if (!loggedIn) {
             username = input.value.trim();
+            setCookie("username", username, 30);
             loggedIn = true;
             updateUsernamePrefix();
+            ws.send(input.value); // sends username
+            ws.send(`/log ${LOG_HISTORY_SIZE}`);
+            input.value = "";
             // Start periodic user list updates after login
             keepAliveWorker.postMessage('start');
             fetchUsersInterval = true;
