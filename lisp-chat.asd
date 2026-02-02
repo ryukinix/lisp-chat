@@ -67,7 +67,7 @@
   :license #.*lisp-chat-license*
   :depends-on ("lisp-chat/server"
                "lisp-chat/client"
-               "fiveam")
+               "parachute")
   :pathname "tests"
   :components ((:file "integration"))
   :perform (test-op (o c) (symbol-call :lisp-chat/tests :run-tests)))

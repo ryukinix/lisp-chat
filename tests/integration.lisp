@@ -1,6 +1,6 @@
 (defpackage :lisp-chat/tests
-  (:use :cl :fiveam)
-  (:import-from :lisp-chat/config :*port* :*websocket-port* :*host*)
+  (:use :cl :parachute)
+  (:import-from :lisp-chat/config :*port* :*websocket-port* :*host* :*debug*)
   (:import-from :usocket :socket-connect :socket-close :socket-stream)
   (:import-from :websocket-driver :start-connection :send :on :close-connection)
   (:import-from :websocket-driver-client :make-client)
@@ -8,21 +8,21 @@
 
 (in-package :lisp-chat/tests)
 
-(def-suite :lisp-chat-tests
+(define-test lisp-chat-tests
   :description "Integration tests for lisp-chat")
 
-(in-suite :lisp-chat-tests)
-
 (defvar *server-thread* nil)
+(defparameter *print-names* t)
 (defparameter *port* 9998)
+(defparameter *debug* nil)
 (defparameter *websocket-port* 9999)
 
 (defun start-test-server ()
   (setf *server-thread*
         (bt:make-thread (lambda ()
-                          (let ((*standard-output* *standard-output*)
-                                (*error-output* *error-output*))
-                             (lisp-chat/server:main :should-quit nil)))
+                          (let ((*standard-output* (make-broadcast-stream))
+                                (*error-output* (make-broadcast-stream)))
+                            (lisp-chat/server:main :should-quit nil)))
                         :name "Test Server"))
   (sleep 2))
 
@@ -36,49 +36,48 @@
 (defun run-tests ()
   (start-test-server)
   (unwind-protect
-       (fiveam:run! :lisp-chat-tests)
+       (parachute:test 'lisp-chat-tests)
     (stop-test-server)))
 
-(test tcp-client-connection
-       (let ((socket (usocket:socket-connect "127.0.0.1" *port*))
-             (stream nil))
-         (setf stream (usocket:socket-stream socket))
-         (is (not (null socket)))
-         ;; Read prompt
-         (let ((prompt (read-line stream)))
-           (is (search "> Type your username: " prompt)))
-         ;; Send username
-         (write-line "tester-tcp" stream)
-         (finish-output stream)
-         ;; Read welcome
-         (let ((welcome (read-line stream)))
-           (is (search "joined to the party" welcome)))
-         (usocket:socket-close socket)))
+(define-test tcp-client-connection
+  :parent lisp-chat-tests
+  (let ((socket (usocket:socket-connect "127.0.0.1" *port*))
+        (stream nil))
+    (setf stream (usocket:socket-stream socket))
+    (true socket)
+    ;; Read prompt
+    (let ((prompt (read-line stream)))
+      (true (search "> Type your username: " prompt)))
+    ;; Send username
+    (write-line "tester-tcp" stream)
+    (finish-output stream)
+    ;; Read welcome
+    (let ((welcome (read-line stream)))
+      (true (search "joined to the party" welcome)))
+    (usocket:socket-close socket)))
 
-(test websocket-client-connection
-       (let* ((url (format nil "ws://127.0.0.1:~a/ws" *websocket-port*))
-              (client (make-client url))
-              (connected nil)
-              (messages '()))
+(define-test websocket-client-connection
+  :parent lisp-chat-tests
+  (let* ((url (format nil "ws://127.0.0.1:~a/ws" *websocket-port*))
+         (client (make-client url))
+         (connected nil)
+         (messages '()))
 
-         (on :open client (lambda () (setf connected t)))
-         (on :message client (lambda (msg) (push msg messages)))
+    (on :open client (lambda () (setf connected t)))
+    (on :message client (lambda (msg) (push msg messages)))
 
-         (start-connection client)
-         (sleep 1)
-         (is (eq t connected))
+    (start-connection client)
+    (sleep 1)
+    (true connected)
 
-         ;; Send username (server asks for it first? server sends "> Type your username: ")
-         ;; The first message in 'messages' should be the prompt.
-         ;; But messages are pushed, so it's in the list.
+    ;; Send username (server asks for it first? server sends "> Type your username: ")
+    ;; Wait a bit for prompt
+    (sleep 0.5)
+    (true (some (lambda (m) (search "Type your username" m)) messages))
 
-         ;; Wait a bit for prompt
-         (sleep 0.5)
-         (is (some (lambda (m) (search "Type your username" m)) messages))
+    (send client "tester-ws")
+    (sleep 0.5)
 
-         (send client "tester-ws")
-         (sleep 0.5)
+    (true (some (lambda (m) (search "joined to the party" m)) messages))
 
-         (is (some (lambda (m) (search "joined to the party" m)) messages))
-
-         (close-connection client)))
+    (close-connection client)))
