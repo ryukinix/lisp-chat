@@ -5,7 +5,7 @@ import curses
 import socket
 import threading
 
-HOST = 'chat.lerax.me'
+HOST = 'localhost'
 PORT = 5558
 
 s = socket.socket()
