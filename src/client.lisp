@@ -70,15 +70,36 @@
       (with-lock-held (*io-lock*)
         (erase-last-line)))))
 
+;; dynamic dispatch using generics: usocket vs websockets
+
+(defgeneric connection-fetch-message (socket))
+(defmethod connection-fetch-message ((socket ws-connection))
+  (queue-pop (ws-connection-queue socket)))
+
+(defmethod connection-fetch-message ((socket usocket:usocket))
+  (read-line (socket-stream socket) nil :eof))
+
+
+(defgeneric connection-send-message (message socket))
+(defmethod connection-send-message (message (socket ws-connection))
+  (send (ws-connection-client socket) message))
+
+(defmethod connection-send-message (message (socket usocket:usocket))
+  (write-line message (socket-stream socket))
+  (finish-output (socket-stream socket)))
+
+(defgeneric connection-close (socket))
+(defmethod connection-close ((socket usocket:usocket))
+  (socket-close socket))
+
+(defmethod connection-close ((socket ws-connection))
+  (ws-connection (close-connection (ws-connection-client socket))))
+
+
 (defun send-message (message socket)
   "Send a MESSAGE string through a SOCKET instance"
   (handler-case
-      (typecase socket
-        (usocket:usocket
-         (write-line message (socket-stream socket))
-         (finish-output (socket-stream socket)))
-        (ws-connection
-         (send (ws-connection-client socket) message)))
+      (connection-send-message message socket)
     (error (c)
       (format t "~%Error sending message: ~a~%" c)
       (exit 1))))
@@ -86,11 +107,7 @@
 (defun fetch-message (socket)
   "Fetch a message from the SOCKET (TCP or WS)"
   (handler-case
-      (typecase socket
-        (usocket:usocket
-         (read-line (socket-stream socket) nil :eof))
-        (ws-connection
-         (queue-pop (ws-connection-queue socket))))
+      (connection-fetch-message socket)
     (error (c)
       (let ((decoding-error (find-symbol "CHARACTER-DECODING-ERROR" :babel-encodings)))
         (if (and decoding-error (typep c decoding-error))
@@ -204,9 +221,7 @@ The systematic pong is consumed and the @server response is not shown in the ter
       (client-sender socket username)
       (destroy-thread background-ping)
       (destroy-thread broadcast)
-      (typecase socket
-        (usocket:usocket (socket-close socket))
-        (ws-connection (close-connection (ws-connection-client socket)))))))
+      (connection-close socket))))
 
 (defun websocket-p (host port)
   (or (search "ws://" host) (search "wss://" host)))
