@@ -18,6 +18,7 @@
   :depends-on ("usocket"
                "bordeaux-threads"
                "clack"
+               "clack-handler-hunchentoot"
                "websocket-driver")
   :pathname "src"
   :components ((:file "config")
