@@ -14,6 +14,14 @@ compile:
 appimage: compile
 	bash scripts/appimage.sh
 
+docker-appimage: docker-build
+	docker run --rm \
+		--volume $(PWD):/lisp-chat \
+		--env APPIMAGE_EXTRACT_AND_RUN=1 \
+		--entrypoint=/bin/bash \
+		$(DOCKER_IMG) \
+		-c "make appimage && chown -R $(shell id -u):$(shell id -g) .appimage *.AppImage"
+
 docker-build:
 	docker build -t $(DOCKER_IMG) .
 
@@ -33,7 +41,7 @@ deploy: docker-publish
 dep-tree:
 	ros -s asdf-dependency-graph -e '(asdf-dependency-graph:generate "tree.png" "lisp-chat/client")'
 
-.PHONY: check docker-build docs appimage docker-check
+.PHONY: check docker-build docs appimage docker-check docker-appimage
 
 check:
 	ros -s lisp-chat/tests -e '(asdf:test-system :lisp-chat)'

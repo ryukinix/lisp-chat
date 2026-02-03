@@ -21,12 +21,16 @@ APPDIR="$APPIMAGEDIR/lisp-chat.AppDir"
 # Create the AppDir structure
 mkdir -p "$APPDIR/usr/bin/"
 
+# Handle Icon
+ICON_NAME="lisp-chat"
+cp -v "logo/logo.png" "$APPDIR/${ICON_NAME}.png"
+
 # Create the .desktop file
 cat > "$APPDIR/lisp-chat.desktop" <<EOL
 [Desktop Entry]
 Name=lisp-chat
 Exec=AppRun
-Icon=computer-symbolic
+Icon=${ICON_NAME}
 Terminal=true
 Type=Application
 Categories=Utility;
@@ -40,9 +44,8 @@ HERE=\$(dirname "\$(readlink -f "\${0}")")
 EOL
 chmod +x "$APPDIR/AppRun"
 
-# Copy the binary and icon
+# Copy the binary
 cp -v ./roswell/lisp-chat "$APPDIR/usr/bin/"
-cp -v /usr/share/icons/Adwaita/scalable/devices/computer-symbolic.svg "$APPDIR/"
 
 # Copy libreadline and symlink
 mkdir -p "$APPDIR/usr/lib/"
