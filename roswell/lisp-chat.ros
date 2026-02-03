@@ -26,28 +26,32 @@ OPTIONS
 " lisp-chat/config:*host*
   lisp-chat/config:*port*))
 
-(defun help (argv)
+(defun help-p (argv)
   (when (loop for arg in argv
               thereis (or (equal arg "-h")
                          (equal arg "--help")))
     (princ *usage*)))
 
+(defun usage ()
+  (princ *usage*))
+
+(defun setup-host-port (host port)
+  (when host
+    (setq lisp-chat/config:*host* host)
+    ;; If host is WS, we might want to default to websocket-port if port not provided
+    (when (and (lisp-chat/client::websocket-p host port)
+               (null port))
+      (setq lisp-chat/config:*port* lisp-chat/config:*websocket-port*)))
+  (when port
+    (setq lisp-chat/config:*port* (parse-integer port))))
 
 (defun main (&rest argv)
-  (declare (ignorable argv))
-
   (let ((host (car argv))
         (port (cadr argv)))
-    (when host
-      (setq lisp-chat/config:*host* host)
-      ;; If host is WS, we might want to default to websocket-port if port not provided
-      (when (and (or (search "ws://" host) (search "wss://" host))
-                 (null port))
-        (setq lisp-chat/config:*port* lisp-chat/config:*websocket-port*)))
-    (when port
-      (setq lisp-chat/config:*port* (parse-integer port))))
+    (setup-host-port host port))
 
-  (unless (help argv)
-    (lisp-chat/client:main :host lisp-chat/config:*host*
-                           :port lisp-chat/config:*port*)))
+  (if (help-p argv)
+      (usage)
+      (lisp-chat/client:main :host lisp-chat/config:*host*
+                             :port lisp-chat/config:*port*)))
 ;;; vim: set ft=lisp lisp:
