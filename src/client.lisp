@@ -213,7 +213,9 @@ The systematic pong is consumed and the @server response is not shown in the ter
 
 (defun process-connection (socket host port)
   (let ((username (login socket)))
-    (format t "Connected as ~a@~a:~a ~%" username host port)
+    (if (websocket-p host port)
+        (format t "Connected via websocket: ~a@~a~%" username host)
+        (format t "Connected via TCP socket: ~a@~a:~a~%" username host port))
     (let ((broadcast (make-thread (lambda () (server-broadcast socket))
                                   :name "server broadcast"))
           (background-ping (make-thread (lambda () (client-background-ping socket))
