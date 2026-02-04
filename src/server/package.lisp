@@ -24,14 +24,16 @@
            #:message-from
            #:message-time
            #:message-content
+           #:get-client
            #:get-time
+           #:private-message
            #:command-message
-           #:user-messages
-           #:startswith
-           #:split))
+           #:send-message
+           #:user-messages))
 
 (defpackage #:lisp-chat/commands
   (:use #:cl #:lisp-chat/server)
   (:export #:get-command
            #:get-commands
            #:call-command))
+m

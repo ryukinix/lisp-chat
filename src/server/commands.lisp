@@ -7,6 +7,25 @@
 (defvar *uptime* (multiple-value-list (get-decoded-time))
   "Uptime of server variable")
 
+(defun split (string delimiterp)
+  "Split a string by a delimiterp function character checking"
+  (loop for beg = (position-if-not delimiterp string)
+          then (position-if-not delimiterp string :start (1+ end))
+        for end = (and beg (position-if delimiterp string :start beg))
+        when beg
+          collect (subseq string beg end)
+        while end))
+
+(defun startswith (string substring)
+  "Check if STRING starts with SUBSTRING."
+  (let ((l1 (length string))
+        (l2 (length substring)))
+    (when (and (> l2 0)
+               (>= l1 l2))
+      (loop for c1 across string
+            for c2 across substring
+            always (equal c1 c2)))))
+
 (defun get-commands ()
   "Returns a list of all available command strings."
   (let ((commands '()))
@@ -91,3 +110,18 @@
       (progn (setf (client-name client) new-nick)
              (command-message (format nil "Your new nick is: ~a" new-nick)))
       (command-message (format nil "/nick <new-nickname>"))))
+
+(defun /dm (client &optional (username nil) &rest args)
+  "/dm sends a direct message to a USERNAME"
+  (let ((msg-content (format nil "~{~a~^ ~}" args))
+        (user (get-client username))
+        (from (client-name client)))
+    (cond
+      ((not username) (command-message "/dm <username> your message"))
+      ((not user) (command-message (format nil "'~a' user not found" username)))
+      ((equal from username) (command-message "you can't dm to yourself"))
+      (t
+       (prog1 'ignore
+         (let ((msg (private-message from msg-content)))
+           (send-message client msg)
+           (send-message user msg)))))))

@@ -29,6 +29,10 @@
   socket
   address)
 
+(defun get-client (client-name)
+  (find client-name
+        *clients*
+        :test (lambda (name client) (equal name (client-name client)))))
 
 (defun socket-peer-address (socket)
   "Given a USOCKET:SOCKET instance return a ipv4 encoded IP string"
@@ -54,15 +58,6 @@
       (get-decoded-time)
     (format nil "~2,'0d:~2,'0d:~2,'0d" hour minute second)))
 
-(defun startswith (string substring)
-  "Check if STRING starts with SUBSTRING."
-  (let ((l1 (length string))
-        (l2 (length substring)))
-    (when (and (> l2 0)
-               (>= l1 l2))
-      (loop for c1 across string
-            for c2 across substring
-            always (equal c1 c2)))))
 
 (defun formatted-message (message)
   "The default message format of this server. MESSAGE is a struct message"
@@ -84,11 +79,11 @@
          (message (make-message :from from :content content :time time)))
     (formatted-message message)))
 
-(defun split (string delimiterp)
-  "Split a string by a delimiterp function character checking"
-  (loop for beg = (position-if-not delimiterp string)
-          then (position-if-not delimiterp string :start (1+ end))
-        for end = (and beg (position-if delimiterp string :start beg))
-        when beg
-          collect (subseq string beg end)
-        while end))
+(defun private-message (client-name content)
+  "This function prepare the CONTENT as a message by the @server"
+  (let* ((from (format nil "dm:~a" client-name))
+         (time (get-time))
+         (message (make-message :from from
+                                :content content
+                                :time time)))
+    (formatted-message message)))

@@ -34,14 +34,15 @@
 
 (defun send-message (client message)
   "Send to CLIENT a MESSAGE :type string"
-  (let ((socket (client-socket client)))
-    (typecase socket
-      (usocket:stream-usocket
-       (let ((stream (socket-stream socket)))
-         (write-line message stream)
-         (finish-output stream)))
-      (t
-       (websocket-driver:send socket message)))))
+  (unless (equal message 'ignore)
+    (let ((socket (client-socket client)))
+      (typecase socket
+        (usocket:stream-usocket
+         (let ((stream (socket-stream socket)))
+           (write-line message stream)
+           (finish-output stream)))
+        (t
+         (websocket-driver:send socket message))))))
 
 (defun message-broadcast ()
   "This procedure is a general independent thread to run brodcasting
