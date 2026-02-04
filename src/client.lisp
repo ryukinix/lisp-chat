@@ -54,7 +54,10 @@
 
 (defun exit (&optional (code 0))
   #-swank
-  (uiop:quit code))
+  (progn
+    (uiop:quit code)
+    #+sbcl (sb-ext:exit :code code)
+    (format t "FATAL: exit function returned!~%")))
 
 (defun get-user-input (username)
   "Get the user input by using readline"
@@ -93,7 +96,7 @@
   (socket-close socket))
 
 (defmethod connection-close ((socket ws-connection))
-  (ws-connection (close-connection (ws-connection-client socket))))
+  (close-connection (ws-connection-client socket)))
 
 
 (defun send-message (message socket)
@@ -235,6 +238,10 @@ The systematic pong is consumed and the @server response is not shown in the ter
     (on :message client
         (lambda (message)
           (queue-push queue message)))
+    (on :close client
+        (lambda (&key code reason)
+          (declare (ignore code reason))
+          (queue-push queue :eof)))
     (start-connection client)
     (process-connection connection host port)))
 
