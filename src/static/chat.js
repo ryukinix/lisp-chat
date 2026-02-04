@@ -65,6 +65,11 @@ function getUserColor(name) {
     return availableColors[index];
 }
 
+function linkify(text) {
+    const urlPattern = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+    return text.replace(urlPattern, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+}
+
 function updateUsernamePrefix() {
     let prefix = document.getElementById("username-prefix");
     if (!prefix) {
@@ -164,7 +169,7 @@ function addMessage(text) {
 
             const contentSpan = document.createElement("span");
             contentSpan.className = "msg-content";
-            contentSpan.textContent = content;
+            contentSpan.innerHTML = linkify(content);
 
             div.appendChild(timeSpan);
             div.appendChild(fromSpan);
@@ -175,7 +180,7 @@ function addMessage(text) {
 
         const div = document.createElement("div");
         div.className = "message";
-        div.textContent = line;
+        div.innerHTML = linkify(line);
         chat.appendChild(div);
     }
     chat.scrollTop = chat.scrollHeight;
