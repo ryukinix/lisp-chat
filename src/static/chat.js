@@ -87,6 +87,9 @@ function updateUsernamePrefix() {
     }
 }
 
+let anchorElement = null;
+let anchorSeconds = 0;
+
 function addMessage(text) {
     const linesArray = text.split("\n");
     for (const line of linesArray) {
@@ -106,9 +109,7 @@ function addMessage(text) {
         }
 
         // Check if it's a response from @server
-
         // Format: |HH:MM:SS| [from]: content
-
         const match = line.match(/^\|(\d{2}:\d{2}):(\d{2})\| \[(.*?)\]: (.*)$/);
 
         if (match) {
@@ -174,6 +175,31 @@ function addMessage(text) {
             div.appendChild(timeSpan);
             div.appendChild(fromSpan);
             div.appendChild(contentSpan);
+
+            const [h, m] = timeHM.split(':').map(Number);
+            const s = Number(timeS);
+            const seconds = h * 3600 + m * 60 + s;
+
+            // Anchor logic: "joined" message marks the start of the session.
+            // Messages appearing to be older than the anchor (history) go before it.
+            if (from === "@server" && content.includes(`"${username}" joined to the party`)) {
+                anchorElement = div;
+                anchorSeconds = seconds;
+                chat.appendChild(div);
+                continue;
+            }
+
+            if (anchorElement && anchorElement.isConnected) {
+                // Check if message is chronologically "before" the anchor.
+                // Handle day wrap: if msg is > 12h ahead of anchor, assume it's from yesterday.
+                const isBefore = (seconds < anchorSeconds) || (seconds > anchorSeconds + 43200);
+
+                if (isBefore) {
+                    chat.insertBefore(div, anchorElement);
+                    continue;
+                }
+            }
+
             chat.appendChild(div);
             continue;
         }
@@ -219,6 +245,7 @@ function connect() {
 
     ws.onopen = () => {
         addMessage("Connected to server.");
+        anchorElement = null;
     };
 
     ws.onmessage = (event) => {
