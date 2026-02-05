@@ -35,6 +35,16 @@
       (declare (ignore responder))
       (start-connection ws))))
 
+(defun static-response-headers (content-type)
+  (let ((no-cache '("text/html")))
+    (cond
+      ((find content-type no-cache)
+       `(:content-type ,content-type
+        :cache-control "no-store, no-cache, must-revalidate, max-age=0"
+        :pragma "no-cache"
+        :expires "0"))
+      (t `(:content-type ,content-type)))))
+
 (defun static-app (path)
   (let* ((file (merge-pathnames (subseq path 1) (merge-pathnames "src/static/"
                                                                 (asdf:system-source-directory :lisp-chat))))
@@ -48,7 +58,7 @@
                          ((string= extension "ico") "image/x-icon")
                          (t "text/plain"))))
     (if (probe-file file)
-        `(200 (:content-type ,content-type) ,file)
+        `(200 ,(static-response-headers content-type) ,file)
         '(404 (:content-type "text/plain") ("Not Found")))))
 
 (defun web-handler (env)
