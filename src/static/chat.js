@@ -91,6 +91,11 @@ let anchorElement = null;
 let anchorSeconds = 0;
 
 function addMessage(text) {
+    // Smart Scroll: Check if user is near the bottom BEFORE adding content.
+    // Use a generous threshold (e.g. 100px) to handle minor deviations.
+    const scrollThreshold = 100;
+    const isAtBottom = (chat.scrollHeight - chat.scrollTop - chat.clientHeight) <= scrollThreshold;
+
     const linesArray = text.split("\n");
     for (const line of linesArray) {
         if (line === "> Type your username: " && username) {
@@ -209,9 +214,12 @@ function addMessage(text) {
         div.innerHTML = linkify(line);
         chat.appendChild(div);
     }
-    chat.scrollTop = chat.scrollHeight;
-}
 
+    // Only auto-scroll if the user was already at the bottom
+    if (isAtBottom) {
+        chat.scrollTop = chat.scrollHeight;
+    }
+}
 function updateUserList(usersString) {
     const users = usersString.replace("users: ", "").split(",").map(u => u.trim()).filter(u => u.length > 0);
     userList.innerHTML = "";
