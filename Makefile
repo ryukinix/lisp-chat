@@ -5,6 +5,12 @@ PUBLIC_IMG = ryukinix/$(DOCKER_IMG):$(VERSION)
 client:
 	./roswell/lisp-chat.ros
 
+client-websockets:
+	./roswell/lisp-chat.ros ws://localhost:5559/ws
+
+client-online:
+	APP_ENV=PROD ./roswell/lisp-chat.ros
+
 server:
 	./roswell/lisp-chat-server.ros
 
