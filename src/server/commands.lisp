@@ -167,6 +167,6 @@
   "/lisp evaluates a common lisp program"
   (let ((result (execute-lisp-capture-result program)))
     (prog1 'ignore
-      (push-message "@server"
+      (push-message "@command"
                     (format nil "user '~a' called lisp code '~a' ~a"
                             (client-name client) program result)))))
