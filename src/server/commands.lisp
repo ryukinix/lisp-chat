@@ -51,17 +51,22 @@
     (parse-keywords args)))
 
 (defun call-command (client message)
+  (when (startswith message "/")
+    (handler-case (call-command-predefined client message)
+      (error (c)
+        (command-message (format nil "command '~a' finished with error: ~a" message c))))))
+
+(defun call-command-predefined (client message)
   (let ((command (find message (get-commands) :test #'startswith)))
-    (when command
-      (let ((command-function (get-command command))
-            (args (extract-params message)))
-        (cond
-          ;; backward compatible with /log <n>
-          ((and (string= command "/log")
-                (eq (length args) 1))
-           (/log client :depth (car args)))
-          (command-function (apply command-function (cons client args)))
-          (t (command-message (format nil "command ~a doesn't exists" command))))))))
+    (let ((command-function (get-command command))
+          (args (extract-params message)))
+      (cond
+        ;; HACK(@lerax): sex 06 fev 2026 17:34:43 backward compatible with /log <n>
+        ((and (string= command "/log")
+              (eq (length args) 1))
+         (/log client :depth (car args)))
+        (command-function (apply command-function (cons client args)))
+        (t (command-message (format nil "command ~a doesn't exists" message)))))))
 
 ;; user commands prefixed with /
 (defun /users (client &rest args)
