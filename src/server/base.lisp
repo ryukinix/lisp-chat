@@ -55,7 +55,7 @@
   (multiple-value-list (get-decoded-time)))
 
 (defun message-time-hour-format (message)
-  (destructuring-bind (hour minute second &rest rest-of-list) (message-time message)
+  (destructuring-bind (second minute hour &rest rest-of-list) (message-time message)
     (declare (ignore rest-of-list))
     (format nil "~2,'0d:~2,'0d:~2,'0d" hour minute second)))
 
