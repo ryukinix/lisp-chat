@@ -40,16 +40,33 @@
   "Returns the function symbol for a given command string."
   (find-symbol (string-upcase command-string) :lisp-chat/commands))
 
+(defun parse-keywords (args)
+  (mapcar (lambda (arg) (if (startswith arg ":")
+                       (intern (string-upcase (string-left-trim ":" arg)) 'keyword)
+                       arg))
+          args))
+
 (defun extract-params (string)
-  (subseq (split string (lambda (c) (eql c #\Space)))
-          1))
+  (let ((args (subseq (split string (lambda (c) (eql c #\Space))) 1)))
+    (parse-keywords args)))
 
 (defun call-command (client message)
+  (when (startswith message "/")
+    (handler-case (call-command-predefined client message)
+      (error (c)
+        (command-message (format nil "command '~a' finished with error: ~a" message c))))))
+
+(defun call-command-predefined (client message)
   (let ((command (find message (get-commands) :test #'startswith)))
-    (when command
-      (let ((command-function (get-command command)))
-        (when command-function
-          (apply command-function (cons client (extract-params message))))))))
+    (let ((command-function (get-command command))
+          (args (extract-params message)))
+      (cond
+        ;; HACK(@lerax): sex 06 fev 2026 17:34:43 backward compatible with /log <n>
+        ((and (string= command "/log")
+              (eq (length args) 1))
+         (/log client :depth (car args)))
+        (command-function (apply command-function (cons client args)))
+        (t (command-message (format nil "command ~a doesn't exists" message)))))))
 
 ;; user commands prefixed with /
 (defun /users (client &rest args)
@@ -78,11 +95,11 @@
             (command-message (format nil "Command ~a not found." cmd))))
       (command-message (format nil "Available commands: ~{~a~^, ~}" (get-commands)))))
 
-(defun /log (client &optional (depth "20") &rest args)
+(defun /log (client &key (depth "20") (date-format nil) &allow-other-keys)
   "/log shows the last messages sent to the server.
    DEPTH is optional number of messages frames from log"
   (declare (ignorable client args))
-  (let* ((messages (user-messages))
+  (let* ((messages (user-messages :date-format date-format))
          (log-size (min (or (parse-integer depth :junk-allowed t) 20)
                         (length messages))))
     (format nil "~{~a~^~%~}" (reverse (subseq messages 0

@@ -98,7 +98,7 @@ function addMessage(text) {
     for (const line of linesArray) {
         if (handleAuthHandshake(line)) continue;
 
-        const match = line.match(/^\|(\d{2}:\d{2}):(\d{2})\| \[(.*?)\]: (.*)$/);
+        const match = line.match(/^\|(?:(\d{4}-\d{2}-\d{2}) )?(\d{2}:\d{2}):(\d{2})\| \[(.*?)\]: (.*)$/);
         if (match) {
             processStructuredMessage(line, match);
         } else {
@@ -122,7 +122,7 @@ function handleAuthHandshake(line) {
         loggedIn = true;
         updateUsernamePrefix();
         // Fetch recent history to fill potential gaps from disconnection
-        ws.send(`/log ${LOG_HISTORY_SIZE}`);
+        ws.send(`/log :depth ${LOG_HISTORY_SIZE} :date-format date`);
         // Restart periodic updates if not already running
         if (!fetchUsersInterval) {
             keepAliveWorker.postMessage('start');
@@ -134,8 +134,12 @@ function handleAuthHandshake(line) {
     return false;
 }
 
+function getTodayDate() {
+    return new Date().toISOString().split('T')[0];
+}
+
 function processStructuredMessage(line, match) {
-    const [_, timeHM, timeS, from, content] = match;
+    const [_, date, timeHM, timeS, from, content] = match;
 
     if (isMessageCached(line, from)) return;
 
@@ -144,10 +148,10 @@ function processStructuredMessage(line, match) {
         if (!shouldRender) return;
     }
 
-    const div = createMessageElement(timeHM, timeS, from, content);
+    const div = createMessageElement(date, timeHM, timeS, from, content);
     const seconds = calculateSeconds(timeHM, timeS);
 
-    insertMessageNode(div, from, content, seconds);
+    insertMessageNode(div, from, content, seconds, !!date);
 }
 
 function isMessageCached(line, from) {
@@ -192,9 +196,10 @@ function processServerMessage(content) {
     return true;
 }
 
-function createMessageElement(timeHM, timeS, from, content) {
+function createMessageElement(date, timeHM, timeS, from, content) {
     const div = document.createElement("div");
     div.className = "message";
+    div.dataset.date = date || getTodayDate();
 
     const timeSpan = document.createElement("span");
     timeSpan.className = "timestamp";
@@ -221,34 +226,77 @@ function calculateSeconds(timeHM, timeS) {
     return h * 3600 + m * 60 + s;
 }
 
-function insertMessageNode(div, from, content, seconds) {
+function ensureDateDivider(el) {
+    const date = el.dataset.date;
+    if (!date) return;
+
+    const prev = el.previousElementSibling;
+    let prevDate = null;
+    if (prev) {
+        prevDate = prev.dataset.date;
+    }
+
+    if (date !== prevDate) {
+        const divider = document.createElement("div");
+        divider.className = "date-divider";
+        divider.dataset.date = date;
+        divider.textContent = `-- ${date} --`;
+        el.parentElement.insertBefore(divider, el);
+    }
+
+    // Also check if the *next* element needs a divider now that this one is inserted
+    const next = el.nextElementSibling;
+    if (next && next.classList.contains('message')) {
+        const nextDate = next.dataset.date;
+        if (nextDate !== date) {
+            // Check if there is already a divider
+            if (!next.previousElementSibling.classList.contains('date-divider')) {
+                const nextDivider = document.createElement("div");
+                nextDivider.className = "date-divider";
+                nextDivider.dataset.date = nextDate;
+                nextDivider.textContent = `-- ${nextDate} --`;
+                next.parentElement.insertBefore(nextDivider, next);
+            }
+        }
+    }
+}
+
+function insertMessageNode(div, from, content, seconds, hasDate) {
     // Anchor logic: "joined" message marks the start of the session.
     if (from === "@server" && content.includes(`"${username}" joined to the party`)) {
         anchorElement = div;
         anchorSeconds = seconds;
+        div.dataset.date = getTodayDate(); // Anchor is always today
         chat.appendChild(div);
+        ensureDateDivider(div);
         return;
     }
 
     if (anchorElement && anchorElement.isConnected) {
-        // Check if message is chronologically "before" the anchor.
-        // Handle day wrap: if msg is > 12h ahead of anchor, assume it's from yesterday.
-        const isBefore = (seconds < anchorSeconds) || (seconds > anchorSeconds + 43200);
+        const msgDate = div.dataset.date;
+        const anchorDate = anchorElement.dataset.date;
+
+        // Compare dates first, then seconds if dates are equal.
+        const isBefore = (msgDate < anchorDate) || (msgDate === anchorDate && seconds < anchorSeconds);
 
         if (isBefore) {
             chat.insertBefore(div, anchorElement);
+            ensureDateDivider(div);
             return;
         }
     }
 
     chat.appendChild(div);
+    ensureDateDivider(div);
 }
 
 function addRawMessage(line) {
     const div = document.createElement("div");
     div.className = "message";
+    div.dataset.date = getTodayDate();
     div.innerHTML = linkify(line);
     chat.appendChild(div);
+    ensureDateDivider(div);
 }
 
 function updateUserList(usersString) {
@@ -325,7 +373,7 @@ form.addEventListener("submit", (e) => {
             loggedIn = true;
             updateUsernamePrefix();
             ws.send(input.value); // sends username
-            ws.send(`/log ${LOG_HISTORY_SIZE}`);
+            ws.send(`/log :depth ${LOG_HISTORY_SIZE} :date-format date`);
             input.value = "";
             // Start periodic user list updates after login
             keepAliveWorker.postMessage('start');
