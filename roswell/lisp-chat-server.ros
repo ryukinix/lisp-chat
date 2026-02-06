@@ -17,17 +17,12 @@ exec ros -Q -- $0 "$@"
           "usage: lisp-chat-server [-h|--help] [host] [port]
 
 OPTIONS
-    host          server host, default: ~a
-    port          server port, default: ~a
-    -h | --help   show this message
+    host           server host, default: ~a
+    port           server port, default: ~a
+    -h | --help    show this message
+    -v | --version show version of the software
 " lisp-chat/config:*host*
   lisp-chat/config:*port*))
-
-(defun help (argv)
-  (when (loop for arg in argv
-                thereis (or (equal arg "-h")
-                            (equal arg "--help")))
-    (princ *usage*)))
 
 (defun main (&rest argv)
   (declare (ignorable argv))
@@ -39,7 +34,9 @@ OPTIONS
     (when port
       (setq lisp-chat/config:*port* (parse-integer port))))
 
-  (unless (help argv)
-    (lisp-chat/server:main :host lisp-chat/config:*host*
-                           :port lisp-chat/config:*port*)))
+  (cond
+    ((lisp-chat/config:has-any-flags argv "-h" "--help") (princ *usage*))
+    ((lisp-chat/config:has-any-flags argv "-v" "--version") (princ (lisp-chat/config:get-version)))
+    (t (lisp-chat/server:main :host lisp-chat/config:*host*
+                              :port lisp-chat/config:*port*))))
 ;;; vim: set ft=lisp lisp:
