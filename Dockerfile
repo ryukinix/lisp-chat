@@ -7,6 +7,9 @@ COPY ./tests tests
 COPY ./roswell roswell
 COPY ./scripts scripts
 RUN bash ./scripts/bump_static.sh
+
+ARG APP_VERSION
+ENV APP_VERSION=$APP_VERSION
 RUN ros install ./
 RUN ros run -s lisp-chat/server -q
 EXPOSE 5558

@@ -1,4 +1,5 @@
 DOCKER_IMG = lisp-chat
+APP_VERSION = $(shell git describe --tags --abbrev=0 2> /dev/null || printf 0.0.0)-$(shell date +%Y%m%d)
 VERSION := latest
 PUBLIC_IMG = ryukinix/$(DOCKER_IMG):$(VERSION)
 
@@ -15,7 +16,7 @@ server:
 	./roswell/lisp-chat-server.ros
 
 compile:
-	APP_ENV=PROD ros build ./roswell/lisp-chat.ros
+	APP_VERSION=$(APP_VERSION) APP_ENV=PROD ros build ./roswell/lisp-chat.ros
 
 appimage: compile
 	bash scripts/appimage.sh
@@ -26,10 +27,10 @@ docker-appimage: docker-build
 		--env APPIMAGE_EXTRACT_AND_RUN=1 \
 		--entrypoint=/bin/bash \
 		$(DOCKER_IMG) \
-		-c "make appimage && chown -R $(shell id -u):$(shell id -g) .appimage *.AppImage"
+		-c "make appimage APP_VERSION=$(APP_VERSION) && chown -R $(shell id -u):$(shell id -g) .appimage *.AppImage"
 
 docker-build:
-	docker build -t $(DOCKER_IMG) .
+	docker build --build-arg APP_VERSION=$(APP_VERSION) -t $(DOCKER_IMG) .
 
 docker-shell: docker-build
 	docker run --rm -it --entrypoint=/bin/bash $(DOCKER_IMG)

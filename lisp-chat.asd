@@ -2,19 +2,48 @@
 ;; Manoel Vilela
 
 (defpackage :lisp-chat/system
-  (:use :cl :asdf :uiop))
+  (:use :cl :asdf :uiop)
+  (:export :*author*
+           :*version*
+           :*build-metadata*
+           :*license*
+           :custom-system-class))
 
 (in-package :lisp-chat/system)
 
-(defvar *lisp-chat-author* "Manoel Vilela")
-(defvar *lisp-chat-version* "0.3.0")
-(defvar *lisp-chat-license* "MIT")
+(defun lisp-chat-parse-version ()
+  (let* ((version (uiop:getenv "APP_VERSION"))
+         (index (search "-" version)))
+    (if version
+        (subseq version 0 index)
+        "0.4.0")))
 
-(defsystem :lisp-chat/server
-  :author #.*lisp-chat-author*
+(defun lisp-chat-parse-build-metadata ()
+  (let* ((version (uiop:getenv "APP_VERSION"))
+         (index (search "-" version)))
+    (cond ((and version index) (subseq version index))
+          ((and version) "")
+          (t "-dev"))))
+
+(defvar *author* "Manoel Vilela")
+(defvar *version* (lisp-chat-parse-version))
+(defvar *build-metadata* (lisp-chat-parse-build-metadata))
+(defvar *license* "MIT")
+
+(defclass custom-system-class (asdf:system)
+  ((build-metadata :initarg :build-metadata
+                   :accessor component-build-metadata
+                   :initform nil)))
+
+(in-package #:asdf-user)
+
+(asdf:defsystem :lisp-chat/server
+  :class lisp-chat/system:custom-system-class
+  :author #.lisp-chat/system:*author*
   :description "An experimental chat irc-like: server"
-  :version #.*lisp-chat-version*
-  :license #.*lisp-chat-license*
+  :version #.lisp-chat/system:*version*
+  :build-metadata #.lisp-chat/system:*build-metadata*
+  :license #.lisp-chat/system:*license*
   :depends-on ("usocket"
                "bordeaux-threads"
                "clack"
@@ -41,11 +70,13 @@
                          (:static-file "manifest.json")
                          (:static-file "sw.js")))))
 
-(defsystem :lisp-chat/client
-  :author #.*lisp-chat-author*
+(asdf:defsystem :lisp-chat/client
+  :class lisp-chat/system:custom-system-class
+  :author #.lisp-chat/system:*author*
   :description "An experimental chat irc-like: client"
-  :version #.*lisp-chat-version*
-  :license #.*lisp-chat-license*
+  :version #.lisp-chat/system:*version*
+  :build-metadata #.lisp-chat/system:*build-metadata*
+  :license #.lisp-chat/system:*license*
   :depends-on ("usocket"
                "cl-readline"
                "bordeaux-threads"
@@ -54,18 +85,20 @@
   :components ((:file "config")
                (:file "client" :depends-on ("config"))))
 
-(defsystem :lisp-chat
-  :author #.*lisp-chat-author*
+(asdf:defsystem :lisp-chat
+  :class lisp-chat/system:custom-system-class
+  :author #.lisp-chat/system:*author*
   :description "An experimental chat irc-like"
-  :version #.*lisp-chat-version*
-  :license #.*lisp-chat-license*
+  :version #.lisp-chat/system:*version*
+  :build-metadata #.lisp-chat/system:*build-metadata*
+  :license #.lisp-chat/system:*license*
   :depends-on ("lisp-chat/client"
                "lisp-chat/server")
   :in-order-to ((test-op (test-op "lisp-chat/tests"))))
 
-(defsystem :lisp-chat/tests
-  :author #.*lisp-chat-author*
-  :license #.*lisp-chat-license*
+(asdf:defsystem :lisp-chat/tests
+  :author #.lisp-chat/system:*author*
+  :license #.lisp-chat/system:*license*
   :depends-on ("lisp-chat/server"
                "lisp-chat/client"
                "parachute")
