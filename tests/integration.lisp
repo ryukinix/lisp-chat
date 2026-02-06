@@ -17,6 +17,14 @@
 (defparameter *debug* nil)
 (defparameter *websocket-port* 9999)
 
+(defun get-current-date ()
+    (multiple-value-bind
+          (second minute hour date month year)
+        (get-decoded-time)
+      (declare (ignore second minute hour))
+      (format nil "~4d-~2,'0d-~2,'0d"
+              year month date)))
+
 (defun start-test-server ()
   (setf *server-thread*
         (bt:make-thread (lambda ()
@@ -81,3 +89,28 @@
     (true (some (lambda (m) (search "\"tester-ws\" joined to the party" m)) messages))
 
     (close-connection client)))
+
+(define-test log-commands-with-date-format
+  :parent lisp-chat-tests
+  (let ((socket (usocket:socket-connect "127.0.0.1" *port*))
+        (stream nil))
+    (setf stream (usocket:socket-stream socket))
+    (true socket)
+    ;; Read prompt
+    (let ((prompt (read-line stream)))
+      (true (search "> Type your username: " prompt)))
+    ;; Send username
+    (write-line "tester-log" stream)
+    (finish-output stream)
+    (read-line stream) ;; ignore welcome message
+    ;; Send a message to ensure something is in the log
+    (write-line "hello log" stream)
+    (finish-output stream)
+    (sleep 0.5) ;; wait for broadcast to log
+    (read-line stream) ;; consume the broadcast of "hello log"
+    (write-line "/log :date-format date" stream)
+    (finish-output stream)
+    (let ((msg (read-line stream)))
+      (when *debug* (format t "Log output: [~a]~%" msg))
+      (true (search (get-current-date) msg)))
+    (usocket:socket-close socket)))
