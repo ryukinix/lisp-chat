@@ -19,7 +19,7 @@
    to *messages-stack*. FROM, CONTENT and TIME has type string"
   from
   content
-  time )
+  time)
 
 (defstruct client
   "This structure handle the creation/control of the clients of the server.
@@ -44,31 +44,38 @@
   "Select the stream IO from the client"
   (socket-stream (client-socket c)))
 
-
 (defun debug-format (&rest args)
   "If *debug* from lisp-chat-config is true, print debug info on
    running based on ARGS"
   (if *debug*
       (apply #'format args)))
 
-
 (defun get-time ()
   "Return a encoded string as HH:MM:SS based on the current timestamp."
-  (multiple-value-bind (second minute hour)
-      (get-decoded-time)
+  (multiple-value-list (get-decoded-time)))
+
+(defun message-time-hour-format (message)
+  (destructuring-bind (hour minute second &rest rest-of-list) (message-time message)
+    (declare (ignore rest-of-list))
     (format nil "~2,'0d:~2,'0d:~2,'0d" hour minute second)))
 
+(defun message-time-date-format (message)
+  (destructuring-bind (second minute hour day month year &rest rest-of-list) (message-time message)
+    (declare (ignore rest-of-list))
+    (format nil "~4d-~2,'0d-~2,'0d ~2,'0d:~2,'0d:~2,'0d" year month day hour minute second)))
 
-(defun formatted-message (message)
+(defun formatted-message (message &key (date-format nil))
   "The default message format of this server. MESSAGE is a struct message"
   (format nil "|~a| [~a]: ~a"
-          (message-time message)
+          (if (string= date-format "date")
+              (message-time-date-format message)
+              (message-time-hour-format message))
           (message-from message)
           (message-content message)))
 
-(defun user-messages ()
+(defun user-messages (&key (date-format nil))
   "Return only user messages, discard all messsages from @server"
-  (mapcar #'formatted-message
+  (mapcar (lambda (m) (formatted-message m :date-format date-format))
           (remove-if #'(lambda (m) (equal (message-from m) "@server"))
                      *messages-log*)))
 
