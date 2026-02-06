@@ -10,7 +10,7 @@
    defined on *clients* when *messages-semaphore* is signalized.
    The second procedure is a general connection-handler for new
    clients trying connecting to the server."
-  (format t "Running server at ~a:~a... ~%" *host* *port*)
+  (format t "Running tcp server at ~a:~a... ~%" *host* *port*)
   (format t "Running web server at http://~a:~a... ~%" *host* *websocket-port*)
   (let (connection-thread
         broadcast-thread
@@ -22,6 +22,7 @@
            (setf broadcast-thread (make-thread #'message-broadcast
                                                :name "Message broadcast"))
            (setf web-handler (clackup #'web-handler
+                                      :debug nil
                                       :address *host*
                                       :port *websocket-port*
                                       :use-thread t))
@@ -68,7 +69,7 @@
             #+clisp system::simple-interrupt-condition
             #+ecl ext:interactive-interrupt
             #+allegro excl:interrupt-signal ()
-             (format t "~%Closing the server...~%")))
+             (format t "~%Closing the lisp-chat server...~%")))
       (when socket-server
         (socket-close socket-server))
       (when should-quit

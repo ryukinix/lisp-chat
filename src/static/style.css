@@ -114,3 +114,20 @@ button:hover {
         display: none;
     }
 }
+
+a:link {
+    color: lightblue;
+}
+
+a:visited {
+    color: #87CEFA;
+}
+
+a:hover {
+    color: deepskyblue;
+    text-decoration: underline;
+}
+
+a:active {
+    color: white;
+}

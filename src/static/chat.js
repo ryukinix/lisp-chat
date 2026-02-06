@@ -2,6 +2,23 @@ const chat = document.getElementById("chat");
 const form = document.getElementById("input-area");
 const input = document.getElementById("message-input");
 const userList = document.getElementById("user-list");
+const LOG_HISTORY_SIZE = 50;
+const MAX_CACHE_SIZE = 200;
+const messageCache = new Set();
+const messageHistory = [];
+const availableColors = [
+    "#ff7675", "#fab1a0", "#fdcb6e", "#e17055", "#d63031",
+    "#00b894", "#00cec9", "#0984e3", "#6c5ce7", "#e84393",
+    "#ffeaa7", "#55efc4", "#81ecec", "#74b9ff", "#a29bfe"
+];
+
+let anchorElement = null;
+let anchorSeconds = 0;
+let backgroundRequestsPending = 0;
+let fetchUsersInterval;
+let loggedIn = false;
+let ws;
+
 
 function setCookie(name, value, days) {
     let expires = "";
@@ -23,16 +40,8 @@ function getCookie(name) {
     }
     return null;
 }
-
-let ws;
-let loggedIn = false;
 let username = getCookie("username") || "";
-let fetchUsersInterval;
-let backgroundRequestsPending = 0;
-const messageCache = new Set();
-const messageHistory = [];
-const MAX_CACHE_SIZE = 200;
-const LOG_HISTORY_SIZE = 50;
+
 
 const keepAliveWorker = new Worker(URL.createObjectURL(new Blob([`
     let interval;
@@ -48,11 +57,7 @@ const keepAliveWorker = new Worker(URL.createObjectURL(new Blob([`
 
 keepAliveWorker.onmessage = () => requestUserList();
 
-const availableColors = [
-    "#ff7675", "#fab1a0", "#fdcb6e", "#e17055", "#d63031",
-    "#00b894", "#00cec9", "#0984e3", "#6c5ce7", "#e84393",
-    "#ffeaa7", "#55efc4", "#81ecec", "#74b9ff", "#a29bfe"
-];
+
 
 function getUserColor(name) {
     if (name === "@server") return "#bb2222";
@@ -88,102 +93,162 @@ function updateUsernamePrefix() {
 }
 
 function addMessage(text) {
+    const isAtBottom = checkChatIsAtBottom();
     const linesArray = text.split("\n");
     for (const line of linesArray) {
-        if (line === "> Type your username: " && username) {
-            ws.send(username);
-            loggedIn = true;
-            updateUsernamePrefix();
-            // Fetch recent history to fill potential gaps from disconnection
-            ws.send(`/log ${LOG_HISTORY_SIZE}`);
-            // Restart periodic updates if not already running
-            if (!fetchUsersInterval) {
-                keepAliveWorker.postMessage('start');
-                fetchUsersInterval = true;
-                setTimeout(requestUserList, 500);
-            }
-            continue;
-        }
-
-        // Check if it's a response from @server
-
-        // Format: |HH:MM:SS| [from]: content
+        if (handleAuthHandshake(line)) continue;
 
         const match = line.match(/^\|(\d{2}:\d{2}):(\d{2})\| \[(.*?)\]: (.*)$/);
-
         if (match) {
-            // De-duplication: skip if we've already seen this exact message line
-            const [_, timeHM, timeS, from, content] = match;
-            if (messageCache.has(line)) continue;
-            if (from != "@server") {
-                messageCache.add(line);
-                messageHistory.push(line);
-            }
-            if (messageHistory.length > MAX_CACHE_SIZE) {
-                const old = messageHistory.shift();
-                messageCache.delete(old);
-            }
-
-            if (from === "@server") {
-                const isSystemMessage = content.includes("joined to the party") ||
-                    content.includes("exited from the party") ||
-                    content.includes("Your new nick is");
-                const isUsersListResponse = content.startsWith("users: ")
-
-                if (content.includes("Your new nick is")) {
-                    const nickMatch = content.match(/Your new nick is: (.*)/);
-                    if (nickMatch) {
-                        username = nickMatch[1].trim();
-                        setCookie("username", username, 30);
-                        updateUsernamePrefix();
-                    }
-                }
-
-                if (isSystemMessage) {
-                    requestUserList(); // Refresh sidebar on join/part/nick
-                } else if (isUsersListResponse) {
-                    // This is likely the response to /users
-                    updateUserList(content);
-                    if (backgroundRequestsPending > 0) {
-                        backgroundRequestsPending--;
-                        continue; // Swallow background updates
-
-                    }
-
-                }
-
-            }
-
-            const div = document.createElement("div");
-
-
-            div.className = "message";
-
-            const timeSpan = document.createElement("span");
-            timeSpan.className = "timestamp";
-            timeSpan.innerHTML = `${timeHM}<span class="timestamp-seconds">:${timeS}</span>`;
-
-            const fromSpan = document.createElement("span");
-            fromSpan.textContent = `[${from}]: `;
-            fromSpan.style.color = getUserColor(from);
-
-            const contentSpan = document.createElement("span");
-            contentSpan.className = "msg-content";
-            contentSpan.innerHTML = linkify(content);
-
-            div.appendChild(timeSpan);
-            div.appendChild(fromSpan);
-            div.appendChild(contentSpan);
-            chat.appendChild(div);
-            continue;
+            processStructuredMessage(line, match);
+        } else {
+            addRawMessage(line);
         }
-
-        const div = document.createElement("div");
-        div.className = "message";
-        div.innerHTML = linkify(line);
-        chat.appendChild(div);
     }
-    chat.scrollTop = chat.scrollHeight;
+
+    if (isAtBottom) {
+        chat.scrollTop = chat.scrollHeight;
+    }
+}
+
+function checkChatIsAtBottom() {
+    const scrollThreshold = 100;
+    return (chat.scrollHeight - chat.scrollTop - chat.clientHeight) <= scrollThreshold;
+}
+
+function handleAuthHandshake(line) {
+    if (line === "> Type your username: " && username) {
+        ws.send(username);
+        loggedIn = true;
+        updateUsernamePrefix();
+        // Fetch recent history to fill potential gaps from disconnection
+        ws.send(`/log ${LOG_HISTORY_SIZE}`);
+        // Restart periodic updates if not already running
+        if (!fetchUsersInterval) {
+            keepAliveWorker.postMessage('start');
+            fetchUsersInterval = true;
+            setTimeout(requestUserList, 500);
+        }
+        return true;
+    }
+    return false;
+}
+
+function processStructuredMessage(line, match) {
+    const [_, timeHM, timeS, from, content] = match;
+
+    if (isMessageCached(line, from)) return;
+
+    if (from === "@server") {
+        const shouldRender = processServerMessage(content);
+        if (!shouldRender) return;
+    }
+
+    const div = createMessageElement(timeHM, timeS, from, content);
+    const seconds = calculateSeconds(timeHM, timeS);
+
+    insertMessageNode(div, from, content, seconds);
+}
+
+function isMessageCached(line, from) {
+    if (messageCache.has(line)) return true;
+
+    if (from != "@server") {
+        messageCache.add(line);
+        messageHistory.push(line);
+    }
+
+    if (messageHistory.length > MAX_CACHE_SIZE) {
+        const old = messageHistory.shift();
+        messageCache.delete(old);
+    }
+    return false;
+}
+
+function processServerMessage(content) {
+    const isSystemMessage = content.includes("joined to the party") ||
+        content.includes("exited from the party") ||
+        content.includes("Your new nick is");
+    const isUsersListResponse = content.startsWith("users: ");
+
+    if (content.includes("Your new nick is")) {
+        const nickMatch = content.match(/Your new nick is: (.*)/);
+        if (nickMatch) {
+            username = nickMatch[1].trim();
+            setCookie("username", username, 30);
+            updateUsernamePrefix();
+        }
+    }
+
+    if (isSystemMessage) {
+        requestUserList();
+    } else if (isUsersListResponse) {
+        updateUserList(content);
+        if (backgroundRequestsPending > 0) {
+            backgroundRequestsPending--;
+            return false; // Swallow background updates
+        }
+    }
+    return true;
+}
+
+function createMessageElement(timeHM, timeS, from, content) {
+    const div = document.createElement("div");
+    div.className = "message";
+
+    const timeSpan = document.createElement("span");
+    timeSpan.className = "timestamp";
+    timeSpan.innerHTML = `${timeHM}<span class="timestamp-seconds">:${timeS}</span>`;
+
+    const fromSpan = document.createElement("span");
+    fromSpan.textContent = `[${from}]: `;
+    fromSpan.style.color = getUserColor(from);
+
+    const contentSpan = document.createElement("span");
+    contentSpan.className = "msg-content";
+    contentSpan.innerHTML = linkify(content);
+
+    div.appendChild(timeSpan);
+    div.appendChild(fromSpan);
+    div.appendChild(contentSpan);
+
+    return div;
+}
+
+function calculateSeconds(timeHM, timeS) {
+    const [h, m] = timeHM.split(':').map(Number);
+    const s = Number(timeS);
+    return h * 3600 + m * 60 + s;
+}
+
+function insertMessageNode(div, from, content, seconds) {
+    // Anchor logic: "joined" message marks the start of the session.
+    if (from === "@server" && content.includes(`"${username}" joined to the party`)) {
+        anchorElement = div;
+        anchorSeconds = seconds;
+        chat.appendChild(div);
+        return;
+    }
+
+    if (anchorElement && anchorElement.isConnected) {
+        // Check if message is chronologically "before" the anchor.
+        // Handle day wrap: if msg is > 12h ahead of anchor, assume it's from yesterday.
+        const isBefore = (seconds < anchorSeconds) || (seconds > anchorSeconds + 43200);
+
+        if (isBefore) {
+            chat.insertBefore(div, anchorElement);
+            return;
+        }
+    }
+
+    chat.appendChild(div);
+}
+
+function addRawMessage(line) {
+    const div = document.createElement("div");
+    div.className = "message";
+    div.innerHTML = linkify(line);
+    chat.appendChild(div);
 }
 
 function updateUserList(usersString) {
@@ -219,6 +284,7 @@ function connect() {
 
     ws.onopen = () => {
         addMessage("Connected to server.");
+        anchorElement = null;
     };
 
     ws.onmessage = (event) => {
