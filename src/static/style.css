@@ -92,6 +92,31 @@ button:hover {
     margin-right: 4px;
 }
 
+.date-divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    color: #555;
+    margin: 20px 0;
+    font-size: 0.85em;
+    user-select: none;
+}
+
+.date-divider::before,
+.date-divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #333;
+}
+
+.date-divider::before {
+    margin-right: 15px;
+}
+
+.date-divider::after {
+    margin-left: 15px;
+}
+
 .msg-from {
     color: #74b9ff;
     font-weight: bold;
