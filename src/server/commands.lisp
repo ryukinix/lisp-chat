@@ -125,3 +125,9 @@
          (let ((msg (private-message from msg-content)))
            (send-message client msg)
            (send-message user msg)))))))
+
+(defun /version (client &rest args)
+  "/version returns the current version of lisp-chat"
+  (declare (ignorable client args))
+  (command-message (format nil "lisp-chat v~a"
+                           (asdf:component-version (asdf:find-system :lisp-chat)))))

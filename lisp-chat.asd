@@ -7,7 +7,7 @@
 (in-package :lisp-chat/system)
 
 (defvar *lisp-chat-author* "Manoel Vilela")
-(defvar *lisp-chat-version* "0.3.0")
+(defvar *lisp-chat-version* (or (uiop:getenv "APP_VERSION") "0.4.0"))
 (defvar *lisp-chat-license* "MIT")
 
 (defsystem :lisp-chat/server
