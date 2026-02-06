@@ -27,7 +27,7 @@ docker-appimage: docker-build
 		--env APPIMAGE_EXTRACT_AND_RUN=1 \
 		--entrypoint=/bin/bash \
 		$(DOCKER_IMG) \
-		-c "make appimage && chown -R $(shell id -u):$(shell id -g) .appimage *.AppImage"
+		-c "make appimage APP_VERSION=$(APP_VERSION) && chown -R $(shell id -u):$(shell id -g) .appimage *.AppImage"
 
 docker-build:
 	docker build --build-arg APP_VERSION=$(APP_VERSION) -t $(DOCKER_IMG) .

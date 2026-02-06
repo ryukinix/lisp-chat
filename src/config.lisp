@@ -3,10 +3,12 @@
 
 (defpackage :lisp-chat/config
   (:use :cl)
-  (:export :*debug*
+  (:export :get-version
+           :*debug*
            :*host*
            :*port*
-           :*websocket-port*))
+           :*websocket-port*)
+  (:import-from :lisp-chat/system :component-build-metadata))
 
 (in-package :lisp-chat/config)
 
@@ -14,3 +16,10 @@
 (defparameter *host* "0.0.0.0" "Host used in server and client")
 (defparameter *port* 5558 "Default port")
 (defparameter *websocket-port* 5559 "Web/WebSocket port")
+
+(defun get-version ()
+  (let ((system (asdf:find-system :lisp-chat)))
+    (format nil "~a~a"
+            (asdf:component-version system)
+            (or (component-build-metadata system) ""))))
+

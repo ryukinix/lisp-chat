@@ -130,4 +130,4 @@
   "/version returns the current version of lisp-chat"
   (declare (ignorable client args))
   (command-message (format nil "lisp-chat v~a"
-                           (asdf:component-version (asdf:find-system :lisp-chat)))))
+                           (lisp-chat/config:get-version))))
