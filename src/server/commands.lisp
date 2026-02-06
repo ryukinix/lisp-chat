@@ -65,8 +65,13 @@
         ((and (string= command "/log")
               (eq (length args) 1))
          (/log client :depth (car args)))
+        ((string= command "/dm") (/dm client (car args) (args-to-string (cdr args))))
+        ((string= command "/lisp") (/lisp client (args-to-string args)))
         (command-function (apply command-function (cons client args)))
         (t (command-message (format nil "command ~a doesn't exists" message)))))))
+
+(defun args-to-string (args)
+  (format nil "~{~a~^ ~}" args))
 
 ;; user commands prefixed with /
 (defun /users (client &rest args)
@@ -128,10 +133,9 @@
              (command-message (format nil "Your new nick is: ~a" new-nick)))
       (command-message (format nil "/nick <new-nickname>"))))
 
-(defun /dm (client &optional (username nil) &rest args)
+(defun /dm (client &optional (username nil) msg-content)
   "/dm sends a direct message to a USERNAME"
-  (let ((msg-content (format nil "~{~a~^ ~}" args))
-        (user (get-client username))
+  (let ((user (get-client username))
         (from (client-name client)))
     (cond
       ((not username) (command-message "/dm <username> your message"))
@@ -148,3 +152,21 @@
   (declare (ignorable client args))
   (command-message (format nil "lisp-chat v~a"
                            (lisp-chat/config:get-version))))
+
+(defun cleanup-result-program (result)
+  (string-trim '(#\Space #\Newline #\Return #\Tab #\Linefeed) result))
+
+(defun execute-lisp-capture-result (program)
+  (let* ((stream (make-string-output-stream))
+         (*standard-output* stream)
+         (*error-output* stream))
+    (isolated:read-eval-print program stream)
+    (cleanup-result-program (get-output-stream-string stream))))
+
+(defun /lisp (client &optional (program nil))
+  "/lisp evaluates a common lisp program"
+  (let ((result (execute-lisp-capture-result program)))
+    (prog1 'ignore
+      (push-message "@server"
+                    (format nil "user '~a' called lisp code '~a' ~a"
+                            (client-name client) program result)))))

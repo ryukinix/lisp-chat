@@ -26,6 +26,7 @@
            #:message-content
            #:get-client
            #:get-time
+           #:push-message
            #:private-message
            #:command-message
            #:send-message
