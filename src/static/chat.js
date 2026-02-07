@@ -194,7 +194,7 @@ function processServerMessage(content) {
     const isUsersListResponse = content.startsWith("users: ");
 
     if (content.includes("Your new nick is")) {
-        const nickMatch = content.match(/Your new nick is: (.*)/);
+        const nickMatch = content.match(/Your new nick is: @(.*)/);
         if (nickMatch) {
             username = nickMatch[1].trim();
             setCookie("username", username, 30);
