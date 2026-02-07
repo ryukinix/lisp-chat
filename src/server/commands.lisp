@@ -157,11 +157,15 @@
   (string-trim '(#\Space #\Newline #\Return #\Tab #\Linefeed) result))
 
 (defun execute-lisp-capture-result (program)
-  (let* ((stream (make-string-output-stream))
-         (*standard-output* stream)
-         (*error-output* stream))
-    (isolated:read-eval-print program stream)
-    (cleanup-result-program (get-output-stream-string stream))))
+  (handler-case
+      (bt:with-timeout (*lisp-command-timeout*)
+        (let* ((stream (make-string-output-stream))
+               (*standard-output* stream)
+               (*error-output* stream))
+          (isolated:read-eval-print program stream)
+          (cleanup-result-program (get-output-stream-string stream))))
+    (bt:timeout ()
+      (format nil "TIMEOUT: Timeout occurred after ~a seconds" *lisp-command-timeout*))))
 
 (defun /lisp (client &optional (program nil))
   "/lisp evaluates a common lisp program"

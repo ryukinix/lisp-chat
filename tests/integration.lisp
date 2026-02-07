@@ -1,6 +1,6 @@
 (defpackage :lisp-chat/tests
   (:use :cl :parachute)
-  (:import-from :lisp-chat/config :*port* :*websocket-port* :*host* :*debug*)
+  (:import-from :lisp-chat/config :*port* :*websocket-port* :*host* :*debug* :*lisp-command-timeout*)
   (:import-from :usocket :socket-connect :socket-close :socket-stream)
   (:import-from :websocket-driver :start-connection :send :on :close-connection)
   (:import-from :websocket-driver-client :make-client)
@@ -16,6 +16,7 @@
 (defparameter *port* 9998)
 (defparameter *debug* nil)
 (defparameter *websocket-port* 9999)
+(defparameter *lisp-command-timeout* 0.5)
 
 (defun get-current-date ()
     (multiple-value-bind
@@ -113,4 +114,25 @@
     (let ((msg (read-line stream)))
       (when *debug* (format t "Log output: [~a]~%" msg))
       (true (search (get-current-date) msg)))
+    (usocket:socket-close socket)))
+
+(define-test lisp-command-with-timeout
+  :parent lisp-chat-tests
+  (let ((socket (usocket:socket-connect "127.0.0.1" *port*))
+        (stream nil))
+    (setf stream (usocket:socket-stream socket))
+    (true socket)
+    ;; Read prompt
+    (let ((prompt (read-line stream)))
+      (true (search "> Type your username: " prompt)))
+    ;; Send username
+    (write-line "tester-log" stream)
+    (finish-output stream)
+    (read-line stream) ;; ignore welcome message
+    (write-line "/lisp (dotimes (x 1000) (when (eq x 2) (setq x 1)))" stream)
+    (finish-output stream)
+    (sleep 1)
+    (let ((msg (read-line stream)))
+      (when *debug* (format t "Log output: [~a]~%" msg))
+      (true (search "TIMEOUT: Timeout occurred after 0.5 seconds" msg)))
     (usocket:socket-close socket)))
