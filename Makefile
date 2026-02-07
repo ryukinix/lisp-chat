@@ -1,7 +1,10 @@
 DOCKER_IMG = lisp-chat
-APP_VERSION = $(shell git describe --tags --abbrev=0 2> /dev/null || printf 0.0.0)-$(shell date +%Y%m%d)
+APP_VERSION = $(shell git describe --tags 2> /dev/null || printf 0.0.0)+$(shell date +%Y%m%d)
 VERSION := latest
 PUBLIC_IMG = ryukinix/$(DOCKER_IMG):$(VERSION)
+
+version:
+	@echo $(APP_VERSION)
 
 client:
 	./roswell/lisp-chat.ros
