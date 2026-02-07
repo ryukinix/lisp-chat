@@ -281,7 +281,7 @@ function ensureDateDivider(el) {
 
 function insertMessageNode(div, from, content, seconds, hasDate) {
     // Anchor logic: "joined" message marks the start of the session.
-    if (from === "@server" && content.includes(`"${username}" joined to the party`)) {
+    if (from === "@server" && content.includes(`@${username} joined to the party`)) {
         anchorElement = div;
         anchorSeconds = seconds;
         div.dataset.date = getTodayDate(); // Anchor is always today
