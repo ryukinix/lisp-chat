@@ -25,7 +25,7 @@
         (setf *clients* (remove client *clients*))
         (setf removed? t)))
     (when removed?
-      (push-message "@server" (format nil "The user ~s exited from the party :("
+      (push-message "@server" (format nil "The user @~a exited from the party :("
                                       (client-name client)))
       (debug-format t "Deleted user ~a@~a~%"
                     (client-name client)

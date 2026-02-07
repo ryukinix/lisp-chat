@@ -130,7 +130,7 @@
   (declare (ignorable args))
   (if new-nick
       (progn (setf (client-name client) new-nick)
-             (command-message (format nil "Your new nick is: ~a" new-nick)))
+             (command-message (format nil "Your new nick is: @~a" new-nick)))
       (command-message (format nil "/nick <new-nickname>"))))
 
 (defun /dm (client &optional (username nil) msg-content)
@@ -172,5 +172,5 @@
   (let ((result (execute-lisp-capture-result program)))
     (prog1 'ignore
       (push-message "@command"
-                    (format nil "user '~a' called lisp code '~a' ~a"
+                    (format nil "user @~a called lisp code '~a' ~a"
                             (client-name client) program result)))))

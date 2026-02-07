@@ -62,7 +62,7 @@
     (finish-output stream)
     ;; Read welcome
     (let ((welcome (read-line stream)))
-      (true (search "\"tester-tcp\" joined to the party" welcome)))
+      (true (search "The user @tester-tcp joined to the party!" welcome)))
     (usocket:socket-close socket)))
 
 (define-test websocket-client-connection
@@ -87,7 +87,7 @@
     (send client "tester-ws")
     (sleep 0.5)
 
-    (true (some (lambda (m) (search "\"tester-ws\" joined to the party" m)) messages))
+    (true (some (lambda (m) (search "The user @tester-ws joined to the party!" m)) messages))
 
     (close-connection client)))
 

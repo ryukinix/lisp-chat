@@ -75,6 +75,12 @@ function linkify(text) {
     return text.replace(urlPattern, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
 }
 
+function colorizeMentions(text) {
+    return text.replace(/(^|\s)@([a-zA-Z0-9_\-]+)/g, (match, prefix, user) => {
+        return `${prefix}<span style="color: ${getUserColor(user)}">@${user}</span>`;
+    });
+}
+
 function updateUsernamePrefix() {
     let prefix = document.getElementById("username-prefix");
     if (!prefix) {
@@ -223,7 +229,7 @@ function createMessageElement(date, timeHM, timeS, from, content) {
 
     const contentSpan = document.createElement("span");
     contentSpan.className = "msg-content";
-    contentSpan.innerHTML = linkify(content);
+    contentSpan.innerHTML = colorizeMentions(linkify(content));
 
     div.appendChild(timeSpan);
     div.appendChild(fromSpan);
@@ -252,7 +258,7 @@ function ensureDateDivider(el) {
         const divider = document.createElement("div");
         divider.className = "date-divider";
         divider.dataset.date = date;
-        divider.textContent = `-- ${date} --`;
+        divider.textContent = ` ${date} `;
         el.parentElement.insertBefore(divider, el);
     }
 
@@ -266,7 +272,7 @@ function ensureDateDivider(el) {
                 const nextDivider = document.createElement("div");
                 nextDivider.className = "date-divider";
                 nextDivider.dataset.date = nextDate;
-                nextDivider.textContent = `-- ${nextDate} --`;
+                nextDivider.textContent = ` ${nextDate} `;
                 next.parentElement.insertBefore(nextDivider, next);
             }
         }
@@ -306,7 +312,7 @@ function addRawMessage(line) {
     const div = document.createElement("div");
     div.className = "message";
     div.dataset.date = getTodayDate();
-    div.innerHTML = linkify(line);
+    div.innerHTML = colorizeMentions(linkify(line));
     chat.appendChild(div);
     ensureDateDivider(div);
 }
