@@ -135,7 +135,19 @@ function handleAuthHandshake(line) {
 }
 
 function getTodayDate() {
-    return new Date().toISOString().split('T')[0];
+    // Options for formatting the date to get YYYY-MM-DD
+    const options = {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        timeZone: 'America/Sao_Paulo' // A common city in GMT-3
+    };
+
+    const today = new Date();
+    // Format the date parts and rearrange them to YYYY-MM-DD
+    const parts = today.toLocaleDateString('en-CA', options).split('/');
+    // Note: 'en-CA' locale conveniently provides YYYY-MM-DD format
+    return parts.join('-');
 }
 
 function processStructuredMessage(line, match) {
@@ -328,7 +340,8 @@ function connect() {
     }
 
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+    //ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+    ws = new WebSocket(`ws://chat.manoel.dev/ws`);
 
     ws.onopen = () => {
         addMessage("Connected to server.");
