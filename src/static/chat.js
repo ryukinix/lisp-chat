@@ -340,8 +340,7 @@ function connect() {
     }
 
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    //ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
-    ws = new WebSocket(`ws://chat.manoel.dev/ws`);
+    ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
 
     ws.onopen = () => {
         addMessage("Connected to server.");
