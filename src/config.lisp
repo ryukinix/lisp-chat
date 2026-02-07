@@ -5,6 +5,7 @@
   (:use :cl)
   (:export :get-version
            :has-any-flags
+           :*lisp-command-timeout*
            :*debug*
            :*host*
            :*port*
@@ -17,6 +18,7 @@
 (defparameter *host* "0.0.0.0" "Host used in server and client")
 (defparameter *port* 5558 "Default port")
 (defparameter *websocket-port* 5559 "Web/WebSocket port")
+(defparameter *lisp-command-timeout* 2 "Max seconds to timeout command")
 
 (defun get-version ()
   (let ((system (asdf:find-system :lisp-chat)))

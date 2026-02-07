@@ -16,7 +16,7 @@
                                                 :address (getf env :remote-addr)))
                       (with-lock-held (*client-lock*)
                         (push client *clients*))
-                      (push-message "@server" (format nil "The user ~s joined to the party!" name))
+                      (push-message "@server" (format nil "The user @~a joined to the party!" name))
                       (debug-format t "New web-socket user ~a@~a~%" name (client-address client)))))
               (let ((response (lisp-chat/commands:call-command client message)))
                 (if response

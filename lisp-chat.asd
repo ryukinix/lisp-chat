@@ -46,6 +46,7 @@
   :license #.lisp-chat/system:*license*
   :depends-on ("usocket"
                "bordeaux-threads"
+               "isolated"
                "clack"
                "clack-handler-hunchentoot"
                "websocket-driver")
