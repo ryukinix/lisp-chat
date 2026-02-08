@@ -1,11 +1,6 @@
 (in-package :lisp-chat/commands)
 
-;; global vars
-(defvar *day-names* '("Monday" "Tuesday" "Wednesday"
-                      "Thursday" "Friday" "Saturday" "Sunday")
-  "Day names")
-(defvar *uptime* (multiple-value-list (get-decoded-time))
-  "Uptime of server variable")
+(defvar *uptime* (get-time) "Uptime of server variable")
 
 (defun split (string delimiterp)
   "Split a string by a delimiterp function character checking"
@@ -64,7 +59,7 @@
         ;; HACK(@lerax): sex 06 fev 2026 17:34:43 backward compatible with /log <n>
         ((and (string= command "/log")
               (eq (length args) 1))
-         (/log client :depth (car args)))
+         (/log client :depth (car args) :date-format "date"))
         ((string= command "/dm") (/dm client (car args) (args-to-string (cdr args))))
         ((string= command "/lisp") (/lisp client (args-to-string args)))
         (command-function (apply command-function (cons client args)))
@@ -113,17 +108,8 @@
 (defun /uptime (client &rest args)
   "/uptime returns a human-readable string to preset the uptime since the server started."
   (declare (ignorable client args))
-  (multiple-value-bind
-        (second minute hour date month year day-of-week dst-p tz)
-      (values-list *uptime*)
-    (declare (ignore dst-p))
-    (command-message
-     (format nil
-             "Server online since ~2,'0d:~2,'0d:~2,'0d of ~a, ~4,'0d-~2,'0d-~2,'0d (GMT~@d)"
-             hour minute second
-             (nth day-of-week *day-names*)
-             year month date
-             (- tz)))))
+  (command-message
+   (format nil "Server online since ~a" (format-time *uptime*))))
 
 (defun /nick (client &optional (new-nick nil) &rest args)
   "/nick changes the client-name given a NEW-NICK which should be a string"
@@ -139,13 +125,28 @@
         (from (client-name client)))
     (cond
       ((not username) (command-message "/dm <username> your message"))
-      ((not user) (command-message (format nil "'~a' user not found" username)))
+      ((not user) (command-message (format nil "~s user not found" username)))
       ((equal from username) (command-message "you can't dm to yourself"))
       (t
        (prog1 'ignore
          (let ((msg (private-message from msg-content)))
            (send-message client msg)
            (send-message user msg)))))))
+
+(defun /whois (client &optional (username nil) msg-content)
+  "/whois get basic information of a online USERNAME"
+  (let ((user (get-client username))
+        (from (client-name client)))
+    (cond
+      ((not username) (command-message "/whois <username>"))
+      ((not user) (command-message (format nil "~s user not found" username)))
+      (t
+       (let ((formatted-time (format-time (client-time user))))
+         (command-message
+          (format nil "User @~a (~a) online since ~a"
+                  (client-name user)
+                  (client-address user)
+                  formatted-time)))))))
 
 (defun /version (client &rest args)
   "/version returns the current version of lisp-chat"

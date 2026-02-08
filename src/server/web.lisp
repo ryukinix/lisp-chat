@@ -18,7 +18,8 @@
                     (progn
                       (setf client (make-client :name name
                                                 :socket ws
-                                                :address (get-remote-address env)))
+                                                :address (get-remote-address env)
+                                                :time (get-time)))
                       (with-lock-held (*client-lock*)
                         (push client *clients*))
                       (user-joined-message client)

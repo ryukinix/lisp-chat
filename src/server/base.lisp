@@ -11,12 +11,14 @@
                                             :count 0))
 (defvar *client-lock* (make-lock "client list lock"))
 (defvar *messages-lock* (make-lock "messages stack lock"))
-
+(defvar *day-names* '("Monday" "Tuesday" "Wednesday"
+                      "Thursday" "Friday" "Saturday" "Sunday")
+  "Day names")
 
 (defstruct message
   "This structure abstract the type message with is saved
    into *messages-log* and until consumed, temporally pushed
-   to *messages-stack*. FROM, CONTENT and TIME has type string"
+   to *messages-stack*. FROM and CONTENT has type string, TIME is a list of decoded time parts."
   from
   content
   time)
@@ -24,10 +26,13 @@
 (defstruct client
   "This structure handle the creation/control of the clients of the server.
    NAME is a string. Socket is a USOCKET:SOCKET and address is a ipv4 encoded
-   string. "
+   string. TIME is a list of decoded time parts since the users is online."
   name
   socket
-  address)
+  address
+  time)
+
+
 
 (defun get-client (client-name)
   (find client-name
@@ -53,6 +58,18 @@
 (defun get-time ()
   "Return a encoded string as HH:MM:SS based on the current timestamp."
   (multiple-value-list (get-decoded-time)))
+
+(defun format-time (time)
+  (multiple-value-bind
+        (second minute hour date month year day-of-week dst-p tz)
+      (values-list time)
+    (declare (ignore dst-p))
+    (format nil
+            "~2,'0d:~2,'0d:~2,'0d of ~a, ~4,'0d-~2,'0d-~2,'0d (GMT~@d)"
+            hour minute second
+            (nth day-of-week *day-names*)
+            year month date
+            (- tz))))
 
 (defun message-time-hour-format (message)
   (destructuring-bind (second minute hour &rest rest-of-list) (message-time message)
