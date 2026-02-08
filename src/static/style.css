@@ -127,8 +127,40 @@ button:hover {
 }
 
 @media (max-width: 600px) {
+    body {
+        flex-direction: column;
+    }
+
     #sidebar {
+        order: -1;
+        width: 100%;
+        padding: 0;
+        background: #1a1a1a;
+        border-bottom: 1px solid #444;
+        flex-shrink: 0;
+        overflow-y: hidden;
+    }
+
+    #sidebar h3 {
         display: none;
+    }
+
+    #user-list {
+        display: flex;
+        flex-direction: row;
+        overflow-x: auto;
+        padding: 8px;
+        gap: 8px;
+    }
+
+    .user-item {
+        border-bottom: none;
+        padding: 4px 8px;
+        background: #2a2a2a;
+        border-radius: 4px;
+        font-size: 11px;
+        flex-shrink: 0;
+        white-space: nowrap;
     }
 
     #main {
