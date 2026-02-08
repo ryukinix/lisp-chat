@@ -51,7 +51,7 @@
                       (client-name client)
                       (client-address client))
         (push client *clients*))
-      (push-message "@server" (format nil "The user @~a joined to the party!" (client-name client)))
+      (user-joined-message client)
       (make-thread (lambda () (client-reader client))
                    :name (format nil "~a reader thread" (client-name client))))))
 
