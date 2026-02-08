@@ -248,12 +248,33 @@ function ensureDateDivider(el) {
     const date = el.dataset.date;
     if (!date) return;
 
-    const prev = el.previousElementSibling;
-    let prevDate = null;
-    if (prev) {
-        prevDate = prev.dataset.date;
+    const getAdjacentMessage = (node, direction) => {
+        let adj = direction === "prev" ? node.previousElementSibling : node.nextElementSibling;
+        while (adj && !adj.classList.contains("message")) {
+            adj = direction === "prev" ? adj.previousElementSibling : adj.nextElementSibling;
+        }
+        return adj;
+    };
+
+    const prevMsg = getAdjacentMessage(el, "prev");
+    const nextMsg = getAdjacentMessage(el, "next");
+
+    // Clean up all existing dividers between el and its neighboring messages
+    let node = el.previousElementSibling;
+    while (node && node !== prevMsg && node.classList.contains("date-divider")) {
+        let toRemove = node;
+        node = node.previousElementSibling;
+        toRemove.remove();
+    }
+    node = el.nextElementSibling;
+    while (node && node !== nextMsg && node.classList.contains("date-divider")) {
+        let toRemove = node;
+        node = node.nextElementSibling;
+        toRemove.remove();
     }
 
+    // Ensure divider before el if it's the first message of the day
+    const prevDate = prevMsg ? prevMsg.dataset.date : null;
     if (date !== prevDate) {
         const divider = document.createElement("div");
         divider.className = "date-divider";
@@ -262,19 +283,15 @@ function ensureDateDivider(el) {
         el.parentElement.insertBefore(divider, el);
     }
 
-    // Also check if the *next* element needs a divider now that this one is inserted
-    const next = el.nextElementSibling;
-    if (next && next.classList.contains('message')) {
-        const nextDate = next.dataset.date;
+    // Ensure divider before next message if it starts a new day relative to el
+    if (nextMsg) {
+        const nextDate = nextMsg.dataset.date;
         if (nextDate !== date) {
-            // Check if there is already a divider
-            if (!next.previousElementSibling.classList.contains('date-divider')) {
-                const nextDivider = document.createElement("div");
-                nextDivider.className = "date-divider";
-                nextDivider.dataset.date = nextDate;
-                nextDivider.textContent = ` ${nextDate} `;
-                next.parentElement.insertBefore(nextDivider, next);
-            }
+            const nextDivider = document.createElement("div");
+            nextDivider.className = "date-divider";
+            nextDivider.dataset.date = nextDate;
+            nextDivider.textContent = ` ${nextDate} `;
+            nextMsg.parentElement.insertBefore(nextDivider, nextMsg);
         }
     }
 }

@@ -9,6 +9,12 @@
           *messages-stack*))
   (signal-semaphore *message-semaphore*))
 
+(defun user-joined-message (client)
+  (push-message "@server" (format nil "The user @~a joined to the party!" (client-name client))))
+
+(defun user-exited-message (client)
+  (push-message "@server" (format nil "The user @~a exited from the party :(" (client-name client))))
+
 (defun client-close (client)
   (let ((socket (client-socket client)))
     (typecase socket
@@ -25,8 +31,7 @@
         (setf *clients* (remove client *clients*))
         (setf removed? t)))
     (when removed?
-      (push-message "@server" (format nil "The user @~a exited from the party :("
-                                      (client-name client)))
+      (user-exited-message client)
       (debug-format t "Deleted user ~a@~a~%"
                     (client-name client)
                     (client-address client))
