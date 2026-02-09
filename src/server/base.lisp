@@ -33,6 +33,10 @@
   time)
 
 
+(defun client-socket-type (client)
+  (typecase (client-socket client)
+    (usocket:stream-usocket "TCP")
+    (t "WebSocket")))
 
 (defun get-client (client-name)
   (find client-name

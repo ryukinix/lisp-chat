@@ -143,7 +143,7 @@
       (t
        (let ((formatted-time (format-time (client-time user))))
          (command-message
-          (format nil "User @~a (~a) online since ~a"
+          (format nil "User @~a at ~a online since ~a"
                   (client-name user)
                   (client-address user)
                   formatted-time)))))))
@@ -153,6 +153,15 @@
   (declare (ignorable client args))
   (command-message (format nil "lisp-chat v~a"
                            (lisp-chat/config:get-version))))
+
+(defun /whoami (client &rest args)
+  "/whoami returns information about the current client session"
+  (declare (ignorable args))
+  (let ((name (client-name client))
+        (address (client-address client))
+        (connection-type (client-socket-type client)))
+    (command-message (format nil "You are @~a at ~a (~a connection)"
+                             name address connection-type))))
 
 (defun cleanup-result-program (result)
   (string-trim '(#\Space #\Newline #\Return #\Tab #\Linefeed) result))
