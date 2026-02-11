@@ -1,22 +1,7 @@
-(defpackage :lisp-chat/tests
-  (:use :cl :parachute)
-  (:import-from :lisp-chat/config :*port* :*websocket-port* :*host* :*debug* :*lisp-command-timeout*)
-  (:import-from :usocket :socket-connect :socket-close :socket-stream)
-  (:import-from :websocket-driver :start-connection :send :on :close-connection)
-  (:import-from :websocket-driver-client :make-client)
-  (:export :run-tests))
-
 (in-package :lisp-chat/tests)
 
-(define-test lisp-chat-tests
-  :description "Integration tests for lisp-chat")
-
-(defvar *server-thread* nil)
-(defparameter *print-names* t)
-(defparameter *port* 9998)
-(defparameter *debug* nil)
-(defparameter *websocket-port* 9999)
-(defparameter *lisp-command-timeout* 0.5)
+(define-test integration-tests
+  :parent lisp-chat-tests)
 
 (defun get-current-date ()
     (multiple-value-bind
@@ -25,28 +10,6 @@
       (declare (ignore second minute hour))
       (format nil "~4d-~2,'0d-~2,'0d"
               year month date)))
-
-(defun start-test-server ()
-  (setf *server-thread*
-        (bt:make-thread (lambda ()
-                          (let ((*standard-output* (make-broadcast-stream))
-                                (*error-output* (make-broadcast-stream)))
-                            (lisp-chat/server:main :should-quit nil)))
-                        :name "Test Server"))
-  (sleep 2))
-
-(defun stop-test-server ()
-  (when (and *server-thread* (bt:thread-alive-p *server-thread*))
-    #-sbcl (bt:destroy-thread *server-thread*)
-    #+sbcl (bt:interrupt-thread *server-thread* (lambda () (error 'sb-sys:interactive-interrupt))))
-  (setf *server-thread* nil)
-  (sleep 1))
-
-(defun run-tests ()
-  (start-test-server)
-  (unwind-protect
-       (parachute:test 'lisp-chat-tests)
-    (stop-test-server)))
 
 ;;; Declarative Testing Helpers
 
@@ -99,7 +62,7 @@
 ;;; Tests
 
 (define-test tcp-client-connection
-  :parent lisp-chat-tests
+  :parent integration-tests
   (with-tcp-client (stream)
     (tcp-interaction stream
       '(:expect "> Type your username: ")
@@ -107,7 +70,7 @@
       '(:expect "The user @tester-tcp joined to the party!"))))
 
 (define-test websocket-client-connection
-  :parent lisp-chat-tests
+  :parent integration-tests
   (let* ((url (format nil "ws://127.0.0.1:~a/ws" *websocket-port*))
          (client (make-client url))
          (connected nil)
@@ -125,7 +88,7 @@
     (close-connection client)))
 
 (define-test log-commands-with-date-format
-  :parent lisp-chat-tests
+  :parent integration-tests
   (with-tcp-client (stream)
     (tcp-interaction stream
       '(:expect "> Type your username: ")
@@ -138,7 +101,7 @@
       `(:expect ,(get-current-date)))))
 
 (define-test lisp-command-with-timeout
-  :parent lisp-chat-tests
+  :parent integration-tests
   (with-tcp-client (stream)
     (tcp-interaction stream
       '(:expect "> Type your username: ")
