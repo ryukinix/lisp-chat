@@ -8,6 +8,7 @@
            :*lisp-command-timeout*
            :*debug*
            :*host*
+           :*source-code*
            :*port*
            :*websocket-port*)
   (:import-from :lisp-chat/system :component-build-metadata))
@@ -19,6 +20,7 @@
 (defparameter *port* 5558 "Default port")
 (defparameter *websocket-port* 5559 "Web/WebSocket port")
 (defparameter *lisp-command-timeout* 2 "Max seconds to timeout command")
+(defparameter *source-code* "https://github.com/ryukinix/lisp-chat")
 
 (defun get-version ()
   (let ((system (asdf:find-system :lisp-chat)))
