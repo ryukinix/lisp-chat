@@ -48,22 +48,63 @@
        (parachute:test 'lisp-chat-tests)
     (stop-test-server)))
 
+;;; Declarative Testing Helpers
+
+(defmacro with-tcp-client ((stream) &body body)
+  (let ((socket (gensym)))
+    `(let* ((,socket (usocket:socket-connect "127.0.0.1" *port*))
+            (,stream (usocket:socket-stream ,socket)))
+       (unwind-protect
+            (progn ,@body)
+         (usocket:socket-close ,socket)))))
+
+(defun tcp-interaction (stream &rest steps)
+  "Execute a sequence of steps:
+   - string: send line to server
+   - (:expect pattern): wait and check if line contains pattern
+   - (:ignore [n]): read and discard n lines (default 1)
+   - (:sleep n): sleep for n seconds"
+  (dolist (step steps)
+    (cond
+      ((stringp step)
+       (write-line step stream)
+       (finish-output stream))
+      ((and (listp step) (eq (car step) :expect))
+       (let ((line (read-line stream)))
+         (when *debug* (format t "RECV: ~A~%" line))
+         (true (search (second step) line))))
+      ((and (listp step) (eq (car step) :ignore))
+       (loop repeat (or (second step) 1) do (read-line stream)))
+      ((and (listp step) (eq (car step) :sleep))
+       (sleep (second step))))))
+
+(defun ws-interaction (client messages-fn &rest steps)
+  (dolist (step steps)
+    (cond
+      ((stringp step)
+       (send client step))
+      ((and (listp step) (eq (car step) :expect))
+       (let ((pattern (second step))
+             (found nil))
+         ;; Poll for message
+         (loop repeat 30 do
+           (when (some (lambda (m) (search pattern m)) (funcall messages-fn))
+             (setf found t)
+             (return))
+           (sleep 0.1))
+         (true found "Pattern '~A' not found. Messages received: ~S" pattern (funcall messages-fn))))
+      ((and (listp step) (eq (car step) :sleep))
+       (sleep (second step))))))
+
+;;; Tests
+
 (define-test tcp-client-connection
   :parent lisp-chat-tests
-  (let ((socket (usocket:socket-connect "127.0.0.1" *port*))
-        (stream nil))
-    (setf stream (usocket:socket-stream socket))
-    (true socket)
-    ;; Read prompt
-    (let ((prompt (read-line stream)))
-      (true (search "> Type your username: " prompt)))
-    ;; Send username
-    (write-line "tester-tcp" stream)
-    (finish-output stream)
-    ;; Read welcome
-    (let ((welcome (read-line stream)))
-      (true (search "The user @tester-tcp joined to the party!" welcome)))
-    (usocket:socket-close socket)))
+  (with-tcp-client (stream)
+    (tcp-interaction stream
+      '(:expect "> Type your username: ")
+      "tester-tcp"
+      '(:expect "The user @tester-tcp joined to the party!"))))
 
 (define-test websocket-client-connection
   :parent lisp-chat-tests
@@ -71,68 +112,38 @@
          (client (make-client url))
          (connected nil)
          (messages '()))
-
     (on :open client (lambda () (setf connected t)))
     (on :message client (lambda (msg) (push msg messages)))
-
     (start-connection client)
-    (sleep 1)
+    ;; Wait for connection
+    (loop repeat 20 until connected do (sleep 0.1))
     (true connected)
-
-    ;; Send username (server asks for it first? server sends "> Type your username: ")
-    ;; Wait a bit for prompt
-    (sleep 0.5)
-    (true (some (lambda (m) (search "Type your username" m)) messages))
-
-    (send client "tester-ws")
-    (sleep 0.5)
-
-    (true (some (lambda (m) (search "The user @tester-ws joined to the party!" m)) messages))
-
+    (ws-interaction client (lambda () messages)
+      '(:expect "Type your username")
+      "tester-ws"
+      '(:expect "The user @tester-ws joined to the party!"))
     (close-connection client)))
 
 (define-test log-commands-with-date-format
   :parent lisp-chat-tests
-  (let ((socket (usocket:socket-connect "127.0.0.1" *port*))
-        (stream nil))
-    (setf stream (usocket:socket-stream socket))
-    (true socket)
-    ;; Read prompt
-    (let ((prompt (read-line stream)))
-      (true (search "> Type your username: " prompt)))
-    ;; Send username
-    (write-line "tester-log" stream)
-    (finish-output stream)
-    (read-line stream) ;; ignore welcome message
-    ;; Send a message to ensure something is in the log
-    (write-line "hello log" stream)
-    (finish-output stream)
-    (sleep 0.5) ;; wait for broadcast to log
-    (read-line stream) ;; consume the broadcast of "hello log"
-    (write-line "/log :date-format date" stream)
-    (finish-output stream)
-    (let ((msg (read-line stream)))
-      (when *debug* (format t "Log output: [~a]~%" msg))
-      (true (search (get-current-date) msg)))
-    (usocket:socket-close socket)))
+  (with-tcp-client (stream)
+    (tcp-interaction stream
+      '(:expect "> Type your username: ")
+      "tester-log"
+      '(:ignore 1) ;; welcome message
+      "hello log"
+      '(:sleep 0.5)
+      '(:ignore 1) ;; broadcast of "hello log"
+      "/log :date-format date"
+      `(:expect ,(get-current-date)))))
 
 (define-test lisp-command-with-timeout
   :parent lisp-chat-tests
-  (let ((socket (usocket:socket-connect "127.0.0.1" *port*))
-        (stream nil))
-    (setf stream (usocket:socket-stream socket))
-    (true socket)
-    ;; Read prompt
-    (let ((prompt (read-line stream)))
-      (true (search "> Type your username: " prompt)))
-    ;; Send username
-    (write-line "tester-log" stream)
-    (finish-output stream)
-    (read-line stream) ;; ignore welcome message
-    (write-line "/lisp (dotimes (x 1000) (when (eq x 2) (setq x 1)))" stream)
-    (finish-output stream)
-    (sleep 1)
-    (let ((msg (read-line stream)))
-      (when *debug* (format t "Log output: [~a]~%" msg))
-      (true (search "TIMEOUT: Timeout occurred after 0.5 seconds" msg)))
-    (usocket:socket-close socket)))
+  (with-tcp-client (stream)
+    (tcp-interaction stream
+      '(:expect "> Type your username: ")
+      "tester-lisp"
+      '(:ignore 1) ;; welcome message
+      "/lisp (dotimes (x 1000) (when (eq x 2) (setq x 1)))"
+      '(:sleep 1)
+      '(:expect "TIMEOUT: Timeout occurred after 0.5 seconds"))))
