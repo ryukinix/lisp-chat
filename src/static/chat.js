@@ -219,7 +219,7 @@ function processServerMessage(content) {
 function createMessageElement(date, timeHM, timeS, from, content) {
     const div = document.createElement("div");
     div.className = "message";
-    div.dataset.date = date || getTodayDate();
+    div.dataset.date = date;
 
     const timeSpan = document.createElement("span");
     timeSpan.className = "timestamp";
