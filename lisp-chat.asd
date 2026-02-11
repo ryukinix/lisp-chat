@@ -13,7 +13,8 @@
 
 (defun lisp-chat-parse-version ()
   (let* ((version (uiop:getenv "APP_VERSION"))
-         (index (search "-" version)))
+         (index (or (search "-" version)
+                    (search "+" version))))
     (if version
         (subseq version 0 index)
         "0.4.0")))
