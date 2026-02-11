@@ -45,7 +45,8 @@
     (finish-output client-stream)
     (let ((client (make-client :name (read-line client-stream)
                                :socket connection
-                               :address (socket-peer-address connection))))
+                               :address (socket-peer-address connection)
+                               :time (get-time))))
       (with-lock-held (*client-lock*)
         (debug-format t "Added new user ~a@~a ~%"
                       (client-name client)

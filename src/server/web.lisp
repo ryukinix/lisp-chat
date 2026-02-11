@@ -1,5 +1,10 @@
 (in-package :lisp-chat/server)
 
+(defun get-remote-address (env)
+  (let ((headers (getf env :headers)))
+    (or (and headers (gethash "cf-connecting-ip" headers))
+        (getf env :remote-addr))))
+
 (defun ws-app (env)
   (let ((ws (make-server env))
         (client nil))
@@ -13,7 +18,8 @@
                     (progn
                       (setf client (make-client :name name
                                                 :socket ws
-                                                :address (getf env :remote-addr)))
+                                                :address (get-remote-address env)
+                                                :time (get-time)))
                       (with-lock-held (*client-lock*)
                         (push client *clients*))
                       (user-joined-message client)

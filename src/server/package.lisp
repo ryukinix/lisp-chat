@@ -21,11 +21,15 @@
            #:*messages-log*
            #:*server-nickname*
            #:client-name
+           #:client-address
+           #:client-time
+           #:client-socket-type
            #:message-from
            #:message-time
            #:message-content
            #:get-client
            #:get-time
+           #:format-time
            #:push-message
            #:private-message
            #:command-message
