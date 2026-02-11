@@ -158,15 +158,17 @@ function getTodayDate() {
 
 function processStructuredMessage(line, match) {
     const [_, date, timeHM, timeS, from, content] = match;
+    const effectiveDate = date || getTodayDate();
+    const normalizedLine = `|${effectiveDate} ${timeHM}:${timeS}| [${from}]: ${content}`;
 
-    if (isMessageCached(line, from)) return;
+    if (isMessageCached(normalizedLine, from)) return;
 
     if (from === "@server") {
         const shouldRender = processServerMessage(content);
         if (!shouldRender) return;
     }
 
-    const div = createMessageElement(date, timeHM, timeS, from, content);
+    const div = createMessageElement(effectiveDate, timeHM, timeS, from, content);
     const seconds = calculateSeconds(timeHM, timeS);
 
     insertMessageNode(div, from, content, seconds, !!date);
