@@ -151,8 +151,9 @@
 (defun /version (client &rest args)
   "/version returns the current version of lisp-chat"
   (declare (ignorable client args))
-  (command-message (format nil "lisp-chat v~a"
-                           (lisp-chat/config:get-version))))
+  (command-message (format nil "lisp-chat v~a | src: ~a"
+                           (lisp-chat/config:get-version)
+                           lisp-chat/config:*source-code*)))
 
 (defun /whoami (client &rest args)
   "/whoami returns information about the current client session"
