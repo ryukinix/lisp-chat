@@ -27,6 +27,9 @@
            #:message-from
            #:message-time
            #:message-content
+           #:make-message
+           #:message-time-hour-format
+           #:message-time-date-format
            #:get-client
            #:get-time
            #:format-time

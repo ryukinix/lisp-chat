@@ -105,5 +105,8 @@
                "lisp-chat/client"
                "parachute")
   :pathname "tests"
-  :components ((:file "integration"))
+  :components ((:file "package")
+               (:file "main" :depends-on ("package"))
+               (:file "unit" :depends-on ("main"))
+               (:file "integration" :depends-on ("main")))
   :perform (test-op (o c) (symbol-call :lisp-chat/tests :run-tests)))
