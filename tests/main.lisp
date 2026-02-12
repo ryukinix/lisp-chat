@@ -10,6 +10,9 @@
 (defparameter *websocket-port* 9999)
 (defparameter *lisp-command-timeout* 0.5)
 
+;; ensure tests called with asdf:test-system exit with zero
+(setq cl-user::*exit-on-test-failures* t)
+
 (defun start-test-server ()
   (setf *server-thread*
         (bt:make-thread (lambda ()
