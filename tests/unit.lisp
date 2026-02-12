@@ -20,3 +20,9 @@
     (is string= "0.1.0" (lisp-chat/system::lisp-chat-parse-version version-simple))
     (is string= "-rc1" (lisp-chat/system::lisp-chat-parse-build-metadata version-rc))
     (is string= "+20260101" (lisp-chat/system::lisp-chat-parse-build-metadata version-simple-with-build))))
+
+
+(define-test commands-string-utils
+  :parent unit-tests
+  (is equal '("x" "y" "z") (lisp-chat/commands::split "x.y.z" (lambda (c) (eql c #\.))))
+  (true (lisp-chat/commands::startswith "/command" "/")))
