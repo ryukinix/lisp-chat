@@ -47,7 +47,7 @@ const keepAliveWorker = new Worker(URL.createObjectURL(new Blob([`
     let interval;
     self.onmessage = e => {
         if (e.data === 'start') {
-            if (!interval) interval = setInterval(() => self.postMessage('tick'), 5000);
+            if (!interval) interval = setInterval(() => self.postMessage('tick'), 30000);
         } else if (e.data === 'stop') {
             clearInterval(interval);
             interval = null;
