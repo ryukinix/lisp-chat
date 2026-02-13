@@ -10,8 +10,6 @@
 (defparameter *websocket-port* 9999)
 (defparameter *lisp-command-timeout* 0.5)
 
-;; ensure tests called with asdf:test-system exit with zero
-(setq cl-user::*exit-on-test-failures* t)
 
 (defun start-test-server ()
   (setf *server-thread*
@@ -32,5 +30,8 @@
 (defun run-tests ()
   (start-test-server)
   (unwind-protect
-       (parachute:test 'lisp-chat-tests)
+       (let ((report (parachute:test 'lisp-chat-tests)))
+         (when (eq (parachute:status report) :failed)
+           (uiop:quit 1))
+         report)
     (stop-test-server)))

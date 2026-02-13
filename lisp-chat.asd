@@ -7,7 +7,8 @@
            :*version*
            :*build-metadata*
            :*license*
-           :custom-system-class))
+           :custom-system-class
+           :component-build-metadata))
 
 (in-package :lisp-chat/system)
 

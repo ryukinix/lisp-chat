@@ -3,6 +3,9 @@
 (define-test integration-tests
   :parent lisp-chat-tests)
 
+(define-test (integration-tests :before)
+  (lisp-chat/server:reset-server))
+
 (defun get-current-date ()
     (multiple-value-bind
           (second minute hour date month year)
@@ -38,6 +41,15 @@
          (true (search (second step) line))))
       ((and (listp step) (eq (car step) :ignore))
        (loop repeat (or (second step) 1) do (read-line stream)))
+      ((and (listp step) (eq (car step) :wait-for))
+       (let ((pattern (second step))
+             (found nil))
+         (loop repeat 10 do
+           (let ((line (read-line stream)))
+             (when (search pattern line)
+               (setf found t)
+               (return))))
+         (true found "Pattern '~A' not found within limit." pattern)))
       ((and (listp step) (eq (car step) :sleep))
        (sleep (second step))))))
 
@@ -93,10 +105,9 @@
     (tcp-interaction stream
       '(:expect "> Type your username: ")
       "tester-log"
-      '(:ignore 1) ;; welcome message
+      '(:wait-for "tester-log joined") ;; wait for join message
       "hello log"
-      '(:sleep 0.8)
-      '(:ignore 1) ;; broadcast of "hello log"
+      '(:wait-for "hello log") ;; wait for broadcast of our message
       "/log :date-format date"
       `(:expect ,(get-current-date)))))
 

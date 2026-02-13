@@ -115,3 +115,10 @@
                                 :content content
                                 :time time)))
     (formatted-message message)))
+
+(defun reset-server ()
+  (with-lock-held (*client-lock*)
+    (setf *clients* nil))
+  (with-lock-held (*messages-lock*)
+    (setf *messages-stack* nil))
+  (setf *messages-log* nil))

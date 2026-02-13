@@ -37,7 +37,8 @@
            #:private-message
            #:command-message
            #:send-message
-           #:user-messages))
+           #:user-messages
+           #:reset-server))
 
 (defpackage #:lisp-chat/commands
   (:use #:cl #:lisp-chat/server #:lisp-chat/config)
