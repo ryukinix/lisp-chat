@@ -55,7 +55,7 @@ const keepAliveWorker = new Worker(URL.createObjectURL(new Blob([`
     };
 `], {type: 'application/javascript'})));
 
-keepAliveWorker.onmessage = () => requestUserList();
+keepAliveWorker.onmessage = () => requestUserList(true);
 
 
 
@@ -151,7 +151,7 @@ function handleAuthHandshake(line) {
             if (!fetchUsersInterval) {
                 keepAliveWorker.postMessage('start');
                 fetchUsersInterval = true;
-                setTimeout(requestUserList, 500);
+                setTimeout(() => requestUserList(true), 500);
             }
         } else {
             loggedIn = false;
@@ -234,7 +234,7 @@ function processServerMessage(content, isRealTime) {
     }
 
     if (isSystemMessage) {
-        requestUserList();
+        requestUserList(true);
         if ((isJoin || isExit) && isRealTime) {
             showNotification(content);
         }
@@ -381,9 +381,11 @@ function updateUserList(usersString) {
     });
 }
 
-function requestUserList() {
+function requestUserList(isBackground = false) {
     if (ws && ws.readyState === WebSocket.OPEN && loggedIn) {
-        backgroundRequestsPending++;
+        if (isBackground) {
+            backgroundRequestsPending++;
+        }
         ws.send("/users");
     }
 }
@@ -450,7 +452,7 @@ form.addEventListener("submit", (e) => {
             // Start periodic user list updates after login
             keepAliveWorker.postMessage('start');
             fetchUsersInterval = true;
-            setTimeout(requestUserList, 500); // Initial fetch
+            setTimeout(() => requestUserList(true), 500); // Initial fetch
         }
         ws.send(input.value);
         input.value = "";
