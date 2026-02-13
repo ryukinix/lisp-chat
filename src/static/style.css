@@ -224,6 +224,7 @@ a:active {
     border: 1px solid #555;
     text-align: center;
     pointer-events: auto;
+    cursor: pointer;
     animation: slideInUp 0.3s ease-out, fadeOut 0.5s ease-in 7.5s forwards;
     word-break: break-word;
 }

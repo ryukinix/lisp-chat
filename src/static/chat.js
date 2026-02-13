@@ -106,6 +106,7 @@ function showNotification(text) {
     const notification = document.createElement("div");
     notification.className = "notification";
     notification.innerHTML = colorizeMentions(text);
+    notification.onclick = () => notification.remove();
 
     container.prepend(notification);
 
