@@ -107,7 +107,7 @@ function showNotification(text) {
     notification.className = "notification";
     notification.innerHTML = colorizeMentions(text);
 
-    container.appendChild(notification);
+    container.prepend(notification);
 
     setTimeout(() => {
         notification.remove();
