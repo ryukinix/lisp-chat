@@ -223,7 +223,7 @@ a:active {
     border: 1px solid #444;
     text-align: center;
     pointer-events: auto;
-    animation: slideInDown 0.3s ease-out, fadeOut 0.5s ease-in 3.5s forwards;
+    animation: slideInDown 0.3s ease-out, fadeOut 0.5s ease-in 7.5s forwards;
     word-break: break-word;
 }
 

@@ -95,6 +95,7 @@ function updateUsernamePrefix() {
         input.placeholder = "";
     } else {
         prefix.textContent = "";
+        input.placeholder = "Type your username...";
     }
 }
 
@@ -104,13 +105,13 @@ function showNotification(text) {
 
     const notification = document.createElement("div");
     notification.className = "notification";
-    notification.textContent = text;
+    notification.innerHTML = colorizeMentions(text);
 
     container.appendChild(notification);
 
     setTimeout(() => {
         notification.remove();
-    }, 4000);
+    }, 8000);
 }
 
 function addMessage(text) {
@@ -138,18 +139,29 @@ function checkChatIsAtBottom() {
 }
 
 function handleAuthHandshake(line) {
-    if (line === "> Type your username: " && username) {
-        ws.send(username);
-        loggedIn = true;
-        updateUsernamePrefix();
-        // Fetch recent history to fill potential gaps from disconnection
-        ws.send(`/log :depth ${LOG_HISTORY_SIZE} :date-format date`);
-        // Restart periodic updates if not already running
-        if (!fetchUsersInterval) {
-            keepAliveWorker.postMessage('start');
-            fetchUsersInterval = true;
-            setTimeout(requestUserList, 500);
+    if (line === "> Type your username: ") {
+        if (username) {
+            ws.send(username);
+            loggedIn = true;
+            updateUsernamePrefix();
+            // Fetch recent history to fill potential gaps from disconnection
+            ws.send(`/log :depth ${LOG_HISTORY_SIZE} :date-format date`);
+            // Restart periodic updates if not already running
+            if (!fetchUsersInterval) {
+                keepAliveWorker.postMessage('start');
+                fetchUsersInterval = true;
+                setTimeout(requestUserList, 500);
+            }
+        } else {
+            loggedIn = false;
+            updateUsernamePrefix();
         }
+        return true;
+    }
+    if (line === "> Name cannot be empty. Try again: ") {
+        loggedIn = false;
+        updateUsernamePrefix();
+        input.placeholder = "Name cannot be empty. Try your username: ";
         return true;
     }
     return false;
@@ -390,6 +402,8 @@ function connect() {
     ws.onopen = () => {
         showNotification("Connected to server.");
         anchorElement = null;
+        loggedIn = false;
+        updateUsernamePrefix();
     };
 
     ws.onmessage = (event) => {
