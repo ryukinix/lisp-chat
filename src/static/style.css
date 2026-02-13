@@ -203,12 +203,12 @@ a:active {
     position: absolute;
     bottom: 70px;
     left: 50%;
+    -webkit-transform: translateX(-50%);
     transform: translateX(-50%);
     z-index: 1000;
     display: flex;
     flex-direction: column-reverse;
     align-items: center;
-    gap: 8px;
     pointer-events: none;
     width: 90%;
     max-width: 400px;
@@ -225,13 +225,25 @@ a:active {
     text-align: center;
     pointer-events: auto;
     cursor: pointer;
+    margin-bottom: 8px;
+    -webkit-animation: slideInUp 0.3s ease-out, fadeOut 0.5s ease-in 7.5s forwards;
     animation: slideInUp 0.3s ease-out, fadeOut 0.5s ease-in 7.5s forwards;
     word-break: break-word;
+}
+
+@-webkit-keyframes slideInUp {
+    from { opacity: 0; -webkit-transform: translateY(20px); transform: translateY(20px); }
+    to { opacity: 1; -webkit-transform: translateY(0); transform: translateY(0); }
 }
 
 @keyframes slideInUp {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
+}
+
+@-webkit-keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
 }
 
 @keyframes fadeOut {
