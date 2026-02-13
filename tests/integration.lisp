@@ -95,7 +95,7 @@
       "tester-log"
       '(:ignore 1) ;; welcome message
       "hello log"
-      '(:sleep 0.5)
+      '(:sleep 0.8)
       '(:ignore 1) ;; broadcast of "hello log"
       "/log :date-format date"
       `(:expect ,(get-current-date)))))
