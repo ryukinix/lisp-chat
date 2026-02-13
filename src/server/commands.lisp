@@ -98,7 +98,7 @@
 (defun /log (client &key (depth "20") (date-format nil) &allow-other-keys)
   "/log shows the last messages sent to the server.
    DEPTH is optional number of messages frames from log"
-  (declare (ignorable client args))
+  (declare (ignorable client))
   (let* ((messages (user-messages :date-format date-format))
          (log-size (min (or (parse-integer depth :junk-allowed t) 20)
                         (length messages))))

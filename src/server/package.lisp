@@ -27,6 +27,9 @@
            #:message-from
            #:message-time
            #:message-content
+           #:make-message
+           #:message-time-hour-format
+           #:message-time-date-format
            #:get-client
            #:get-time
            #:format-time
@@ -34,7 +37,8 @@
            #:private-message
            #:command-message
            #:send-message
-           #:user-messages))
+           #:user-messages
+           #:reset-server))
 
 (defpackage #:lisp-chat/commands
   (:use #:cl #:lisp-chat/server #:lisp-chat/config)

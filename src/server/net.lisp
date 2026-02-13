@@ -54,12 +54,13 @@
    all the clients when a message is ping on this server"
   (loop when (wait-on-semaphore *message-semaphore*)
           do (let* ((message-raw (with-lock-held (*messages-lock*)
-                                   (pop *messages-stack*)))
-                    (message (formatted-message message-raw)))
-               (push message-raw *messages-log*)
-               (let ((clients *clients*))
-                 (loop for client in clients
-                       do (handler-case (send-message client message)
-                            (error (e)
-                              (debug-format t "Error broadcasting to ~a: ~a~%" (client-name client) e)
-                              (client-delete client))))))))
+                                   (pop *messages-stack*))))
+               (when message-raw
+                 (let ((message (formatted-message message-raw)))
+                   (push message-raw *messages-log*)
+                   (let ((clients *clients*))
+                     (loop for client in clients
+                           do (handler-case (send-message client message)
+                                (error (e)
+                                  (debug-format t "Error broadcasting to ~a: ~a~%" (client-name client) e)
+                                  (client-delete client))))))))))

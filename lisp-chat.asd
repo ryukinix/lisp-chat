@@ -7,28 +7,30 @@
            :*version*
            :*build-metadata*
            :*license*
-           :custom-system-class))
+           :custom-system-class
+           :component-build-metadata))
 
 (in-package :lisp-chat/system)
 
-(defun lisp-chat-parse-version ()
-  (let* ((version (uiop:getenv "APP_VERSION"))
-         (index (or (search "-" version)
-                    (search "+" version))))
+(defun version-separator (version)
+  (or (search "-" version)
+      (search "+" version)))
+
+(defun lisp-chat-parse-version (version)
+  (let ((index (version-separator version)))
     (if version
         (subseq version 0 index)
         "0.4.0")))
 
-(defun lisp-chat-parse-build-metadata ()
-  (let* ((version (uiop:getenv "APP_VERSION"))
-         (index (search "-" version)))
+(defun lisp-chat-parse-build-metadata (version)
+  (let ((index (version-separator version)))
     (cond ((and version index) (subseq version index))
           ((and version) "")
           (t "-dev"))))
 
 (defvar *author* "Manoel Vilela")
-(defvar *version* (lisp-chat-parse-version))
-(defvar *build-metadata* (lisp-chat-parse-build-metadata))
+(defvar *version* (lisp-chat-parse-version (uiop:getenv "APP_VERSION")))
+(defvar *build-metadata* (lisp-chat-parse-build-metadata (uiop:getenv "APP_VERSION")))
 (defvar *license* "MIT")
 
 (defclass custom-system-class (asdf:system)
@@ -105,5 +107,8 @@
                "lisp-chat/client"
                "parachute")
   :pathname "tests"
-  :components ((:file "integration"))
+  :components ((:file "package")
+               (:file "main" :depends-on ("package"))
+               (:file "unit" :depends-on ("main"))
+               (:file "integration" :depends-on ("main")))
   :perform (test-op (o c) (symbol-call :lisp-chat/tests :run-tests)))
