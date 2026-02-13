@@ -98,6 +98,21 @@ function updateUsernamePrefix() {
     }
 }
 
+function showNotification(text) {
+    const container = document.getElementById("notifications");
+    if (!container) return;
+
+    const notification = document.createElement("div");
+    notification.className = "notification";
+    notification.textContent = text;
+
+    container.appendChild(notification);
+
+    setTimeout(() => {
+        notification.remove();
+    }, 4000);
+}
+
 function addMessage(text) {
     const isAtBottom = checkChatIsAtBottom();
     const linesArray = text.split("\n");
@@ -164,7 +179,7 @@ function processStructuredMessage(line, match) {
     if (isMessageCached(normalizedLine, from)) return;
 
     if (from === "@server") {
-        const shouldRender = processServerMessage(content);
+        const shouldRender = processServerMessage(content, !date);
         if (!shouldRender) return;
     }
 
@@ -189,13 +204,14 @@ function isMessageCached(line, from) {
     return false;
 }
 
-function processServerMessage(content) {
-    const isSystemMessage = content.includes("joined to the party") ||
-        content.includes("exited from the party") ||
-        content.includes("Your new nick is");
+function processServerMessage(content, isRealTime) {
+    const isJoin = content.includes("joined to the party");
+    const isExit = content.includes("exited from the party");
+    const isNickChange = content.includes("Your new nick is");
+    const isSystemMessage = isJoin || isExit || isNickChange;
     const isUsersListResponse = content.startsWith("users: ");
 
-    if (content.includes("Your new nick is")) {
+    if (isNickChange) {
         const nickMatch = content.match(/Your new nick is: @(.*)/);
         if (nickMatch) {
             username = nickMatch[1].trim();
@@ -206,6 +222,10 @@ function processServerMessage(content) {
 
     if (isSystemMessage) {
         requestUserList();
+        if ((isJoin || isExit) && isRealTime) {
+            showNotification(content);
+        }
+        if (isJoin || isExit) return false;
     } else if (isUsersListResponse) {
         updateUserList(content);
         if (backgroundRequestsPending > 0) {
@@ -368,7 +388,7 @@ function connect() {
     ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
 
     ws.onopen = () => {
-        addMessage("Connected to server.");
+        showNotification("Connected to server.");
         anchorElement = null;
     };
 
@@ -385,7 +405,7 @@ function connect() {
             keepAliveWorker.postMessage('stop');
             fetchUsersInterval = null;
         }
-        addMessage("Disconnected. Reconnecting in 3s...");
+        showNotification("Disconnected. Reconnecting in 3s...");
         setTimeout(connect, 3000);
     };
 
