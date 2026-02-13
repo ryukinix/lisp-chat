@@ -95,7 +95,11 @@ function updateUsernamePrefix() {
         input.placeholder = "";
     } else {
         prefix.textContent = "";
-        input.placeholder = "Type your username...";
+        if (username) {
+            input.placeholder = "Connecting...";
+        } else {
+            input.placeholder = "Type your username...";
+        }
     }
 }
 
