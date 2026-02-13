@@ -10,8 +10,7 @@
            :*host*
            :*source-code*
            :*port*
-           :*websocket-port*)
-  (:import-from :lisp-chat/system :component-build-metadata))
+           :*websocket-port*))
 
 (in-package :lisp-chat/config)
 
@@ -26,7 +25,7 @@
   (let ((system (asdf:find-system :lisp-chat)))
     (format nil "~a~a"
             (asdf:component-version system)
-            (or (component-build-metadata system) ""))))
+            (or (lisp-chat/system:component-build-metadata system) ""))))
 
 
 (defun has-any-flags (argv &rest flags)

@@ -56,7 +56,7 @@
 (defun debug-format (&rest args)
   "If *debug* from lisp-chat-config is true, print debug info on
    running based on ARGS"
-  (if *debug*
+  (when *debug*
       (apply #'format args)))
 
 (defun get-time ()

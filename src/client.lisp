@@ -69,6 +69,7 @@
                          :erase-empty-line t
                          :add-history t))
          (message (and input (string-trim '(#\Return #\Newline) input))))
+    (declare (ignorable prompt))
     (prog1 message
       (with-lock-held (*io-lock*)
         (erase-last-line)))))
@@ -215,6 +216,7 @@ The systematic pong is consumed and the @server response is not shown in the ter
          (send-message "/ping system" socket))))
 
 (defun process-connection (socket host port)
+  (declare (ignorable port))
   (let ((username (login socket)))
     (if (websocket-p host port)
         (format t "Connected via websocket: ~a@~a~%" username host)
@@ -229,6 +231,7 @@ The systematic pong is consumed and the @server response is not shown in the ter
       (connection-close socket))))
 
 (defun websocket-p (host port)
+  (declare (ignorable port))
   (or (search "ws://" host) (search "wss://" host)))
 
 (defun client-loop-web (host port)
