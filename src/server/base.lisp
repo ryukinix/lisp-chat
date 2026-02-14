@@ -4,8 +4,6 @@
 (defparameter *messages-stack* nil "Messages pending to be send by broadcasting")
 (defparameter *messages-log* nil  "Messages log")
 (defparameter *server-nickname* "@server" "The server nickname")
-(defparameter *persistence-file* "messages.lisp-expr")
-
 
 ;; thread control
 (defvar *message-semaphore* (make-semaphore :name "message semaphore"
@@ -133,4 +131,5 @@
                 until (eq msg :eof)
                 do (push msg *messages-log*))
         (error (e) (debug-format t "Error loading persistence: ~a~%" e))))
+    (format t "[info] messages loaded: ~a~%" (length *messages-log*))
     (setf *messages-log* (nreverse *messages-log*))))

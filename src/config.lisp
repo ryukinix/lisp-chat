@@ -10,6 +10,7 @@
            :*host*
            :*source-code*
            :*port*
+           :*persistence-file*
            :*websocket-port*))
 
 (in-package :lisp-chat/config)
@@ -20,6 +21,7 @@
 (defparameter *websocket-port* 5559 "Web/WebSocket port")
 (defparameter *lisp-command-timeout* 2 "Max seconds to timeout command")
 (defparameter *source-code* "https://github.com/ryukinix/lisp-chat")
+(defparameter *persistence-file* "messages.sexp")
 
 (defun get-version ()
   (let ((system (asdf:find-system :lisp-chat)))
