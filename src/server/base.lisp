@@ -4,6 +4,7 @@
 (defparameter *messages-stack* nil "Messages pending to be send by broadcasting")
 (defparameter *messages-log* nil  "Messages log")
 (defparameter *server-nickname* "@server" "The server nickname")
+(defparameter *persistence-file* "messages.lisp-expr")
 
 
 ;; thread control
@@ -122,3 +123,14 @@
   (with-lock-held (*messages-lock*)
     (setf *messages-stack* nil))
   (setf *messages-log* nil))
+
+(defun load-persistent-messages ()
+  "Load messages from *persistence-file* into *messages-log*"
+  (when (probe-file *persistence-file*)
+    (with-open-file (in *persistence-file* :direction :input)
+      (handler-case
+          (loop for msg = (read in nil :eof)
+                until (eq msg :eof)
+                do (push msg *messages-log*))
+        (error (e) (debug-format t "Error loading persistence: ~a~%" e))))
+    (setf *messages-log* (nreverse *messages-log*))))

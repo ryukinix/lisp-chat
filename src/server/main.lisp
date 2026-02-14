@@ -47,6 +47,7 @@
 
 (defun main (&key (host *host*) (port *port*) (should-quit t))
   "Well, this function run all the necessary shits."
+  (load-persistent-messages)
   (let ((socket-server nil)
         (error-code 0))
     (unwind-protect
