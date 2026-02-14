@@ -10,6 +10,7 @@
   <body>
     <div id="main">
       <div id="chat"></div>
+      <div id="notifications"></div>
       <form id="input-area">
         <input type="text" id="message-input" placeholder="Type a message..." autocomplete="off" autofocus>
         <button type="submit">Send</button>
@@ -19,6 +20,7 @@
       <h3>Online Users</h3>
       <ul id="user-list"></ul>
     </div>
+    <div id="notifications"></div>
     <script src="chat.js?hash=jshash"></script>
     <script>
       if ('serviceWorker' in navigator) {

@@ -133,10 +133,10 @@
            (send-message client msg)
            (send-message user msg)))))))
 
-(defun /whois (client &optional (username nil) msg-content)
+(defun /whois (client &optional (username nil))
   "/whois get basic information of a online USERNAME"
-  (let ((user (get-client username))
-        (from (client-name client)))
+  (declare (ignorable client))
+  (let ((user (get-client username)))
     (cond
       ((not username) (command-message "/whois <username>"))
       ((not user) (command-message (format nil "~s user not found" username)))

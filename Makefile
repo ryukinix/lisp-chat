@@ -3,6 +3,9 @@ APP_VERSION = $(shell git describe --tags 2> /dev/null || printf 0.0.0)+$(shell 
 VERSION := latest
 PUBLIC_IMG = ryukinix/$(DOCKER_IMG):$(VERSION)
 
+lint:
+	mallet --format line src
+
 version:
 	@echo $(APP_VERSION)
 

@@ -47,7 +47,7 @@ const keepAliveWorker = new Worker(URL.createObjectURL(new Blob([`
     let interval;
     self.onmessage = e => {
         if (e.data === 'start') {
-            if (!interval) interval = setInterval(() => self.postMessage('tick'), 5000);
+            if (!interval) interval = setInterval(() => self.postMessage('tick'), 30000);
         } else if (e.data === 'stop') {
             clearInterval(interval);
             interval = null;
@@ -55,7 +55,7 @@ const keepAliveWorker = new Worker(URL.createObjectURL(new Blob([`
     };
 `], {type: 'application/javascript'})));
 
-keepAliveWorker.onmessage = () => requestUserList();
+keepAliveWorker.onmessage = () => requestUserList(true);
 
 
 
@@ -95,7 +95,28 @@ function updateUsernamePrefix() {
         input.placeholder = "";
     } else {
         prefix.textContent = "";
+        if (username) {
+            input.placeholder = "Connecting...";
+        } else {
+            input.placeholder = "Type your username...";
+        }
     }
+}
+
+function showNotification(text) {
+    const container = document.getElementById("notifications");
+    if (!container) return;
+
+    const notification = document.createElement("div");
+    notification.className = "notification";
+    notification.innerHTML = colorizeMentions(text);
+    notification.onclick = () => notification.remove();
+
+    container.prepend(notification);
+
+    setTimeout(() => {
+        notification.remove();
+    }, 8000);
 }
 
 function addMessage(text) {
@@ -123,18 +144,29 @@ function checkChatIsAtBottom() {
 }
 
 function handleAuthHandshake(line) {
-    if (line === "> Type your username: " && username) {
-        ws.send(username);
-        loggedIn = true;
-        updateUsernamePrefix();
-        // Fetch recent history to fill potential gaps from disconnection
-        ws.send(`/log :depth ${LOG_HISTORY_SIZE} :date-format date`);
-        // Restart periodic updates if not already running
-        if (!fetchUsersInterval) {
-            keepAliveWorker.postMessage('start');
-            fetchUsersInterval = true;
-            setTimeout(requestUserList, 500);
+    if (line === "> Type your username: ") {
+        if (username) {
+            ws.send(username);
+            loggedIn = true;
+            updateUsernamePrefix();
+            // Fetch recent history to fill potential gaps from disconnection
+            ws.send(`/log :depth ${LOG_HISTORY_SIZE} :date-format date`);
+            // Restart periodic updates if not already running
+            if (!fetchUsersInterval) {
+                keepAliveWorker.postMessage('start');
+                fetchUsersInterval = true;
+                setTimeout(() => requestUserList(true), 500);
+            }
+        } else {
+            loggedIn = false;
+            updateUsernamePrefix();
         }
+        return true;
+    }
+    if (line === "> Name cannot be empty. Try again: ") {
+        loggedIn = false;
+        updateUsernamePrefix();
+        input.placeholder = "Name cannot be empty. Try your username: ";
         return true;
     }
     return false;
@@ -164,7 +196,7 @@ function processStructuredMessage(line, match) {
     if (isMessageCached(normalizedLine, from)) return;
 
     if (from === "@server") {
-        const shouldRender = processServerMessage(content);
+        const shouldRender = processServerMessage(content, !date);
         if (!shouldRender) return;
     }
 
@@ -189,13 +221,14 @@ function isMessageCached(line, from) {
     return false;
 }
 
-function processServerMessage(content) {
-    const isSystemMessage = content.includes("joined to the party") ||
-        content.includes("exited from the party") ||
-        content.includes("Your new nick is");
+function processServerMessage(content, isRealTime) {
+    const isJoin = content.includes("joined to the party");
+    const isExit = content.includes("exited from the party");
+    const isNickChange = content.includes("Your new nick is");
+    const isSystemMessage = isJoin || isExit || isNickChange;
     const isUsersListResponse = content.startsWith("users: ");
 
-    if (content.includes("Your new nick is")) {
+    if (isNickChange) {
         const nickMatch = content.match(/Your new nick is: @(.*)/);
         if (nickMatch) {
             username = nickMatch[1].trim();
@@ -205,7 +238,11 @@ function processServerMessage(content) {
     }
 
     if (isSystemMessage) {
-        requestUserList();
+        requestUserList(true);
+        if ((isJoin || isExit) && isRealTime) {
+            showNotification(content);
+        }
+        if (isJoin || isExit) return false;
     } else if (isUsersListResponse) {
         updateUserList(content);
         if (backgroundRequestsPending > 0) {
@@ -348,9 +385,11 @@ function updateUserList(usersString) {
     });
 }
 
-function requestUserList() {
+function requestUserList(isBackground = false) {
     if (ws && ws.readyState === WebSocket.OPEN && loggedIn) {
-        backgroundRequestsPending++;
+        if (isBackground) {
+            backgroundRequestsPending++;
+        }
         ws.send("/users");
     }
 }
@@ -368,8 +407,10 @@ function connect() {
     ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
 
     ws.onopen = () => {
-        addMessage("Connected to server.");
+        showNotification("Connected to server.");
         anchorElement = null;
+        loggedIn = false;
+        updateUsernamePrefix();
     };
 
     ws.onmessage = (event) => {
@@ -385,7 +426,7 @@ function connect() {
             keepAliveWorker.postMessage('stop');
             fetchUsersInterval = null;
         }
-        addMessage("Disconnected. Reconnecting in 3s...");
+        showNotification("Disconnected. Reconnecting in 3s...");
         setTimeout(connect, 3000);
     };
 
@@ -415,7 +456,7 @@ form.addEventListener("submit", (e) => {
             // Start periodic user list updates after login
             keepAliveWorker.postMessage('start');
             fetchUsersInterval = true;
-            setTimeout(requestUserList, 500); // Initial fetch
+            setTimeout(() => requestUserList(true), 500); // Initial fetch
         }
         ws.send(input.value);
         input.value = "";
