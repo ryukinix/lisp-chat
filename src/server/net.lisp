@@ -15,6 +15,16 @@
 (defun user-exited-message (client)
   (push-message "@server" (format nil "The user @~a exited from the party :(" (client-name client))))
 
+(defun save-message-to-disk (message-raw)
+  "Save a single MESSAGE-RAW struct into *persistence-file*"
+  (with-open-file (out *persistence-file*
+                       :direction :output
+                       :if-exists :append
+                       :if-does-not-exist :create)
+    (let ((*print-readably* t))
+      (print message-raw out)
+      (finish-output out))))
+
 (defun client-close (client)
   (let ((socket (client-socket client)))
     (typecase socket
@@ -58,6 +68,7 @@
                (when message-raw
                  (let ((message (formatted-message message-raw)))
                    (push message-raw *messages-log*)
+                   (save-message-to-disk message-raw)
                    (let ((clients *clients*))
                      (loop for client in clients
                            do (handler-case (send-message client message)

@@ -5,3 +5,4 @@ system-index.txt
 lisp-chat
 /lisp-chat-x86_64.AppImage
 /.appimage/
+/messages.sexp
