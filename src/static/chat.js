@@ -2,7 +2,7 @@ const chat = document.getElementById("chat");
 const form = document.getElementById("input-area");
 const input = document.getElementById("message-input");
 const userList = document.getElementById("user-list");
-const LOG_HISTORY_SIZE = 50;
+const LOG_HISTORY_SIZE = 100;
 const MAX_CACHE_SIZE = 200;
 const messageCache = new Set();
 const messageHistory = [];
@@ -12,8 +12,6 @@ const availableColors = [
     "#ffeaa7", "#55efc4", "#81ecec", "#74b9ff", "#a29bfe"
 ];
 
-let anchorElement = null;
-let anchorSeconds = 0;
 let backgroundRequestsPending = 0;
 let fetchUsersInterval;
 let loggedIn = false;
@@ -336,30 +334,6 @@ function ensureDateDivider(el) {
 }
 
 function insertMessageNode(div, from, content, seconds, hasDate) {
-    // Anchor logic: "joined" message marks the start of the session.
-    if (from === "@server" && content.includes(`@${username} joined to the party`)) {
-        anchorElement = div;
-        anchorSeconds = seconds;
-        div.dataset.date = getTodayDate(); // Anchor is always today
-        chat.appendChild(div);
-        ensureDateDivider(div);
-        return;
-    }
-
-    if (anchorElement && anchorElement.isConnected) {
-        const msgDate = div.dataset.date;
-        const anchorDate = anchorElement.dataset.date;
-
-        // Compare dates first, then seconds if dates are equal.
-        const isBefore = (msgDate < anchorDate) || (msgDate === anchorDate && seconds < anchorSeconds);
-
-        if (isBefore) {
-            chat.insertBefore(div, anchorElement);
-            ensureDateDivider(div);
-            return;
-        }
-    }
-
     chat.appendChild(div);
     ensureDateDivider(div);
 }
@@ -408,7 +382,6 @@ function connect() {
 
     ws.onopen = () => {
         showNotification("Connected to server.");
-        anchorElement = null;
         loggedIn = false;
         updateUsernamePrefix();
     };
