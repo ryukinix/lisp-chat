@@ -1,5 +1,18 @@
 (in-package :lisp-chat/commands)
 
+
+;; Enable standard CL symbols in cl-isolated environment
+;; By default cl-isolated disables many features for security reasons.
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defun enable-isolated-symbols (symbols)
+    (dolist (symbol symbols)
+      (shadowing-import symbol :isolated-cl)
+      (export symbol :isolated-cl)
+      (setf (get symbol :isolated-locked) nil)))
+  (enable-isolated-symbols '(cl:loop
+                             cl:macroexpand
+                             cl:macroexpand-1)))
+
 (defvar *uptime* (get-time) "Uptime of server variable")
 
 (defun split (string delimiterp)
