@@ -9,6 +9,7 @@
 (defparameter *debug* nil)
 (defparameter *websocket-port* 9999)
 (defparameter *lisp-command-timeout* 0.5)
+(defparameter *persistence-file* "messages.test.sexp")
 
 
 (defun start-test-server ()
