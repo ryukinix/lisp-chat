@@ -121,3 +121,14 @@
       "/lisp (dotimes (x 1000) (when (eq x 2) (setq x 1)))"
       '(:sleep 1)
       '(:expect "TIMEOUT: Timeout occurred after 0.5 seconds"))))
+
+(define-test lisp-command-with-loop
+  :parent integration-tests
+  (with-tcp-client (stream)
+    (tcp-interaction stream
+      '(:expect "> Type your username: ")
+      "tester-lisp"
+      '(:ignore 1) ;; welcome message
+      "/lisp (loop for x from 1 to 5 collect x)"
+      '(:sleep 1)
+      '(:expect "(1 2 3 4 5)"))))
