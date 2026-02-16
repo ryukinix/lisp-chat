@@ -23,7 +23,14 @@ jobs:
 
       - name: Extract tag name
         id: tag
-        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          if [[ "$VERSION" == *"-"* ]]; then
+            echo "PRERELEASE=true" >> $GITHUB_ENV
+          else
+            echo "PRERELEASE=false" >> $GITHUB_ENV
+          fi
 
       - name: Build and Publish Docker Image
         run: make docker-publish VERSION=${{ env.VERSION }}
@@ -35,5 +42,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: lisp-chat-x86_64.AppImage
+          prerelease: ${{ env.PRERELEASE }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
