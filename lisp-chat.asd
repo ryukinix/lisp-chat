@@ -82,7 +82,8 @@
   :build-metadata #.lisp-chat/system:*build-metadata*
   :license #.lisp-chat/system:*license*
   :depends-on ("usocket"
-               "cl-readline"
+               "tuition"
+               "cl-ppcre"
                "bordeaux-threads"
                "websocket-driver-client")
   :pathname "src"
