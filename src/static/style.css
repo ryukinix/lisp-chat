@@ -250,3 +250,32 @@ a:active {
     from { opacity: 1; }
     to { opacity: 0; }
 }
+
+
+/* minimalist scrollbar from https://scrollbar.app/ */
+:root {
+    --sb-track-color: #232E33;
+    --sb-thumb-color: #636363;
+    --sb-size: 7px;
+}
+
+*::-webkit-scrollbar {
+    width: var(--sb-size);
+}
+
+*::-webkit-scrollbar-track {
+    background: var(--sb-track-color);
+    border-radius: 3px;
+}
+
+*::-webkit-scrollbar-thumb {
+    background: var(--sb-thumb-color);
+    border-radius: 3px;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+    * {
+        scrollbar-color: var(--sb-thumb-color)
+                         var(--sb-track-color);
+    }
+}
