@@ -91,12 +91,15 @@ function updateUsernamePrefix() {
         prefix.style.color = getUserColor(username);
         prefix.style.fontWeight = "bold";
         input.placeholder = "";
+        input.disabled = false;
     } else {
         prefix.textContent = "";
         if (username) {
             input.placeholder = "Connecting...";
+            input.disabled = true;
         } else {
             input.placeholder = "Type your username...";
+            input.disabled = false;
         }
     }
 }
