@@ -47,16 +47,5 @@ chmod +x "$APPDIR/AppRun"
 # Copy the binary
 cp -v ./roswell/lisp-chat "$APPDIR/usr/bin/"
 
-# Copy libreadline and symlink
-mkdir -p "$APPDIR/usr/lib/"
-READLINE_SYMLINK=$(ldconfig -p | grep libreadline | cut -d '>' -f 2 | tr -d ' ' | grep "libreadline.so.[0-9]" | head -n 1)
-if [ -n "$READLINE_SYMLINK" ]; then
-    READLINE_REAL=$(readlink -f "$READLINE_SYMLINK")
-    cp -v "$READLINE_REAL" "$APPDIR/usr/lib/"
-    cp -P -v "$READLINE_SYMLINK" "$APPDIR/usr/lib/"
-else
-    echo "Warning: libreadline not found via ldconfig"
-fi
-
 # Run appimagetool
 "$APPIMAGE_TOOL_PATH" "$APPDIR"
