@@ -59,10 +59,14 @@
 (defclass chat-model ()
   ((messages :initform nil :accessor messages)
    (viewport :accessor viewport)
+   (users-viewport :accessor users-viewport)
    (input :accessor input)
    (socket :initform nil :accessor socket)
    (username :initform nil :accessor username)
+   (pending-username :initform nil :accessor pending-username)
+   (users :initform nil :accessor users)
    (connected :initform nil :accessor connected)
+   (ping-thread :initform nil :accessor ping-thread)
    (last-date :initform nil :accessor last-date)
    (win-width :initform 80 :accessor win-width)
    (win-height :initform 24 :accessor win-height)))
@@ -113,44 +117,73 @@
          (handle-incoming-message program msg))))
    :name "listener-thread"))
 
+(defun start-ping-thread (model)
+  (setf (ping-thread model)
+        (make-thread
+         (lambda ()
+           (loop while (connected model)
+                 do (sleep 30)
+                    (when (connected model)
+                      (handler-case
+                          (send-message (socket model) "/ping")
+                        (error (c)
+                          (declare (ignore c))
+                          (setf (connected model) nil))))))
+         :name "ping-thread")))
+
+(defun update-users-list (model)
+  (let ((content (with-output-to-string (s)
+                   (format s "~a ~a"
+                           (tui:render-styled (tui:make-style :foreground (tui:color-rgb 255 255 255)) "Connected Users:")
+                           (format nil "~{~a~^, ~}" (sort (copy-list (users model)) #'string<))))))
+    (vp:viewport-set-content (users-viewport model) content)))
+
 (defun recalculate-layout (model)
   (let* ((w (win-width model))
          (h (win-height model))
          (input-h 3)
-         (viewport-h (max 5 (- h input-h 2))) ;; borders
-         (prompt-len (tui:visible-length (ti:textinput-prompt (input model))))
-         (new-input-width (- w prompt-len 2)))
+         (users-h 3)
+         (viewport-h (max 5 (- h input-h users-h)))
+         (new-width (max 10 (- w 2))))
     (setf (vp:viewport-width (viewport model)) w
           (vp:viewport-height (viewport model)) viewport-h
-          (ti:textinput-width (input model)) new-input-width)))
+          (vp:viewport-width (users-viewport model)) new-width
+          (vp:viewport-height (users-viewport model)) 1 ;; content height (without border)
+          (ti:textinput-width (input model)) new-width)
+    (update-users-list model)))
 
 ;;; TUI Implementation
 
 (defmethod tui:init ((model chat-model))
   (let ((host *host*)
         (port *port*))
-    (setf (viewport model) (vp:make-viewport :height 20 :width 80)
+    (setf (viewport model) (vp:make-viewport :height 20 :width 60)
+          (users-viewport model) (vp:make-viewport :height 1 :width 60)
           (input model) (ti:make-textinput :prompt "> " :placeholder "Type a message..."))
 
     (recalculate-layout model)
 
     (handler-case
-        (if (websocket-p host port)
-            (let* ((url (if (or (search "ws://" host) (search "wss://" host))
-                           host
-                           (format nil "ws://~a:~a/ws" host port)))
-                   (client (make-client url)))
-              (setf (socket model) client)
-              (start-connection client)
-              (let ((prog tui:*current-program*))
-                (on :message client
-                    (lambda (msg)
-                      (handle-incoming-message prog msg))))
-              (setf (connected model) t))
-            (let ((socket (socket-connect host port)))
-              (setf (socket model) socket)
-              (setf (connected model) t)
-              (start-listener tui:*current-program* socket)))
+        (progn
+          (if (websocket-p host port)
+              (let* ((url (if (or (search "ws://" host) (search "wss://" host))
+                             host
+                             (format nil "ws://~a:~a/ws" host port)))
+                     (client (make-client url)))
+                (setf (socket model) client)
+                (start-connection client)
+                (let ((prog tui:*current-program*))
+                  (on :message client
+                      (lambda (msg)
+                        (handle-incoming-message prog msg))))
+                (setf (connected model) t))
+              (let ((socket (socket-connect host port)))
+                (setf (socket model) socket)
+                (setf (connected model) t)
+                (start-listener tui:*current-program* socket)))
+
+          (start-ping-thread model))
+
       (error (c)
         (tui:send tui:*current-program*
                  (make-instance 'server-msg :text (format nil "Connection error: ~a" c)))))
@@ -172,13 +205,17 @@
          (when (and text (plusp (length text)))
            (cond
              ((string= text "/quit")
+              (setf (connected model) nil)
               (tui:quit tui:*current-program*))
              ((connected model)
+              (unless (username model)
+                (setf (pending-username model) text))
               (send-message (socket model) text)
               (ti:textinput-reset (input model)))
              (t
               (ti:textinput-reset (input model)))))))
       ((or (string-equal key "escape") (and (string-equal key "c") (tui:key-msg-ctrl msg)))
+       (setf (connected model) nil)
        (tui:quit tui:*current-program*))
       (t
        (ti:textinput-update (input model) msg)
@@ -204,30 +241,79 @@
                                     (tui:render-styled (tui:make-style :foreground (tui:color-rgb 100 100 100)) time)
                                     (tui:render-styled (tui:make-style :foreground user-color) user)
                                     content)))
-            ;; Handle date divider
-            (when (and date (not (equal date (last-date model))))
-              (setf (last-date model) date)
-              (push (tui:render-styled (tui:make-style :foreground (tui:color-rgb 80 80 80))
-                                       (format nil "--- ~a ---" date))
-                    (messages model)))
 
-            (let ((wrapped (tui:wrap-text formatted (vp:viewport-width (viewport model)) :break-words t)))
-              (dolist (line (tui:split-string-by-newline wrapped))
-                (push line (messages model))))
+            ;; Process system messages for side-effects
+            (cond
+              ;; Join
+              ((and (string= user "@server") (search "joined to the party!" content))
+               (let ((joined-user (subseq content 10 (search " joined" content))))
+                 (pushnew joined-user (users model) :test #'string=)
+                 (update-users-list model)
+                 ;; Check if it's us joining
+                 (when (and (null (username model))
+                            (pending-username model)
+                            (string= joined-user (pending-username model)))
+                   (setf (username model) joined-user
+                         (pending-username model) nil)
+                   (setf (ti:textinput-prompt (input model))
+                         (format nil "[~a]: "
+                                 (tui:render-styled (tui:make-style :foreground
+                                                                    (get-user-color joined-user))
+                                                    joined-user)))
+                   (recalculate-layout model)
+                   (send-message (socket model) "/users")
+                   (send-message (socket model) "/log 100"))))
+              ;; Exit
+              ((search "exited from the party :(" content)
+               (let ((exited-user (subseq content 10 (search " exited" content))))
+                 (setf (users model) (remove exited-user (users model) :test #'string=))
+                 (update-users-list model)))
+              ;; /users response
+              ((and (string= user "@server") (search "users: " content))
+               (let* ((list-str (subseq content 7))
+                      (users-list (cl-ppcre:split ", " list-str)))
+                 (setf (users model) users-list)
+                 (update-users-list model)))
+              ;; /whoami response
+              ((and (string= user "@server") (search "You are @" content))
+               (let ((my-name (subseq content 9 (search " at " content))))
+                 (setf (username model) my-name)
+                 (setf (ti:textinput-prompt (input model)) (format nil "[@~a]: " my-name))
+                 (recalculate-layout model)))
+               ;; /ping response (ignore)
+              ((and (string= user "@server") (search "pong" content))
+               ;; Do nothing, just ignore
+               nil))
 
-            (vp:viewport-set-content (viewport model) (format nil "~{~a~%~}" (reverse (messages model))))
-            (vp:viewport-goto-bottom (viewport model)))
+            ;; Only show if not ignored (like pong)
+            (unless (and (string= user "@server") (search "pong" content))
+              ;; Handle date divider
+              (when (and date (not (equal date (last-date model))))
+                (setf (last-date model) date)
+                (push (tui:render-styled (tui:make-style :foreground (tui:color-rgb 80 80 80))
+                                         (format nil "--- ~a ---" date))
+                      (messages model)))
+
+              (let ((wrapped (tui:wrap-text formatted (vp:viewport-width (viewport model)) :break-words t)))
+                (dolist (line (tui:split-string-by-newline wrapped))
+                  (push line (messages model))))
+
+              (vp:viewport-set-content (viewport model) (format nil "~{~a~%~}" (reverse (messages model))))
+              (vp:viewport-goto-bottom (viewport model))))
           (progn
-            (let ((wrapped (tui:wrap-text text (vp:viewport-width (viewport model)) :break-words t)))
-              (dolist (line (tui:split-string-by-newline wrapped))
-                (push line (messages model))))
-            (vp:viewport-set-content (viewport model) (format nil "~{~a~%~}" (reverse (messages model))))
-            (vp:viewport-goto-bottom (viewport model))))))
+             ;; Filter raw pong messages too if they appear without standard formatting
+             (unless (search "pong" text)
+                (let ((wrapped (tui:wrap-text text (vp:viewport-width (viewport model)) :break-words t)))
+                  (dolist (line (tui:split-string-by-newline wrapped))
+                    (push line (messages model))))
+                (vp:viewport-set-content (viewport model) (format nil "~{~a~%~}" (reverse (messages model))))
+                (vp:viewport-goto-bottom (viewport model)))))))
   model)
 
 (defmethod tui:view ((model chat-model))
   (tui:join-vertical
    tui:+left+
+   (tui:render-border (vp:viewport-view (users-viewport model)) tui:*border-rounded*)
    (vp:viewport-view (viewport model))
    (tui:render-border (ti:textinput-view (input model)) tui:*border-rounded*)))
 
