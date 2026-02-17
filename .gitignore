@@ -6,3 +6,4 @@ lisp-chat
 /lisp-chat-x86_64.AppImage
 /.appimage/
 *.sexp
+/.qlot/

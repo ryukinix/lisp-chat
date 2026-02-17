@@ -1,0 +1,20 @@
+FROM commonlispbr/roswell:latest
+RUN apt update && apt install libev4 wget file make git libncurses5-dev -y
+RUN ros install qlot
+
+WORKDIR /lisp-chat
+RUN ln -s /lisp-chat /root/.roswell/local-projects/lisp-chat
+
+COPY qlfile qlfile
+COPY lisp-chat.asd lisp-chat.asd
+COPY ./src src
+COPY ./roswell/lisp-chat.ros roswell/lisp-chat.ros
+
+RUN qlot install
+
+ARG APP_VERSION
+ENV APP_VERSION=$APP_VERSION
+
+RUN qlot exec ros -e '(ql:quickload :lisp-chat/tui)'
+
+ENTRYPOINT ["qlot", "exec", "./roswell/lisp-chat"]
