@@ -36,16 +36,47 @@ Type=Application
 Categories=Utility;
 EOL
 
+# Copy the binary
+cp -v ./roswell/lisp-chat "$APPDIR/usr/bin/"
+
+# Copy libncurses and libtinfo
+mkdir -p "$APPDIR/usr/lib/"
+for lib_base in "libncurses.so" "libtinfo.so"; do
+    FOUND=0
+    for version in "6" "5"; do
+        LIB_PATTERN="${lib_base}.${version}"
+        # Extract path: "    libname.so.x (libc6,x86-64) => /path/to/lib"
+        # We want the part after "=> "
+        LIB_PATH=$(ldconfig -p | grep "$LIB_PATTERN" | head -n 1 | sed 's/.*=> //')
+
+        if [ -n "$LIB_PATH" ] && [ -f "$LIB_PATH" ]; then
+            echo "Bundling $LIB_PATTERN from $LIB_PATH"
+            cp -v "$LIB_PATH" "$APPDIR/usr/lib/"
+            # Copy real file if symlink
+            if [ -L "$LIB_PATH" ]; then
+                REAL_PATH=$(readlink -f "$LIB_PATH")
+                if [ -f "$REAL_PATH" ]; then
+                     cp -v "$REAL_PATH" "$APPDIR/usr/lib/"
+                fi
+            fi
+            FOUND=1
+            break # Found a version, move to next library
+        fi
+    done
+
+    if [ $FOUND -eq 0 ]; then
+        echo "Warning: $lib_base (version 5 or 6) not found via ldconfig"
+    fi
+done
+
 # Create AppRun
 cat > "$APPDIR/AppRun" <<EOL
 #!/bin/sh
 HERE=\$(dirname "\$(readlink -f "\${0}")")
-"\${HERE}/usr/bin/lisp-chat" "\$@"
+export LD_LIBRARY_PATH="\${HERE}/usr/lib:\$LD_LIBRARY_PATH"
+exec "\${HERE}/usr/bin/lisp-chat" "\$@"
 EOL
 chmod +x "$APPDIR/AppRun"
-
-# Copy the binary
-cp -v ./roswell/lisp-chat "$APPDIR/usr/bin/"
 
 # Run appimagetool
 "$APPIMAGE_TOOL_PATH" "$APPDIR"

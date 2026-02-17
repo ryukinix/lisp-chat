@@ -13,34 +13,42 @@ docker-lint:
 version:
 	@echo $(APP_VERSION)
 
+install-deps:
+	ros install qlot
+	qlot install
+
 client:
-	./roswell/lisp-chat.ros
+	qlot exec ./roswell/lisp-chat.ros
 
 client-websockets:
-	./roswell/lisp-chat.ros ws://localhost:5559/ws
+	qlot exec ./roswell/lisp-chat.ros ws://localhost:5559/ws
 
 client-online:
-	APP_ENV=PROD ./roswell/lisp-chat.ros
+	APP_ENV=PROD qlot exec ./roswell/lisp-chat.ros
 
 server:
-	./roswell/lisp-chat-server.ros
+	qlot exec ./roswell/lisp-chat-server.ros
 
 compile:
-	APP_VERSION=$(APP_VERSION) APP_ENV=PROD ros build ./roswell/lisp-chat.ros
+	APP_VERSION=$(APP_VERSION) APP_ENV=PROD qlot exec ros build ./roswell/lisp-chat.ros
 
 appimage: compile
 	bash scripts/appimage.sh
 
-docker-appimage: docker-build
+docker-appimage: docker-build-tui
 	docker run --rm \
 		--volume $(PWD):/lisp-chat \
+		--volume /lisp-chat/.qlot \
 		--env APPIMAGE_EXTRACT_AND_RUN=1 \
 		--entrypoint=/bin/bash \
-		$(DOCKER_IMG) \
+		$(DOCKER_IMG)-tui \
 		-c "make appimage APP_VERSION=$(APP_VERSION) && chown -R $(shell id -u):$(shell id -g) .appimage *.AppImage"
 
 docker-build:
 	docker build --build-arg APP_VERSION=$(APP_VERSION) -t $(DOCKER_IMG) .
+
+docker-build-tui:
+	docker build -f Dockerfile.tui --build-arg APP_VERSION=$(APP_VERSION) -t $(DOCKER_IMG)-tui .
 
 docker-shell: docker-build
 	docker run --rm -it --entrypoint=/bin/bash $(DOCKER_IMG)
@@ -56,12 +64,12 @@ deploy: docker-publish
 	ssh starfox bash /home/lerax/Deploy/lisp-chat.sh
 
 dep-tree:
-	ros -s asdf-dependency-graph -e '(asdf-dependency-graph:generate "tree.png" "lisp-chat/client")'
+	qlot exec ros -s asdf-dependency-graph -e '(asdf-dependency-graph:generate "tree.png" "lisp-chat-tui")'
 
 .PHONY: check docker-build docs appimage docker-check docker-appimage
 
 check:
-	ros $(ROS_TEST_FLAGS) -e '(asdf:test-system :lisp-chat)'
+	qlot exec ros $(ROS_TEST_FLAGS) -e '(asdf:test-system :lisp-chat/tests)'
 
 docker-check: docker-build
-	docker run --rm --entrypoint=ros $(DOCKER_IMG) $(ROS_TEST_FLAGS) -e '(asdf:test-system :lisp-chat)'
+	docker run --rm --entrypoint=ros $(DOCKER_IMG) $(ROS_TEST_FLAGS) -e '(asdf:test-system :lisp-chat/tests)'

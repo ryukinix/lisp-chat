@@ -1,4 +1,4 @@
-(defpackage :lisp-chat/client
+(defpackage :lisp-chat/tui
   (:use #:cl
         #:lisp-chat/config
         #:tuition
@@ -17,7 +17,7 @@
                 #:make-client)
   (:export :main))
 
-(in-package :lisp-chat/client)
+(in-package :lisp-chat/tui)
 
 ;;; Monkey-patch trivial-channels:recvmsg to avoid lock warnings
 (in-package :trivial-channels)
@@ -28,7 +28,7 @@
       (bt:condition-wait (channel-q-condition channel)
                          (channel-q-mutex channel)))
     (queue-pop (channel-queue channel))))
-(in-package :lisp-chat/client)
+(in-package :lisp-chat/tui)
 
 ;;; Constants and Configuration
 
