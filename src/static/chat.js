@@ -73,6 +73,20 @@ function linkify(text) {
     return text.replace(urlPattern, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
 }
 
+function formatMarkdown(text) {
+    // Bold
+    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    text = text.replace(/__(.*?)__/g, '<strong>$1</strong>');
+    // Italic
+    text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    text = text.replace(/_(.*?)_/g, '<em>$1</em>');
+    // Strikethrough
+    text = text.replace(/~~(.*?)~~/g, '<del>$1</del>');
+    // Code
+    text = text.replace(/`(.*?)`/g, '<code>$1</code>');
+    return text;
+}
+
 function colorizeMentions(text) {
     return text.replace(/(^|\s)@([a-zA-Z0-9_\-]+)/g, (match, prefix, user) => {
         return `${prefix}<span style="color: ${getUserColor(user)}">@${user}</span>`;
@@ -269,7 +283,7 @@ function createMessageElement(date, timeHM, timeS, from, content) {
 
     const contentSpan = document.createElement("span");
     contentSpan.className = "msg-content";
-    contentSpan.innerHTML = colorizeMentions(linkify(content));
+    contentSpan.innerHTML = colorizeMentions(linkify(formatMarkdown(content)));
 
     div.appendChild(timeSpan);
     div.appendChild(fromSpan);
@@ -345,7 +359,7 @@ function addRawMessage(line) {
     const div = document.createElement("div");
     div.className = "message";
     div.dataset.date = getTodayDate();
-    div.innerHTML = colorizeMentions(linkify(line));
+    div.innerHTML = colorizeMentions(linkify(formatMarkdown(line)));
     chat.appendChild(div);
     ensureDateDivider(div);
 }
