@@ -130,5 +130,16 @@
       "tester-lisp"
       '(:ignore 1) ;; welcome message
       "/lisp (loop for x from 1 to 5 collect x)"
-      '(:sleep 1)
+      '(:sleep 0.1)
       '(:expect "(1 2 3 4 5)"))))
+
+(define-test lisp-command-with-keywords
+  :parent integration-tests
+  (with-tcp-client (stream)
+    (tcp-interaction stream
+      '(:expect "> Type your username: ")
+      "tester-lisp"
+      '(:ignore 1) ;; welcome message
+      "/lisp (print :KEYWORD)"
+      '(:sleep 0.1)
+      '(:expect ":KEYWORD"))))
