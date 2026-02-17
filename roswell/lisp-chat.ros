@@ -5,7 +5,7 @@ exec ros -Q -- $0 "$@"
 |#
 (progn ;;init forms
   (ros:ensure-asdf)
-  #+quicklisp (ql:quickload '(lisp-chat/client) :silent t))
+  #+quicklisp (ql:quickload '(lisp-chat/tui) :silent t))
 
 (defpackage :ros.script.lisp-chat
   (:use :cl))
@@ -31,7 +31,7 @@ OPTIONS
   (when host
     (setq lisp-chat/config:*host* host)
     ;; If host is WS, we might want to default to websocket-port if port not provided
-    (when (and (lisp-chat/client::websocket-p host port)
+    (when (and (lisp-chat/tui::websocket-p host port)
                (null port))
       (setq lisp-chat/config:*port* lisp-chat/config:*websocket-port*)))
   (when port
@@ -45,6 +45,6 @@ OPTIONS
   (cond
     ((lisp-chat/config:has-any-flags argv "-h" "--help") (princ *usage*))
     ((lisp-chat/config:has-any-flags argv "-v" "--version") (princ (lisp-chat/config:get-version)))
-    (t (lisp-chat/client:main :host lisp-chat/config:*host*
-                            :port lisp-chat/config:*port*))))
+    (t (lisp-chat/tui:main :host lisp-chat/config:*host*
+                           :port lisp-chat/config:*port*))))
 ;;; vim: set ft=lisp lisp:
