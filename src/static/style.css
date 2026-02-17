@@ -132,6 +132,13 @@ button:hover {
     color: #eee;
 }
 
+code {
+    background: #333;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-family: monospace;
+}
+
 @media (max-width: 600px) {
     body {
         flex-direction: column;
