@@ -55,8 +55,7 @@
           args))
 
 (defun extract-params (string)
-  (let ((args (subseq (split string (lambda (c) (eql c #\Space))) 1)))
-    (parse-keywords args)))
+  (subseq (split string (lambda (c) (eql c #\Space))) 1))
 
 (defun call-command (client message)
   (when (startswith message "/")
@@ -75,7 +74,7 @@
          (/log client :depth (car args) :date-format "date"))
         ((string= command "/dm") (/dm client (car args) (args-to-string (cdr args))))
         ((string= command "/lisp") (/lisp client (args-to-string args)))
-        (command-function (apply command-function (cons client args)))
+        (command-function (apply command-function (cons client (parse-keywords args))))
         (t (command-message (format nil "command ~a doesn't exists" message)))))))
 
 (defun args-to-string (args)
