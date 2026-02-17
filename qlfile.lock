@@ -1,0 +1,8 @@
+("quicklisp" .
+ (:class qlot/source/dist:source-dist
+  :initargs (:distribution "https://beta.quicklisp.org/dist/quicklisp.txt" :%version :latest)
+  :version "2026-01-01"))
+("cl-tuition" .
+ (:class qlot/source/github:source-github
+  :initargs (:repos "atgreen/cl-tuition" :ref nil :branch nil :tag "v1.3.0")
+  :version "github-798ba8c15c34fffb3eafea9b8926d55bdac98b88"))

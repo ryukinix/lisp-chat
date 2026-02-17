@@ -1,5 +1,7 @@
 FROM commonlispbr/roswell:latest
 RUN apt update && apt install libev4 wget file make -y
+# HACK: cl-tuition from quicklisp has problems
+RUN ros install atgreen/cl-tuition
 WORKDIR /lisp-chat
 RUN ln -s /lisp-chat /root/.roswell/local-projects/lisp-chat
 COPY ./lisp-chat.asd lisp-chat.asd

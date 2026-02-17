@@ -24,10 +24,13 @@
 (defparameter *persistence-file* "messages.sexp")
 
 (defun get-version ()
-  (let ((system (asdf:find-system :lisp-chat)))
-    (format nil "~a~a"
-            (asdf:component-version system)
-            (or (lisp-chat/system:component-build-metadata system) ""))))
+  (let ((system (or (asdf:find-system :lisp-chat nil)
+                    (asdf:find-system :lisp-chat-tui nil))))
+    (if system
+        (format nil "~a~a"
+                (asdf:component-version system)
+                (or (lisp-chat/system:component-build-metadata system) ""))
+        "0.4.0")))
 
 
 (defun has-any-flags (argv &rest flags)
