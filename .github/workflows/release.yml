@@ -43,5 +43,6 @@ jobs:
         with:
           files: lisp-chat-x86_64.AppImage
           prerelease: ${{ env.PRERELEASE }}
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
