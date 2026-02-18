@@ -195,5 +195,5 @@
   (let ((result (execute-lisp-capture-result program)))
     (prog1 'ignore
       (push-message "@command"
-                    (format nil "user @~a called lisp code '~a' ~a"
+                    (format nil "user @~a called lisp code `~a` ~a"
                             (client-name client) program result)))))
