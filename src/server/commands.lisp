@@ -10,6 +10,7 @@
       (export symbol :isolated-cl)
       (setf (get symbol :isolated-locked) nil)))
   (enable-isolated-symbols '(cl:loop
+                             cl:format
                              cl:macroexpand
                              cl:macroexpand-1)))
 
@@ -64,7 +65,7 @@
         (command-message (format nil "command '~a' finished with error: ~a" message c))))))
 
 (defun call-command-predefined (client message)
-  (let ((command (find message (get-commands) :test #'startswith)))
+  (let ((command (find (string-downcase message) (get-commands) :test #'startswith)))
     (let ((command-function (get-command command))
           (args (extract-params message)))
       (cond
