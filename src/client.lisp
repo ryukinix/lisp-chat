@@ -37,11 +37,25 @@
     "#00b894" "#00cec9" "#0984e3" "#6c5ce7" "#e84393"
     "#ffeaa7" "#55efc4" "#81ecec" "#74b9ff" "#a29bfe"))
 
+(defun today ()
+  "Returns the current date as a string in YYYY-MM-DD format."
+  (multiple-value-bind (second minute hour day month year)
+      (get-decoded-time)
+    (declare (ignore second minute hour)) ;; We don't need time, just date
+    (format nil "~4,'0d-~2,'0d-~2,'0d" year month day)))
+
 (defun hex-to-rgb (hex)
   (let ((hex (string-trim "#" hex)))
     (list (parse-integer hex :start 0 :end 2 :radix 16)
           (parse-integer hex :start 2 :end 4 :radix 16)
           (parse-integer hex :start 4 :end 6 :radix 16))))
+
+(defun render-user-prefix (username)
+  (format nil "[~a]: "
+          (tui:render-styled
+           (tui:make-style :foreground
+                           (get-user-color username))
+           username)))
 
 (defun get-user-color (username)
   (if (string= username "@server")
@@ -125,7 +139,8 @@
                  do (sleep 30)
                     (when (connected model)
                       (handler-case
-                          (send-message (socket model) "/ping")
+                          (when (username model)
+                           (send-message (socket model) "/ping system"))
                         (error (c)
                           (declare (ignore c))
                           (setf (connected model) nil))))))
@@ -134,7 +149,7 @@
 (defun update-users-list (model)
   (let ((content (with-output-to-string (s)
                    (format s "~a ~a"
-                           (tui:render-styled (tui:make-style :foreground (tui:color-rgb 255 255 255)) "Connected Users:")
+                           (tui:render-styled (tui:make-style :foreground (tui:color-rgb 255 255 255)) "Online:")
                            (format nil "~{~a~^, ~}" (sort (copy-list (users model)) #'string<))))))
     (vp:viewport-set-content (users-viewport model) content)))
 
@@ -232,7 +247,8 @@
            (match (multiple-value-list (cl-ppcre:scan-to-strings regex text))))
       (if (first match)
           (let* ((groups (second match))
-                 (date (aref groups 0))
+                 (date (or (aref groups 0)
+                           (today)))
                  (time (format nil "~a:~a" (aref groups 1) (aref groups 2)))
                  (user (aref groups 3))
                  (content (aref groups 4))
@@ -256,10 +272,7 @@
                    (setf (username model) joined-user
                          (pending-username model) nil)
                    (setf (ti:textinput-prompt (input model))
-                         (format nil "[~a]: "
-                                 (tui:render-styled (tui:make-style :foreground
-                                                                    (get-user-color joined-user))
-                                                    joined-user)))
+                         (render-user-prefix joined-user))
                    (recalculate-layout model)
                    (send-message (socket model) "/users")
                    (send-message (socket model) "/log 100"))))
@@ -274,19 +287,23 @@
                       (users-list (cl-ppcre:split ", " list-str)))
                  (setf (users model) users-list)
                  (update-users-list model)))
-              ;; /whoami response
-              ((and (string= user "@server") (search "You are @" content))
-               (let ((my-name (subseq content 9 (search " at " content))))
+              ;; /nick response
+              ((and (string= user "@server") (search "Your new nick is: @" content))
+               (let ((my-name (subseq content (1+ (search "@" content)))))
+                 (setf (users model)
+                       (remove (username model) (users model) :test #'string=))
                  (setf (username model) my-name)
-                 (setf (ti:textinput-prompt (input model)) (format nil "[@~a]: " my-name))
+                 (setf (ti:textinput-prompt (input model))
+                       (render-user-prefix my-name))
+                 (pushnew my-name (users model) :test #'string=)
                  (recalculate-layout model)))
                ;; /ping response (ignore)
-              ((and (string= user "@server") (search "pong" content))
+              ((and (string= user "@server") (search "pong (system)" content))
                ;; Do nothing, just ignore
                nil))
 
             ;; Only show if not ignored (like pong)
-            (unless (and (string= user "@server") (search "pong" content))
+            (unless (and (string= user "@server") (search "pong (system)" content))
               ;; Handle date divider
               (when (and date (not (equal date (last-date model))))
                 (setf (last-date model) date)
