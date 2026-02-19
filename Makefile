@@ -65,6 +65,12 @@ dep-tree:
 
 .PHONY: check docker-build docs appimage docker-check docker-appimage
 
+check-integration:
+	qlot exec ros -s lisp-chat/tests -e '(parachute:test (quote lisp-chat/tests::integration-tests))'
+
+check-unit:
+	qlot exec ros -s lisp-chat/tests -e '(parachute:test (quote lisp-chat/tests::unit-tests))'
+
 check:
 	qlot exec ros $(ROS_TEST_FLAGS) -e '(asdf:test-system :lisp-chat/tests)'
 
