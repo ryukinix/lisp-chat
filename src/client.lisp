@@ -68,6 +68,18 @@
                (rgb (hex-to-rgb hex)))
           (apply #'tui:color-rgb rgb)))))
 
+(defun colorize-mentions (content)
+  "Colorizes citations like @user in the message content."
+  (cl-ppcre:regex-replace-all "@[a-zA-Z0-9_.-]+" content
+    (lambda (mention)
+      (let ((username (if (string= mention "@server")
+                          mention
+                          (subseq mention 1))))
+        (tui:render-styled
+         (tui:make-style :foreground (get-user-color username))
+         mention)))
+    :simple-calls t))
+
 ;;; Model
 
 (defclass chat-model ()
@@ -147,10 +159,16 @@
          :name "ping-thread")))
 
 (defun update-users-list (model)
-  (let ((content (with-output-to-string (s)
-                   (format s "~a ~a"
-                           (tui:render-styled (tui:make-style :foreground (tui:color-rgb 255 255 255)) "Online:")
-                           (format nil "~{~a~^, ~}" (sort (copy-list (users model)) #'string<))))))
+  (let* ((sorted-users (sort (copy-list (users model)) #'string<))
+         (colored-users (mapcar (lambda (u)
+                                  (tui:render-styled
+                                   (tui:make-style :foreground (get-user-color u))
+                                   u))
+                                sorted-users))
+         (content (with-output-to-string (s)
+                    (format s "~a ~a"
+                            (tui:render-styled (tui:make-style :foreground (tui:color-rgb 255 255 255)) "Online:")
+                            (format nil "~{~a~^, ~}" colored-users)))))
     (vp:viewport-set-content (users-viewport model) content)))
 
 (defun recalculate-layout (model)
@@ -256,7 +274,7 @@
                  (formatted (format nil "~a [~a]: ~a"
                                     (tui:render-styled (tui:make-style :foreground (tui:color-rgb 100 100 100)) time)
                                     (tui:render-styled (tui:make-style :foreground user-color) user)
-                                    content)))
+                                    (colorize-mentions content))))
 
             ;; Process system messages for side-effects
             (cond
@@ -320,7 +338,8 @@
           (progn
              ;; Filter raw pong messages too if they appear without standard formatting
              (unless (search "pong" text)
-                (let ((wrapped (tui:wrap-text text (vp:viewport-width (viewport model)) :break-words t)))
+                (let* ((colored-text (colorize-mentions text))
+                       (wrapped (tui:wrap-text colored-text (vp:viewport-width (viewport model)) :break-words t)))
                   (dolist (line (tui:split-string-by-newline wrapped))
                     (push line (messages model))))
                 (vp:viewport-set-content (viewport model) (format nil "~{~a~%~}" (reverse (messages model))))
