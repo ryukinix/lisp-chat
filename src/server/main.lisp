@@ -14,7 +14,6 @@
   (format t "Running web server at http://~a:~a... ~%" *host* *websocket-port*)
   (let (connection-thread
         broadcast-thread
-        ping-thread
         web-handler)
     (unwind-protect
          (progn
@@ -22,16 +21,13 @@
                                                 :name "Connection handler"))
            (setf broadcast-thread (make-thread #'message-broadcast
                                                :name "Message broadcast"))
-           (setf ping-thread (make-thread #'ping-websockets-loop
-                                          :name "WebSocket Pinger"))
            (setf web-handler (clackup #'web-handler
                                       :debug nil
                                       :address *host*
                                       :port *websocket-port*
                                       :use-thread t))
            (join-thread connection-thread)
-           (join-thread broadcast-thread)
-           (join-thread ping-thread))
+           (join-thread broadcast-thread))
       (progn
         (debug-format t "~%Shutting down...~%")
         (sleep 1)
@@ -45,9 +41,6 @@
         (when (and broadcast-thread (thread-alive-p broadcast-thread))
           (debug-format t "Stopping message broadcast...~%")
           (destroy-thread broadcast-thread))
-        (when (and ping-thread (thread-alive-p ping-thread))
-          (debug-format t "Stopping websocket pinger...~%")
-          (destroy-thread ping-thread))
         (let ((clients *clients*))
           (loop for client in clients
                 do (client-close client)))))))

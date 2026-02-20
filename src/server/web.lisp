@@ -28,7 +28,19 @@
                 (if response
                     (send-message client response)
                     (when (> (length message) 0)
-                      (push-message (client-name client) message)))))))
+                      (push-message (client-name client) message)))
+                (handler-case
+                    (let* ((sent-time (get-internal-real-time))
+                           (payload-str (princ-to-string sent-time))
+                           (payload (map '(vector (unsigned-byte 8)) #'char-code payload-str)))
+                      (websocket-driver:send-ping 
+                       ws
+                       payload
+                       (lambda ()
+                         (let* ((now (get-internal-real-time))
+                                (rtt (* (/ (- now sent-time) internal-time-units-per-second) 1000000.0)))
+                           (setf (client-connection-latency client) (round rtt))))))
+                  (error () nil))))))
     (on :open ws
         (lambda ()
           (send ws "> Type your username: ")))
@@ -40,26 +52,6 @@
     (lambda (responder)
       (declare (ignore responder))
       (start-connection ws))))
-
-(defun ping-websockets-loop ()
-  (loop
-    (let ((clients (with-lock-held (*client-lock*)
-                     (copy-list *clients*))))
-      (dolist (client clients)
-        (when (equal (client-socket-type client) "WebSocket")
-          (handler-case
-              (let* ((sent-time (get-internal-real-time))
-                     (payload-str (princ-to-string sent-time))
-                     (payload (map '(vector (unsigned-byte 8)) #'char-code payload-str)))
-                (websocket-driver:send-ping 
-                 (client-socket client) 
-                 payload
-                 (lambda ()
-                   (let* ((now (get-internal-real-time))
-                          (rtt (* (/ (- now sent-time) internal-time-units-per-second) 1000000.0)))
-                     (setf (client-connection-latency client) (round rtt))))))
-            (error () nil)))))
-    (sleep 5)))
 
 (defun static-response-headers (content-type)
   (let ((no-cache '("text/html")))
