@@ -38,6 +38,7 @@
            #:command-message
            #:send-message
            #:user-messages
+           #:client-latency
            #:reset-server))
 
 (defpackage #:lisp-chat/commands
