@@ -139,12 +139,9 @@
   #-sbcl nil)
 
 (defun client-latency (client)
-  "Returns the latency (RTT) and variation (RTTVAR) in microseconds, or NIL if unsupported or failed."
+  "Returns the latency (RTT) in microseconds, or NIL if unsupported or failed."
   (if (equal (client-socket-type client) "WebSocket")
-      (let ((latency (client-connection-latency client)))
-        (if latency
-            (values latency 0)
-            (values nil nil)))
+      (client-connection-latency client)
       #+sbcl
       (let ((fd (get-stream-fd (client-socket client))))
         (when fd
@@ -152,6 +149,11 @@
                                 (len sb-alien:unsigned-int (sb-alien:alien-size (sb-alien:struct tcp-info) :bytes)))
             (let ((res (c-getsockopt fd 6 11 (sb-alien:addr info) (sb-alien:addr len))))
               (when (zerop res)
-                (values (sb-alien:slot info 'rtt)
-                        (sb-alien:slot info 'rttvar)))))))
+                (sb-alien:slot info 'rtt))))))
       #-sbcl nil))
+
+(defun client-latency-ms (client)
+  "Returns the latency (RTT) in milisseconds or nil"
+  (let ((latency (client-latency client)))
+    (when (not (null latency))
+      (/ latency 1000.0))))

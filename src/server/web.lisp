@@ -11,7 +11,7 @@
         (let* ((sent-time (get-internal-real-time))
                (payload-str (princ-to-string sent-time))
                (payload (map '(vector (unsigned-byte 8)) #'char-code payload-str)))
-          (websocket-driver:send-ping 
+          (websocket-driver:send-ping
            ws
            payload
            (lambda ()
@@ -44,8 +44,8 @@
                 (if response
                     (send-message client response)
                     (when (> (length message) 0)
-                      (push-message (client-name client) message)))
-                (recalculate-client-latency client)))))
+                      (push-message (client-name client) message)))))
+          (recalculate-client-latency client)))
     (on :open ws
         (lambda ()
           (send ws "> Type your username: ")))

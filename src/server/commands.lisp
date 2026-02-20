@@ -89,12 +89,11 @@
 (defun /ping (client &rest args)
   "/ping responds with a 'pong' message, echoing the provided arguments or the user's nickname."
   (declare (ignorable client args))
-  (multiple-value-bind (rtt rttvar) (client-latency client)
-    (declare (ignore rttvar))
-    (let ((latency-msg (if rtt
-                           (format nil " | latency: ~,2fms" (/ rtt 1000.0))
-                           "")))
-      (command-message (format nil "pong ~a~a" (or args (client-name client)) latency-msg)))))
+  (let* ((latency (client-latency-ms client))
+         (latency-msg (if latency
+                          (format nil " | latency: ~,2fms" latency)
+                          "")))
+    (command-message (format nil "pong ~a~a" (or args (client-name client)) latency-msg))))
 
 
 (defun /help (client &optional command-name &rest args)
@@ -173,11 +172,15 @@
       ((not username) (command-message "/whois <username>"))
       ((not user) (command-message (format nil "~s user not found" username)))
       (t
-       (let ((formatted-time (format-time (client-time user))))
+       (let ((formatted-time (format-time (client-time user)))
+             (latency (client-latency-ms user)))
          (command-message
-          (format nil "User @~a at ~a online since ~a"
+          (format nil "User @~a at ~a~a online since ~a"
                   (client-name user)
                   (client-address user)
+                  (if latency
+                      (format nil " with latency: ~,2fms" latency)
+                      "")
                   formatted-time)))))))
 
 (defun /version (client &rest args)
@@ -225,20 +228,3 @@
       (push-message "@command"
                     (format nil "user @~a called lisp code `~a` ~a"
                             (client-name client) program result)))))
-
-(defun /latency (client &optional (username nil))
-  "/latency gets the current latency (in milliseconds) for you or a specific USERNAME"
-  (let ((target (if username (get-client username) client)))
-    (cond
-      ((and username (not target))
-       (command-message (format nil "~s user not found" username)))
-      (t
-       (multiple-value-bind (rtt rttvar) (client-latency target)
-         (declare (ignore rttvar))
-         (if rtt
-             (command-message
-              (format nil "Latency for @~a: ~,2f ms"
-                      (client-name target) (/ rtt 1000.0)))
-             (command-message
-              (format nil "Latency information is not available for @~a"
-                      (client-name target)))))))))
