@@ -68,28 +68,54 @@ function getUserColor(name) {
     return availableColors[index];
 }
 
-function linkify(text) {
+function escapeHTML(text) {
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function formatMessage(text) {
+    if (!text) return "";
+
+    const urls = [];
     const urlPattern = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
-    return text.replace(urlPattern, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
-}
+    
+    // 1. Protect URLs
+    let processed = text.replace(urlPattern, (match) => {
+        const id = urls.length;
+        urls.push(match);
+        return `URLPLACEHOLDER${id}URL`;
+    });
 
-function formatMarkdown(text) {
+    // 2. Escape HTML
+    processed = escapeHTML(processed);
+
+    // 3. Markdown (on escaped text)
+    // Code first to avoid processing inside code tags
+    processed = processed.replace(/`(.*?)`/g, '<code>$1</code>');
     // Bold
-    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    text = text.replace(/__(.*?)__/g, '<strong>$1</strong>');
+    processed = processed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    processed = processed.replace(/__(.*?)__/g, '<strong>$1</strong>');
     // Italic
-    text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
-    text = text.replace(/_(.*?)_/g, '<em>$1</em>');
+    processed = processed.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    processed = processed.replace(/_(.*?)_/g, '<em>$1</em>');
     // Strikethrough
-    text = text.replace(/~~(.*?)~~/g, '<del>$1</del>');
-    // Code
-    text = text.replace(/`(.*?)`/g, '<code>$1</code>');
-    return text;
-}
+    processed = processed.replace(/~~(.*?)~~/g, '<del>$1</del>');
 
-function colorizeMentions(text) {
-    return text.replace(/(^|\s)@([a-zA-Z0-9_\-]+)/g, (match, prefix, user) => {
-        return `${prefix}<span style="color: ${getUserColor(user)}">@${user}</span>`;
+    // 4. Mentions
+    processed = processed.replace(/(^|\s)@([a-zA-Z0-9_\-]+)/g, (match, prefix, user) => {
+        const color = getUserColor(user);
+        return `${prefix}<span style="color: ${color}">@${user}</span>`;
+    });
+
+    // 5. Restore URLs
+    return processed.replace(/URLPLACEHOLDER(\d+)URL/g, (match, id) => {
+        const url = urls[parseInt(id)];
+        const escapedUrl = escapeHTML(url);
+        return `<a href="${escapedUrl}" target="_blank" rel="noopener noreferrer">${escapedUrl}</a>`;
     });
 }
 
@@ -124,7 +150,7 @@ function showNotification(text) {
 
     const notification = document.createElement("div");
     notification.className = "notification";
-    notification.innerHTML = colorizeMentions(text);
+    notification.innerHTML = formatMessage(text);
     notification.onclick = () => notification.remove();
 
     container.prepend(notification);
@@ -283,7 +309,7 @@ function createMessageElement(date, timeHM, timeS, from, content) {
 
     const contentSpan = document.createElement("span");
     contentSpan.className = "msg-content";
-    contentSpan.innerHTML = colorizeMentions(linkify(formatMarkdown(content)));
+    contentSpan.innerHTML = formatMessage(content);
 
     div.appendChild(timeSpan);
     div.appendChild(fromSpan);
@@ -359,7 +385,7 @@ function addRawMessage(line) {
     const div = document.createElement("div");
     div.className = "message";
     div.dataset.date = getTodayDate();
-    div.innerHTML = colorizeMentions(linkify(formatMarkdown(line)));
+    div.innerHTML = formatMessage(line);
     chat.appendChild(div);
     ensureDateDivider(div);
 }
