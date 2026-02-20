@@ -38,6 +38,7 @@
                       (with-lock-held (*client-lock*)
                         (push client *clients*))
                       (user-joined-message client)
+                      (recalculate-client-latency client)
                       (debug-format t "New web-socket user ~a@~a~%" name (client-address client)))))
               (let ((response (lisp-chat/commands:call-command client message)))
                 (if response

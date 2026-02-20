@@ -24,6 +24,21 @@
             (progn ,@body)
          (usocket:socket-close ,socket)))))
 
+(defmacro with-websocket-client ((client messages-var) &body body)
+  (let ((url (gensym))
+        (connected (gensym)))
+    `(let* ((,url (format nil "ws://127.0.0.1:~a/ws" *websocket-port*))
+            (,client (make-client ,url))
+            (,connected nil)
+            (,messages-var '()))
+       (on :open ,client (lambda () (setf ,connected t)))
+       (on :message ,client (lambda (msg) (push msg ,messages-var)))
+       (start-connection ,client)
+       (loop repeat 20 until ,connected do (sleep 0.1))
+       (unwind-protect
+            (progn ,@body)
+         (close-connection ,client)))))
+
 (defun tcp-interaction (stream &rest steps)
   "Execute a sequence of steps:
    - string: send line to server
@@ -83,21 +98,22 @@
 
 (define-test websocket-client-connection
   :parent integration-tests
-  (let* ((url (format nil "ws://127.0.0.1:~a/ws" *websocket-port*))
-         (client (make-client url))
-         (connected nil)
-         (messages '()))
-    (on :open client (lambda () (setf connected t)))
-    (on :message client (lambda (msg) (push msg messages)))
-    (start-connection client)
-    ;; Wait for connection
-    (loop repeat 20 until connected do (sleep 0.1))
-    (true connected)
+  (with-websocket-client (client messages)
     (ws-interaction client (lambda () messages)
       '(:expect "Type your username")
       "tester-ws"
-      '(:expect "The user @tester-ws joined to the party!"))
-    (close-connection client)))
+      '(:expect "The user @tester-ws joined to the party!"))))
+
+(define-test websocket-ping-command
+  :parent integration-tests
+  (with-websocket-client (client messages)
+    (ws-interaction client (lambda () messages)
+      '(:expect "Type your username")
+      "tester-ping"
+      '(:expect "The user @tester-ping joined to the party!")
+      '(:sleep 0.2)
+      "/ping"
+      '(:expect "latency:"))))
 
 (define-test log-commands-with-date-format
   :parent integration-tests
