@@ -175,11 +175,11 @@
        (let ((formatted-time (format-time (client-time user)))
              (latency (client-latency-ms user)))
          (command-message
-          (format nil "User @~a at ~a~a online since ~a"
+          (format nil "User @~a at ~a~a, online since ~a"
                   (client-name user)
                   (client-address user)
                   (if latency
-                      (format nil " with latency: ~,2fms" latency)
+                      (format nil " with latency of ~,2fms" latency)
                       "")
                   formatted-time)))))))
 
