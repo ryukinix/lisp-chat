@@ -82,7 +82,7 @@ function formatMessage(text) {
 
     const urls = [];
     const urlPattern = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
-    
+
     // 1. Protect URLs
     let processed = text.replace(urlPattern, (match) => {
         const id = urls.length;
@@ -106,7 +106,7 @@ function formatMessage(text) {
     processed = processed.replace(/~~(.*?)~~/g, '<del>$1</del>');
 
     // 4. Mentions
-    processed = processed.replace(/(^|\s)@([a-zA-Z0-9_\-]+)/g, (match, prefix, user) => {
+    processed = processed.replace(/(^|\s)@([A-zÀ-ú0-9_\-]+)/g, (match, prefix, user) => {
         const color = getUserColor(user);
         return `${prefix}<span style="color: ${color}">@${user}</span>`;
     });
