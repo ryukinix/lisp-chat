@@ -32,7 +32,9 @@ OPTIONS
     (when host
       (setq lisp-chat/config:*host* host))
     (when port
-      (setq lisp-chat/config:*port* (parse-integer port))))
+      (setq lisp-chat/config:*port* (parse-integer port))
+      (setq lisp-chat/config:*websocket-port*
+            (1+ lisp-chat/config:*port*))))
 
   (cond
     ((lisp-chat/config:has-any-flags argv "-h" "--help") (princ *usage*))

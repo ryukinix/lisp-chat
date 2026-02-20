@@ -107,6 +107,21 @@
             (command-message (format nil "Command ~a not found." cmd))))
       (command-message (format nil "Available commands: ~{~a~^, ~}" (get-commands)))))
 
+(defun /man (client &rest args)
+  "/man shows the docstrings of all available commands"
+  (declare (ignorable client args))
+  (let* ((commands (get-commands))
+         (docs (mapcar (lambda (cmd)
+                         (let* ((sym (get-command cmd))
+                                (doc (when (and sym (fboundp sym))
+                                       (documentation sym 'function))))
+                           (if doc
+                               doc
+                               (format nil "~a: No documentation" cmd))))
+                       commands))
+         (note "Note: /clear and /quit are front-end commands, depending the implementation of the client."))
+    (command-message (format nil "Manual of lisp-chat:~%~{~a~^~%~}~%~%~a" docs note))))
+
 (defun /log (client &key (depth "20") (date-format nil) &allow-other-keys)
   "/log shows the last messages sent to the server.
    DEPTH is optional number of messages frames from log"
@@ -175,6 +190,14 @@
         (connection-type (client-socket-type client)))
     (command-message (format nil "You are @~a at ~a (~a connection)"
                              name address connection-type))))
+
+(defun /clear (client &rest args)
+  "/clear clears the terminal screen"
+  (declare (ignorable client args)))
+
+(defun /quit (client &rest args)
+  "/quit terminates the connection"
+  (declare (ignorable client args)))
 
 (defun cleanup-result-program (result)
   (string-trim '(#\Space #\Newline #\Return #\Tab #\Linefeed) result))
