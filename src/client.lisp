@@ -57,12 +57,19 @@
                            (get-user-color username))
            username)))
 
+(defun to-int32 (x)
+  (let ((val (logand x #xFFFFFFFF)))
+    (if (logbitp 31 val)
+        (- val #x100000000)
+        val)))
+
 (defun get-user-color (username)
   (if (string= username "@server")
       (tui:color-rgb 187 34 34) ; #bb2222
       (let ((hash 0))
         (loop for char across username
-              do (setf hash (+ (char-code char) (- (ash hash 12) hash))))
+              do (let ((shifted (to-int32 (ash (to-int32 hash) 12))))
+                   (setf hash (+ (char-code char) (- shifted hash)))))
         (let* ((index (mod (abs hash) (length *colors*)))
                (hex (nth index *colors*))
                (rgb (hex-to-rgb hex)))
