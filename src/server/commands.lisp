@@ -87,7 +87,7 @@
   (command-message (format nil "users: ~{~a~^, ~}" (mapcar #'client-name *clients*))))
 
 (defun /ping (client &rest args)
-  "/ping returns a list separated by commas of the currently logged users"
+  "/ping responds with a 'pong' message, echoing the provided arguments or the user's nickname."
   (declare (ignorable client args))
   (command-message (format nil "pong ~a" (or args (client-name client)))))
 
