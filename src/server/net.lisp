@@ -75,3 +75,85 @@
                                 (error (e)
                                   (debug-format t "Error broadcasting to ~a: ~a~%" (client-name client) e)
                                   (client-delete client))))))))))
+
+#+sbcl
+(sb-alien:define-alien-type tcp-info
+  (sb-alien:struct tcp-info
+    (state sb-alien:unsigned-char)
+    (ca-state sb-alien:unsigned-char)
+    (retransmits sb-alien:unsigned-char)
+    (probes sb-alien:unsigned-char)
+    (backoff sb-alien:unsigned-char)
+    (options sb-alien:unsigned-char)
+    (wscale sb-alien:unsigned-char)
+    (flags sb-alien:unsigned-char)
+    (rto sb-alien:unsigned-int)
+    (ato sb-alien:unsigned-int)
+    (snd-mss sb-alien:unsigned-int)
+    (rcv-mss sb-alien:unsigned-int)
+    (unacked sb-alien:unsigned-int)
+    (sacked sb-alien:unsigned-int)
+    (lost sb-alien:unsigned-int)
+    (retrans sb-alien:unsigned-int)
+    (fackets sb-alien:unsigned-int)
+    (last-data-sent sb-alien:unsigned-int)
+    (last-ack-sent sb-alien:unsigned-int)
+    (last-data-recv sb-alien:unsigned-int)
+    (last-ack-recv sb-alien:unsigned-int)
+    (pmtu sb-alien:unsigned-int)
+    (rcv-ssthresh sb-alien:unsigned-int)
+    (rtt sb-alien:unsigned-int)
+    (rttvar sb-alien:unsigned-int)))
+
+#+sbcl
+(sb-alien:define-alien-routine ("getsockopt" c-getsockopt) sb-alien:int
+  (fd sb-alien:int)
+  (level sb-alien:int)
+  (optname sb-alien:int)
+  (optval (* (sb-alien:struct tcp-info)))
+  (optlen (* sb-alien:unsigned-int)))
+
+(defun get-stream-fd (stream)
+  #+sbcl
+  (labels ((get-slot-safe (obj pkg-name sym-name)
+             (let ((pkg (find-package pkg-name)))
+               (when pkg
+                 (let ((sym (find-symbol sym-name pkg)))
+                   (when (and sym (slot-exists-p obj sym))
+                     (slot-value obj sym))))))
+           (unwrap (s)
+             (typecase s
+               (sb-sys:fd-stream (sb-sys:fd-stream-fd s))
+               (sb-bsd-sockets:socket (sb-bsd-sockets:socket-file-descriptor s))
+               (usocket:usocket (unwrap (usocket:socket s)))
+               (synonym-stream (unwrap (symbol-value (synonym-stream-symbol s))))
+               (two-way-stream (unwrap (two-way-stream-input-stream s)))
+               (echo-stream (unwrap (echo-stream-input-stream s)))
+               (t (or (let ((inner (get-slot-safe s "FLEXI-STREAMS" "STREAM")))
+                        (and inner (unwrap inner)))
+                      (let ((inner (get-slot-safe s "CHUNGA" "STREAM")))
+                        (and inner (unwrap inner)))
+                      (let ((inner (get-slot-safe s "WEBSOCKET-DRIVER.WS.SERVER" "SOCKET")))
+                        (and inner (unwrap inner))))))))
+    (unwrap stream))
+  #-sbcl nil)
+
+(defun client-latency (client)
+  "Returns the latency (RTT) in microseconds, or NIL if unsupported or failed."
+  (if (equal (client-socket-type client) "WebSocket")
+      (client-connection-latency client)
+      #+sbcl
+      (let ((fd (get-stream-fd (client-socket client))))
+        (when fd
+          (sb-alien:with-alien ((info (sb-alien:struct tcp-info))
+                                (len sb-alien:unsigned-int (sb-alien:alien-size (sb-alien:struct tcp-info) :bytes)))
+            (let ((res (c-getsockopt fd 6 11 (sb-alien:addr info) (sb-alien:addr len))))
+              (when (zerop res)
+                (sb-alien:slot info 'rtt))))))
+      #-sbcl nil))
+
+(defun client-latency-ms (client)
+  "Returns the latency (RTT) in milisseconds or nil"
+  (let ((latency (client-latency client)))
+    (when (not (null latency))
+      (/ latency 1000.0))))

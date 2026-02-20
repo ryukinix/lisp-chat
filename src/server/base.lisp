@@ -29,7 +29,8 @@
   name
   socket
   address
-  time)
+  time
+  (connection-latency nil))
 
 
 (defun client-socket-type (client)

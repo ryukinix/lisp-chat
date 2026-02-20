@@ -89,7 +89,11 @@
 (defun /ping (client &rest args)
   "/ping responds with a 'pong' message, echoing the provided arguments or the user's nickname."
   (declare (ignorable client args))
-  (command-message (format nil "pong ~a" (or args (client-name client)))))
+  (let* ((latency (client-latency-ms client))
+         (latency-msg (if latency
+                          (format nil " | latency: ~,2fms" latency)
+                          "")))
+    (command-message (format nil "pong ~a~a" (or args (client-name client)) latency-msg))))
 
 
 (defun /help (client &optional command-name &rest args)
@@ -144,15 +148,15 @@
   (if new-nick
       (progn (setf (client-name client) new-nick)
              (command-message (format nil "Your new nick is: @~a" new-nick)))
-      (command-message (format nil "/nick <new-nickname>"))))
+      (command-message (format nil "/nick NEW-NICKNAME"))))
 
 (defun /dm (client &optional (username nil) msg-content)
   "/dm sends a direct message to a USERNAME"
   (let ((user (get-client username))
         (from (client-name client)))
     (cond
-      ((not username) (command-message "/dm <username> your message"))
-      ((not user) (command-message (format nil "~s user not found" username)))
+      ((not username) (command-message "/dm USERNAME your message"))
+      ((not user) (command-message (format nil "error: ~s user not found" username)))
       ((equal from username) (command-message "you can't dm to yourself"))
       (t
        (prog1 'ignore
@@ -165,14 +169,18 @@
   (declare (ignorable client))
   (let ((user (get-client username)))
     (cond
-      ((not username) (command-message "/whois <username>"))
-      ((not user) (command-message (format nil "~s user not found" username)))
+      ((not username) (command-message "/whois USERNAME"))
+      ((not user) (command-message (format nil "error: ~s user not found" username)))
       (t
-       (let ((formatted-time (format-time (client-time user))))
+       (let ((formatted-time (format-time (client-time user)))
+             (latency (client-latency-ms user)))
          (command-message
-          (format nil "User @~a at ~a online since ~a"
+          (format nil "User @~a at ~a~a, online since ~a"
                   (client-name user)
                   (client-address user)
+                  (if latency
+                      (format nil " with latency of ~,2fms" latency)
+                      "")
                   formatted-time)))))))
 
 (defun /version (client &rest args)
