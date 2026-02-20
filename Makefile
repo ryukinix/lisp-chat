@@ -64,7 +64,7 @@ deploy: docker-publish
 	ssh starfox bash /home/lerax/Deploy/lisp-chat.sh
 
 dep-tree:
-	qlot exec ros -s asdf-dependency-graph -e '(asdf-dependency-graph:generate "tree.png" "lisp-chat-tui")'
+	qlot exec ros -s asdf-dependency-graph -e '(asdf-dependency-graph:generate "tree.png" "lisp-chat")'
 
 .PHONY: check docker-build docs appimage docker-check docker-appimage
 
