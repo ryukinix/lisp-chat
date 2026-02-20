@@ -5,6 +5,21 @@
     (or (and headers (gethash "cf-connecting-ip" headers))
         (getf env :remote-addr))))
 
+(defun recalculate-client-latency (client)
+  (let ((ws (client-socket client)))
+    (handler-case
+        (let* ((sent-time (get-internal-real-time))
+               (payload-str (princ-to-string sent-time))
+               (payload (map '(vector (unsigned-byte 8)) #'char-code payload-str)))
+          (websocket-driver:send-ping 
+           ws
+           payload
+           (lambda ()
+             (let* ((now (get-internal-real-time))
+                    (rtt (* (/ (- now sent-time) internal-time-units-per-second) 1000000.0)))
+               (setf (client-connection-latency client) (round rtt))))))
+      (error () nil))))
+
 (defun ws-app (env)
   (let ((ws (make-server env))
         (client nil))
@@ -29,18 +44,7 @@
                     (send-message client response)
                     (when (> (length message) 0)
                       (push-message (client-name client) message)))
-                (handler-case
-                    (let* ((sent-time (get-internal-real-time))
-                           (payload-str (princ-to-string sent-time))
-                           (payload (map '(vector (unsigned-byte 8)) #'char-code payload-str)))
-                      (websocket-driver:send-ping 
-                       ws
-                       payload
-                       (lambda ()
-                         (let* ((now (get-internal-real-time))
-                                (rtt (* (/ (- now sent-time) internal-time-units-per-second) 1000000.0)))
-                           (setf (client-connection-latency client) (round rtt))))))
-                  (error () nil))))))
+                (recalculate-client-latency client)))))
     (on :open ws
         (lambda ()
           (send ws "> Type your username: ")))
