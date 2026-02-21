@@ -29,6 +29,12 @@
   :type 'string
   :group 'lisp-chat)
 
+(defcustom lisp-chat-default-username nil
+  "Default username for Lisp Chat. If nil, the user will be prompted."
+  :type '(choice (const :tag "Prompt" nil)
+                 (string :tag "Username"))
+  :group 'lisp-chat)
+
 (defvar lisp-chat-colors
   '("#ff7675" "#fab1a0" "#fdcb6e" "#e17055" "#d63031"
     "#00b894" "#00cec9" "#0984e3" "#6c5ce7" "#e84393"
@@ -93,6 +99,7 @@
             (insert (lisp-chat--format-message text)))
           (unless (string-suffix-p "\n" text)
             (insert "\n"))
+          (add-text-properties start (point) '(read-only t front-sticky t rear-nonsticky t))
           ;; Update marker to be at the start of the prompt again
           (set-marker lisp-chat-input-marker (point))))
       (when moving
@@ -121,7 +128,7 @@
         (when (> p-end (point))
           (delete-region (point) p-end)))
       
-      (let* ((user (or lisp-chat-username "anonymous"))
+      (let* ((user (or lisp-chat-username lisp-chat-default-username "anonymous"))
              (color (lisp-chat--get-user-color user))
              (prompt-text (format "[%s]> " user))
              (prompt (propertize prompt-text
@@ -186,7 +193,12 @@
                 (lisp-chat--insert-text (concat timestamp username body))))))
 
          ((string-match "> Type your username: " line)
-          (lisp-chat--insert-text "Connected! Please type your username below and press Enter." 'italic))
+          (if lisp-chat-default-username
+              (progn
+                (lisp-chat--insert-text (format "Logging in as %s..." lisp-chat-default-username) 'italic)
+                (setq lisp-chat--pending-username lisp-chat-default-username)
+                (lisp-chat-send lisp-chat-default-username))
+            (lisp-chat--insert-text "Connected! Please type your username below and press Enter." 'italic)))
 
          ((string-match "> Name cannot be empty. Try again: " line)
           (lisp-chat--insert-text "Name cannot be empty. Try again below." 'warning))
@@ -223,11 +235,14 @@
         (unless (string-empty-p (string-trim message))
           (let ((inhibit-read-only t))
             (delete-region p-end (point-max)))
-          (if (null lisp-chat-username)
-              (progn
-                (setq lisp-chat--pending-username (string-trim message))
-                (lisp-chat-send lisp-chat--pending-username))
-            (lisp-chat-send (string-trim message))))))))
+          (let ((trimmed (string-trim message)))
+            (if (string= trimmed "/quit")
+                (lisp-chat-quit)
+              (if (null lisp-chat-username)
+                  (progn
+                    (setq lisp-chat--pending-username trimmed)
+                    (lisp-chat-send lisp-chat--pending-username))
+                (lisp-chat-send trimmed)))))))))
 
 (defun lisp-chat-quit ()
   "Disconnect from the server and close the buffer."
@@ -240,10 +255,11 @@
 
 (defun lisp-chat--ensure-point ()
   "Ensure the cursor stays after the prompt when typing."
-  (let ((p-marker (marker-position lisp-chat-input-marker)))
+  (let ((p-marker (marker-position lisp-chat-input-marker))
+        (keys (this-command-keys)))
     (when (and p-marker
-               (this-command-keys)
-               (not (string-prefix-p "\C-x" (this-command-keys)))
+               keys
+               (not (and (stringp keys) (string-prefix-p "\C-x" keys)))
                (< (point) p-marker))
       (goto-char (point-max)))))
 
