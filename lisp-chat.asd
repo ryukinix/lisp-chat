@@ -74,20 +74,22 @@
                          (:static-file "manifest.json")
                          (:static-file "sw.js")))))
 
-(asdf:defsystem :lisp-chat/client
+(asdf:defsystem :lisp-chat/tui
   :class lisp-chat/system:custom-system-class
   :author #.lisp-chat/system:*author*
-  :description "An experimental chat irc-like: client"
+  :description "An experimental chat irc-like: client (TUI)"
   :version #.lisp-chat/system:*version*
   :build-metadata #.lisp-chat/system:*build-metadata*
   :license #.lisp-chat/system:*license*
   :depends-on ("usocket"
-               "cl-readline"
+               "tuition"
+               "cl-ppcre"
                "bordeaux-threads"
                "websocket-driver-client")
   :pathname "src"
   :components ((:file "config")
                (:file "client" :depends-on ("config"))))
+
 
 (asdf:defsystem :lisp-chat
   :class lisp-chat/system:custom-system-class
@@ -96,7 +98,7 @@
   :version #.lisp-chat/system:*version*
   :build-metadata #.lisp-chat/system:*build-metadata*
   :license #.lisp-chat/system:*license*
-  :depends-on ("lisp-chat/client"
+  :depends-on ("lisp-chat/tui"
                "lisp-chat/server")
   :in-order-to ((test-op (test-op "lisp-chat/tests"))))
 
@@ -104,7 +106,6 @@
   :author #.lisp-chat/system:*author*
   :license #.lisp-chat/system:*license*
   :depends-on ("lisp-chat/server"
-               "lisp-chat/client"
                "parachute")
   :pathname "tests"
   :components ((:file "package")
