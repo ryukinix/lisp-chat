@@ -58,11 +58,11 @@ When running the server locally, the web interface is accessible at `http://loca
 
 # Alternative clients
 
-If you want test this and don't have the Lisp requested, I have those
-alternatives for you:
+To test this with alternative clients, you can use these options:
 
-* Terminal text-based python client
-* Terminal ncurses python client
+* **Emacs client**: An ERC-like interface with colorized usernames, mentions, and WebSocket/TCP support. See [emacs/README.md](emacs/README.md) for details.
+* Terminal readline-based [python client](./bin/client.py)
+* Terminal ncurses [python client](./bin/client_curses.py)
 * Netcat client (wtf?)
 
 On Python client, I wrote in a way only using ths stdlib avoiding pain
