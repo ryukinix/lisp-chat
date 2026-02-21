@@ -236,13 +236,19 @@
           (let ((inhibit-read-only t))
             (delete-region p-end (point-max)))
           (let ((trimmed (string-trim message)))
-            (if (string= trimmed "/quit")
-                (lisp-chat-quit)
+            (cond
+             ((string= trimmed "/quit")
+              (lisp-chat-quit))
+             ((string= trimmed "/clear")
+              (let ((inhibit-read-only t))
+                (delete-region (point-min) (marker-position lisp-chat-input-marker))
+                (setq lisp-chat-last-date nil)))
+             (t
               (if (null lisp-chat-username)
                   (progn
                     (setq lisp-chat--pending-username trimmed)
                     (lisp-chat-send lisp-chat--pending-username))
-                (lisp-chat-send trimmed)))))))))
+                (lisp-chat-send trimmed))))))))))
 
 (defun lisp-chat-quit ()
   "Disconnect from the server and close the buffer."
