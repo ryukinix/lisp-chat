@@ -33,6 +33,8 @@
            #:get-client
            #:get-time
            #:format-time
+           #:parse-iso8601
+           #:message-universal-time
            #:push-message
            #:private-message
            #:command-message

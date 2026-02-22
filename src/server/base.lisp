@@ -100,6 +100,39 @@
           (remove-if #'(lambda (m) (equal (message-from m) "@server"))
                      *messages-log*)))
 
+(defun message-universal-time (message)
+  "Return the universal time of a message."
+  (apply #'encode-universal-time (message-time message)))
+
+(defun parse-iso8601 (iso-string)
+  "Parse YYYY-MM-DDTHH:MM:SS or YYYY-MM-DD into universal time.
+   Expected format: '2026-02-22T14:30:00' or '2026-02-22'"
+  (handler-case
+      (let* ((parts (uiop:split-string iso-string :separator "T"))
+             (date-part (car parts))
+             (time-part (cadr parts))
+             (date-fields (mapcar #'parse-integer (uiop:split-string date-part :separator "-")))
+             (time-fields (if time-part
+                              (mapcar #'parse-integer (uiop:split-string time-part :separator ":"))
+                              '(0 0 0))))
+        (encode-universal-time (or (nth 2 time-fields) 0) ;; second
+                               (or (nth 1 time-fields) 0) ;; minute
+                               (or (nth 0 time-fields) 0) ;; hour
+                               (nth 2 date-fields)        ;; date
+                               (nth 1 date-fields)        ;; month
+                               (nth 0 date-fields)))      ;; year
+    (error () nil)))
+
+(defun search-message (message &key (date-format nil))
+  "Format a message for the /search command.
+   The user part is prefixed with search:username."
+  (format nil "|~a| [search:~a]: ~a"
+          (if (string= date-format "date")
+              (message-time-date-format message)
+              (message-time-hour-format message))
+          (message-from message)
+          (message-content message)))
+
 (defun command-message (content)
   "This function prepare the CONTENT as a message by the @server"
   (let* ((from *server-nickname*)

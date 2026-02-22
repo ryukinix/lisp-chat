@@ -73,6 +73,7 @@
               (eq (length args) 1))
          (/log client :depth (car args) :date-format "date"))
         ((string= command "/dm") (/dm client (car args) (args-to-string (cdr args))))
+        ((string= command "/search") (/search client (car args) (parse-keywords (cdr args))))
         ((string= command "/lisp") (/lisp client (args-to-string args)))
         (command-function (apply command-function (cons client (parse-keywords args))))
         (t (command-message (format nil "command ~a doesn't exists" message)))))))
@@ -81,6 +82,33 @@
   (format nil "~{~a~^ ~}" args))
 
 ;; user commands prefixed with /
+(defun /search (client query &rest args &key user limit before after date-format &allow-other-keys)
+  "/search QUERY searches for messages containing QUERY as substring.
+   QUERY is an obligatory parameter.
+   KEY PARAMETERS:
+   :user USERNAME - Filter by a specific user.
+   :limit NUMBER - Maximum number of messages to return (default 10).
+   :before ISO-DATE - ISO format datetime filter (e.g., 2026-02-22T14:30).
+   :after ISO-DATE - ISO format datetime filter (e.g., 2026-02-22T14:30)."
+  (declare (ignorable client args))
+  (let* ((parsed-limit (or (and limit (parse-integer (if (stringp limit) limit (write-to-string limit)) :junk-allowed t)) 10))
+         (before-time (and before (parse-iso8601 (if (stringp before) before (write-to-string before)))))
+         (after-time (and after (parse-iso8601 (if (stringp after) after (write-to-string after)))))
+         (messages (reverse *messages-log*)) ;; newest first
+         (filtered (remove-if-not
+                    (lambda (m)
+                      (and (not (equal (message-from m) "@server"))
+                           (search query (message-content m))
+                           (or (not user) (equal (message-from m) (if (symbolp user) (string-downcase (symbol-name user)) user)))
+                           (or (not before-time) (<= (message-universal-time m) before-time))
+                           (or (not after-time) (>= (message-universal-time m) after-time))))
+                    messages))
+         (limited (subseq filtered 0 (min (length filtered) parsed-limit))))
+    (let ((res (format nil "~%~{~a~^~%~}"
+                       (mapcar (lambda (m) (search-message m :date-format date-format))
+                               (reverse limited)))))
+      (command-message res))))
+
 (defun /users (client &rest args)
   "/users returns a list separated by commas of the currently logged users"
   (declare (ignorable client args))

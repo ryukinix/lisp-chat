@@ -149,6 +149,64 @@
       '(:sleep 0.1)
       '(:expect "(1 2 3 4 5)"))))
 
+(define-test search-command-basic
+  :parent integration-tests
+  (with-tcp-client (stream)
+    (tcp-interaction stream
+      '(:expect "> Type your username: ")
+      "tester-search"
+      '(:wait-for "tester-search joined")
+      "needle in a haystack"
+      '(:expect "]: needle in a haystack") ;; Wait for broadcast
+      "/search needle"
+      '(:expect "tester-search")
+      '(:expect "needle in a haystack"))))
+
+(define-test search-command-with-user
+  :parent integration-tests
+  (with-tcp-client (stream)
+    (tcp-interaction stream
+      '(:expect "> Type your username: ")
+      "tester-user"
+      '(:wait-for "tester-user joined")
+      "message from user"
+      '(:expect "]: message from user") ;; Wait for broadcast
+      "/search message :user tester-user"
+      '(:expect "[search:tester-user]: message from user")
+      "/search message :user other-user"
+      '(:expect "")))) ;; Should not find anything
+
+(define-test search-command-with-limit
+  :parent integration-tests
+  (with-tcp-client (stream)
+    (tcp-interaction stream
+      '(:expect "> Type your username: ")
+      "tester-limit"
+      '(:wait-for "tester-limit joined")
+      "msg1" '(:expect "]: msg1")
+      "msg2" '(:expect "]: msg2")
+      "msg3" '(:expect "]: msg3")
+      "/search msg :limit 2"
+      '(:expect "msg2")
+      '(:expect "msg3"))))
+
+
+
+(define-test search-command-with-date-filters
+  :parent integration-tests
+  (let ((today (get-current-date)))
+    (with-tcp-client (stream)
+      (tcp-interaction stream
+        '(:expect "> Type your username: ")
+        "tester-date"
+        '(:wait-for "tester-date joined")
+        "dated message"
+        '(:wait-for "dated message")
+        (format nil "/search dated :after ~a" today)
+        '(:expect "[search:tester-date]: dated message")
+        "/search dated :before 2000-01-01"
+        '(:expect ""))))) ;; Should not find anything
+
 (define-test lisp-command-with-keywords
   :parent integration-tests
   (with-tcp-client (stream)
