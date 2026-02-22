@@ -102,7 +102,10 @@
 
 (defun message-universal-time (message)
   "Return the universal time of a message."
-  (apply #'encode-universal-time (message-time message)))
+  (destructuring-bind (second minute hour date month year &rest rest)
+      (message-time message)
+    (declare (ignore rest))
+    (encode-universal-time second minute hour date month year)))
 
 (defun parse-iso8601 (iso-string)
   "Parse YYYY-MM-DDTHH:MM:SS or YYYY-MM-DD into universal time.

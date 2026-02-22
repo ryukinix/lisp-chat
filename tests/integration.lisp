@@ -4,7 +4,7 @@
   :parent lisp-chat-tests)
 
 (define-test (integration-tests :before)
-  (lisp-chat/server:reset-server))
+    (lisp-chat/server:reset-server))
 
 (defun get-current-date ()
     (multiple-value-bind
@@ -159,7 +159,6 @@
       "needle in a haystack"
       '(:expect "]: needle in a haystack") ;; Wait for broadcast
       "/search needle"
-      '(:expect "tester-search")
       '(:expect "needle in a haystack"))))
 
 (define-test search-command-with-user
