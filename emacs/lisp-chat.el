@@ -77,6 +77,8 @@
 (defvar-local lisp-chat--tcp-buffer "")
 (defvar-local lisp-chat--pending-username nil)
 (defvar-local lisp-chat-input-marker nil)
+(defvar-local lisp-chat-current-address nil)
+(defvar-local lisp-chat-current-port nil)
 
 ;;; Internal Functions
 
@@ -257,12 +259,75 @@
 
 ;;; Public Commands
 
+(defun lisp-chat-clear ()
+  "Clear the chat area."
+  (interactive)
+  (let ((inhibit-read-only t))
+    (delete-region (point-min) (marker-position lisp-chat-input-marker))
+    (setq lisp-chat-last-date nil)))
+
+(defun lisp-chat-reconnect (&optional attempt)
+  "Reconnect to the server, trying up to 10 times."
+  (interactive)
+  (let ((address lisp-chat-current-address)
+        (port lisp-chat-current-port)
+        (username (or lisp-chat-username lisp-chat-default-username))
+        (curr-attempt (or attempt 1)))
+    (if (> curr-attempt 10)
+        (lisp-chat--insert-text "Reconnection failed after 10 attempts." 'error)
+      (when address
+        (when lisp-chat-ping-timer
+          (cancel-timer lisp-chat-ping-timer)
+          (setq lisp-chat-ping-timer nil))
+        (when lisp-chat-connection
+          (ignore-errors
+            (if (eq lisp-chat-connection-type 'websocket)
+                (websocket-close lisp-chat-connection)
+              (delete-process lisp-chat-connection)))
+          (setq lisp-chat-connection nil))
+        
+        (lisp-chat-clear)
+        (setq lisp-chat-username nil
+              lisp-chat-users nil)
+        (lisp-chat--update-header-line)
+        (lisp-chat--update-prompt)
+        (lisp-chat--insert-text (format "Reconnecting... (attempt %d/10)" curr-attempt) 'warning)
+        
+        (condition-case err
+            (progn
+              (if (eq lisp-chat-connection-type 'websocket)
+                  (setq lisp-chat-connection
+                        (websocket-open
+                         address
+                         :on-message (lambda (_ws frame) (lisp-chat--handle-server-message (websocket-frame-text frame)))
+                         :on-close (lambda (_ws) (message "Lisp Chat: Connection closed."))
+                         :on-error (lambda (_ws _type err) (message "Lisp Chat: WebSocket error: %S" err))))
+                (setq lisp-chat-connection
+                      (make-network-process
+                       :name "lisp-chat-tcp" :buffer (current-buffer) :host address :service port
+                       :filter #'lisp-chat--tcp-filter
+                       :sentinel (lambda (proc event) (when (string-match-p "finished" event) (message "Lisp Chat: TCP Connection closed."))))))
+              (lisp-chat--start-ping-timer)
+              (when username
+                (setq lisp-chat-default-username username)
+                (setq lisp-chat--pending-username username)))
+          (error
+           (run-at-time 3 nil (lambda (buf next-attempt)
+                                (when (buffer-live-p buf)
+                                  (with-current-buffer buf
+                                    (lisp-chat-reconnect next-attempt))))
+                        (current-buffer) (1+ curr-attempt))))))))
+
 (defun lisp-chat-send (message)
   "Send MESSAGE to the server."
   (when (and lisp-chat-connection message (not (string-empty-p message)))
-    (if (eq lisp-chat-connection-type 'websocket)
-        (websocket-send-text lisp-chat-connection message)
-      (process-send-string lisp-chat-connection (concat message "\n")))))
+    (condition-case err
+        (if (eq lisp-chat-connection-type 'websocket)
+            (websocket-send-text lisp-chat-connection message)
+          (process-send-string lisp-chat-connection (concat message "\n")))
+      (error
+       (message "Lisp Chat: Send error: %S" err)
+       (lisp-chat-reconnect)))))
 
 (defun lisp-chat-ret ()
   "Handle pressing Enter in the chat buffer."
@@ -279,9 +344,7 @@
              ((string= trimmed "/quit")
               (lisp-chat-quit))
              ((string= trimmed "/clear")
-              (let ((inhibit-read-only t))
-                (delete-region (point-min) (marker-position lisp-chat-input-marker))
-                (setq lisp-chat-last-date nil)))
+              (lisp-chat-clear))
              (t
               (if (null lisp-chat-username)
                   (progn
@@ -356,6 +419,7 @@
   (let ((buf (get-buffer-create "*lisp-chat*")))
     (with-current-buffer buf
       (lisp-chat-mode)
+      (setq lisp-chat-current-address url)
       (setq lisp-chat-connection-type 'websocket
             lisp-chat-connection
             (websocket-open
@@ -371,6 +435,8 @@
   (let ((buf (get-buffer-create "*lisp-chat*")))
     (with-current-buffer buf
       (lisp-chat-mode)
+      (setq lisp-chat-current-address host
+            lisp-chat-current-port port)
       (setq lisp-chat-connection-type 'tcp
             lisp-chat-connection
             (make-network-process
