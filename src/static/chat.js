@@ -478,13 +478,22 @@ form.addEventListener("submit", (e) => {
         input.value = "";
     }
 });
-input.addEventListener("focus", () => {
-    setTimeout(() => {
-        input.scrollIntoView({
-            behavior: "smooth",
-            block: "center"
-        });
-    }, 300); // delay lets the keyboard open first
+if (window.visualViewport) {
+    const updateViewport = () => {
+        document.body.style.height = `${window.visualViewport.height}px`;
+        document.body.style.top = `${window.visualViewport.offsetTop}px`;
+        document.body.style.left = `${window.visualViewport.offsetLeft}px`;
+        document.body.style.width = `${window.visualViewport.width}px`;
+    };
+    window.visualViewport.addEventListener('resize', updateViewport);
+    window.visualViewport.addEventListener('scroll', updateViewport);
+    updateViewport();
+}
+
+window.visualViewport?.addEventListener('resize', () => {
+    if (checkChatIsAtBottom()) {
+        chat.scrollTop = chat.scrollHeight;
+    }
 });
 
 connect();
