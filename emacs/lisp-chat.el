@@ -9,6 +9,7 @@
 
 (require 'websocket)
 (require 'cl-lib)
+(require 'browse-url)
 
 (defgroup lisp-chat nil
   "Lisp Chat client settings."
@@ -40,6 +41,32 @@
     "#00b894" "#00cec9" "#0984e3" "#6c5ce7" "#e84393"
     "#ffeaa7" "#55efc4" "#81ecec" "#74b9ff" "#a29bfe")
   "Colors used for usernames and mentions.")
+
+(defvar lisp-chat-url-regexp
+  "\\bhttps?://[-A-Za-z0-9+&@#/%?=~_|!:,.;]*[-A-Za-z0-9+&@#/%=~_|]"
+  "Regular expression for matching URLs.")
+
+(defvar lisp-chat-link-keymap
+  (let ((map (make-sparse-keymap)))
+    (define-key map [mouse-2] #'lisp-chat-browse-at-mouse)
+    (define-key map [mouse-1] #'lisp-chat-browse-at-mouse)
+    (define-key map (kbd "RET") #'lisp-chat-browse-at-point)
+    map)
+  "Keymap for links in Lisp Chat.")
+
+(defun lisp-chat-browse-at-mouse (event)
+  "Browse URL at mouse EVENT."
+  (interactive "e")
+  (save-excursion
+    (mouse-set-point event)
+    (lisp-chat-browse-at-point)))
+
+(defun lisp-chat-browse-at-point ()
+  "Browse URL at point."
+  (interactive)
+  (let ((url (get-text-property (point) 'lisp-chat-url)))
+    (when url
+      (browse-url url))))
 
 (defvar-local lisp-chat-connection nil)
 (defvar-local lisp-chat-connection-type nil)
@@ -73,8 +100,23 @@
         (nth index lisp-chat-colors))))))
 
 (defun lisp-chat--format-message (text)
-  "Format TEXT with colors for mentions and usernames."
+  "Format TEXT with colors for mentions and usernames, and clickable links."
   (let ((pos 0))
+    ;; Links
+    (while (string-match lisp-chat-url-regexp text pos)
+      (let ((url (match-string 0 text))
+            (start (match-beginning 0))
+            (end (match-end 0)))
+        (add-text-properties start end
+                             `(face link
+                               mouse-face highlight
+                               help-echo ,(concat "mouse-1: browse " url)
+                               keymap ,lisp-chat-link-keymap
+                               lisp-chat-url ,url)
+                             text)
+        (setq pos end)))
+    ;; Mentions
+    (setq pos 0)
     (while (string-match "@\\([A-zÀ-ú0-9_.-]+\\)" text pos)
       (let* ((username (match-string 1 text))
              (color (lisp-chat--get-user-color (if (string= username "server") "@server" username))))
