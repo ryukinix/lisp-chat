@@ -183,10 +183,10 @@
       "tester-limit"
       '(:wait-for "tester-limit joined")
       "msg1" '(:expect "]: msg1")
-      "msg2" '(:expect "]: msg2")
+      "MSG2" '(:expect "]: MSG2")
       "msg3" '(:expect "]: msg3")
       "/search msg :limit 2"
-      '(:expect "msg2")
+      '(:expect "MSG2")
       '(:expect "msg3"))))
 
 

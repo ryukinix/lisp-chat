@@ -81,7 +81,7 @@
   (format nil "~{~a~^ ~}" args))
 
 ;; user commands prefixed with /
-(defun /search (client query &rest args &key user limit before after date-format &allow-other-keys)
+(defun /search (client query &rest args &key user limit before after &allow-other-keys)
   "/search QUERY searches for messages containing QUERY as substring.
    QUERY is an obligatory parameter.
    KEY PARAMETERS:
@@ -99,14 +99,14 @@
              (filtered (remove-if-not
                         (lambda (m)
                           (and (not (equal (message-from m) "@server"))
-                               (search query (message-content m))
+                               (search (string-downcase query) (string-downcase (message-content m)))
                                (or (not user) (equal (message-from m) (if (symbolp user) (string-downcase (symbol-name user)) user)))
                                (or (not before-time) (<= (message-universal-time m) before-time))
                                (or (not after-time) (>= (message-universal-time m) after-time))))
                         messages))
              (limited (subseq filtered 0 (min (length filtered) parsed-limit))))
         (let ((res (format nil "~{~a~^~%~}"
-                           (mapcar (lambda (m) (search-message m :date-format date-format))
+                           (mapcar (lambda (m) (search-message m))
                                    (reverse limited)))))
           res))))
 
