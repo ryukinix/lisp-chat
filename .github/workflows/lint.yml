@@ -1,0 +1,14 @@
+name: Lint
+
+on:
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run docker-lint
+        run: make docker-lint
