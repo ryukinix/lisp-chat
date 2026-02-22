@@ -126,7 +126,7 @@
                                (nth 0 date-fields)))      ;; year
     (error () nil)))
 
-(defun search-message (message &key (date-format "date")
+(defun search-message (message &key (date-format "date"))
   "Format a message for the /search command.
    The user part is prefixed with search:username."
   (format nil "|~a| [search:~a]: ~a"
