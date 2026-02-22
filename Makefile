@@ -2,6 +2,7 @@ DOCKER_IMG = lisp-chat
 APP_VERSION = $(shell git describe --tags 2> /dev/null || printf 0.0.0)+$(shell date +%Y%m%d)
 VERSION := latest
 PUBLIC_IMG = ryukinix/$(DOCKER_IMG):$(VERSION)
+ROS_TEST_FLAGS = -e "(sb-ext:disable-debugger)" -s lisp-chat/tests
 
 lint:
 	mallet --format line src
@@ -57,7 +58,7 @@ dep-tree:
 .PHONY: check docker-build docs appimage docker-check docker-appimage
 
 check:
-	ros -s lisp-chat/tests -e '(asdf:test-system :lisp-chat)'
+	ros $(ROS_TEST_FLAGS) -e '(asdf:test-system :lisp-chat)'
 
 docker-check: docker-build
-	docker run --rm --entrypoint=ros $(DOCKER_IMG) -s lisp-chat/tests -e '(asdf:test-system :lisp-chat)'
+	docker run --rm --entrypoint=ros $(DOCKER_IMG) $(ROS_TEST_FLAGS) -e '(asdf:test-system :lisp-chat)'
