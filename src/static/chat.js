@@ -476,24 +476,47 @@ form.addEventListener("submit", (e) => {
         }
         ws.send(input.value);
         input.value = "";
+        input.focus();
     }
 });
+
+const sendButton = form.querySelector("button");
+if (sendButton) {
+    sendButton.addEventListener("pointerdown", (e) => {
+        if (input.value.trim().length > 0) {
+            // Prevent button from taking focus, keeping keyboard open
+            e.preventDefault();
+            form.requestSubmit();
+        }
+    });
+}
+let lastViewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+
 if (window.visualViewport) {
     const updateViewport = () => {
+        const wasAtBottom = checkChatIsAtBottom();
+        const isShrinking = window.visualViewport.height < lastViewportHeight;
+        
         document.body.style.height = `${window.visualViewport.height}px`;
         document.body.style.top = `${window.visualViewport.offsetTop}px`;
         document.body.style.left = `${window.visualViewport.offsetLeft}px`;
         document.body.style.width = `${window.visualViewport.width}px`;
+        
+        if (wasAtBottom || (isShrinking && document.activeElement === input)) {
+            chat.scrollTop = chat.scrollHeight;
+        }
+        
+        lastViewportHeight = window.visualViewport.height;
     };
     window.visualViewport.addEventListener('resize', updateViewport);
     window.visualViewport.addEventListener('scroll', updateViewport);
     updateViewport();
 }
 
-window.visualViewport?.addEventListener('resize', () => {
-    if (checkChatIsAtBottom()) {
+input.addEventListener("focus", () => {
+    setTimeout(() => {
         chat.scrollTop = chat.scrollHeight;
-    }
+    }, 300); // delay lets the keyboard open first
 });
 
 connect();
