@@ -327,6 +327,16 @@
           (process-send-string lisp-chat-connection (concat message "\n")))
       (error
        (message "Lisp Chat: Send error: %S" err)
+       ;; Restore message to prompt if it's not a command
+       (unless (string-prefix-p "/" message)
+         (with-current-buffer (get-buffer-create "*lisp-chat*")
+           (save-excursion
+             (goto-char (point-max))
+             (let* ((p-start (marker-position lisp-chat-input-marker))
+                    (p-end (when p-start (field-end p-start)))
+                    (current-input (when p-end (buffer-substring p-end (point-max)))))
+               (unless (and current-input (string-match-p (regexp-quote (string-trim message)) current-input))
+                 (insert message))))))
        (lisp-chat-reconnect)))))
 
 (defun lisp-chat-ret ()
