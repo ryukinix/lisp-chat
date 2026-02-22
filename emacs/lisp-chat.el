@@ -286,11 +286,6 @@
               (delete-process lisp-chat-connection)))
           (setq lisp-chat-connection nil))
         
-        (lisp-chat-clear)
-        (setq lisp-chat-username nil
-              lisp-chat-users nil)
-        (lisp-chat--update-header-line)
-        (lisp-chat--update-prompt)
         (lisp-chat--insert-text (format "Reconnecting... (attempt %d/10)" curr-attempt) 'warning)
         
         (condition-case err
@@ -307,6 +302,13 @@
                        :name "lisp-chat-tcp" :buffer (current-buffer) :host address :service port
                        :filter #'lisp-chat--tcp-filter
                        :sentinel (lambda (proc event) (when (string-match-p "finished" event) (message "Lisp Chat: TCP Connection closed."))))))
+              
+              (lisp-chat-clear)
+              (setq lisp-chat-username nil
+                    lisp-chat-users nil)
+              (lisp-chat--update-header-line)
+              (lisp-chat--update-prompt)
+              
               (lisp-chat--start-ping-timer)
               (when username
                 (setq lisp-chat-default-username username)
