@@ -1,7 +1,7 @@
 ;;; lisp-chat.el --- Emacs client for Lisp Chat -*- lexical-binding: t; -*-
 
-;; Author: Gemini CLI
-;; Version: 0.4.4
+;; Author: Manoel V. Machado
+;; Version: 0.7.0
 ;; Package-Requires: ((emacs "26.1") (websocket "1.12"))
 ;; Keywords: comm, chat, lisp
 
@@ -9,6 +9,7 @@
 
 (require 'websocket)
 (require 'cl-lib)
+(require 'browse-url)
 
 (defgroup lisp-chat nil
   "Lisp Chat client settings."
@@ -40,6 +41,32 @@
     "#00b894" "#00cec9" "#0984e3" "#6c5ce7" "#e84393"
     "#ffeaa7" "#55efc4" "#81ecec" "#74b9ff" "#a29bfe")
   "Colors used for usernames and mentions.")
+
+(defvar lisp-chat-url-regexp
+  "\\bhttps?://[-A-Za-z0-9+&@#/%?=~_|!:,.;]*[-A-Za-z0-9+&@#/%=~_|]"
+  "Regular expression for matching URLs.")
+
+(defvar lisp-chat-link-keymap
+  (let ((map (make-sparse-keymap)))
+    (define-key map [mouse-2] #'lisp-chat-browse-at-mouse)
+    (define-key map [mouse-1] #'lisp-chat-browse-at-mouse)
+    (define-key map (kbd "RET") #'lisp-chat-browse-at-point)
+    map)
+  "Keymap for links in Lisp Chat.")
+
+(defun lisp-chat-browse-at-mouse (event)
+  "Browse URL at mouse EVENT."
+  (interactive "e")
+  (save-excursion
+    (mouse-set-point event)
+    (lisp-chat-browse-at-point)))
+
+(defun lisp-chat-browse-at-point ()
+  "Browse URL at point."
+  (interactive)
+  (let ((url (get-text-property (point) 'lisp-chat-url)))
+    (when url
+      (browse-url url))))
 
 (defvar-local lisp-chat-connection nil)
 (defvar-local lisp-chat-connection-type nil)
@@ -73,9 +100,24 @@
         (nth index lisp-chat-colors))))))
 
 (defun lisp-chat--format-message (text)
-  "Format TEXT with colors for mentions and usernames."
+  "Format TEXT with colors for mentions and usernames, and clickable links."
   (let ((pos 0))
-    (while (string-match "@\\([a-zA-Z0-9_.-]+\\)" text pos)
+    ;; Links
+    (while (string-match lisp-chat-url-regexp text pos)
+      (let ((url (match-string 0 text))
+            (start (match-beginning 0))
+            (end (match-end 0)))
+        (add-text-properties start end
+                             `(face link
+                               mouse-face highlight
+                               help-echo ,(concat "mouse-1: browse " url)
+                               keymap ,lisp-chat-link-keymap
+                               lisp-chat-url ,url)
+                             text)
+        (setq pos end)))
+    ;; Mentions
+    (setq pos 0)
+    (while (string-match "@\\([A-zÀ-ú0-9_.-]+\\)" text pos)
       (let* ((username (match-string 1 text))
              (color (lisp-chat--get-user-color (if (string= username "server") "@server" username))))
         (add-face-text-property (match-beginning 0) (match-end 0)
@@ -89,7 +131,6 @@
   (with-current-buffer (get-buffer-create "*lisp-chat*")
     (let* ((inhibit-read-only t)
            (p-marker (marker-position lisp-chat-input-marker))
-           ;; If point is at or after the start of the prompt, we follow the scroll
            (moving (and p-marker (>= (point) p-marker))))
       (save-excursion
         (when p-marker (goto-char p-marker))
@@ -100,7 +141,6 @@
           (unless (string-suffix-p "\n" text)
             (insert "\n"))
           (add-text-properties start (point) '(read-only t front-sticky t rear-nonsticky t))
-          ;; Update marker to be at the start of the prompt again
           (set-marker lisp-chat-input-marker (point))))
       (when moving
         (goto-char (point-max))
@@ -127,7 +167,6 @@
       (let ((p-end (field-end (point))))
         (when (> p-end (point))
           (delete-region (point) p-end)))
-      
       (let* ((user (or lisp-chat-username lisp-chat-default-username "anonymous"))
              (color (lisp-chat--get-user-color user))
              (prompt-text (format "[%s]> " user))
@@ -153,7 +192,7 @@
                  (content (match-string 4 line))
                  (effective-date (or date (format-time-string "%Y-%m-%d")))
                  (user-color (lisp-chat--get-user-color user)))
-            
+
             (when (and effective-date (not (equal effective-date lisp-chat-last-date)))
               (setq lisp-chat-last-date effective-date)
               (lisp-chat--insert-text (format "\n--- %s ---\n" effective-date) 'shadow))
@@ -260,12 +299,15 @@
   (kill-buffer (current-buffer)))
 
 (defun lisp-chat--ensure-point ()
-  "Ensure the cursor stays after the prompt when typing."
-  (let ((p-marker (marker-position lisp-chat-input-marker))
-        (keys (this-command-keys)))
+  "Ensure the cursor stays after the prompt when typing, but allow navigation."
+  (let ((p-marker (marker-position lisp-chat-input-marker)))
     (when (and p-marker
-               keys
-               (not (and (stringp keys) (string-prefix-p "\C-x" keys)))
+               (not (memq this-command '(previous-line next-line backward-char forward-char
+                                         scroll-up-command scroll-down-command
+                                         mwheel-scroll beginning-of-buffer end-of-buffer
+                                         move-beginning-of-line move-end-of-line
+                                         mouse-set-point mouse-drag-region
+                                         isearch-forward isearch-backward)))
                (< (point) p-marker))
       (goto-char (point-max)))))
 
