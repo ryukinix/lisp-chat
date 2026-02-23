@@ -20,8 +20,8 @@
   :type 'string
   :group 'lisp-chat)
 
-(defcustom lisp-chat-default-port 8000
-  "Default port for Lisp Chat server."
+(defcustom lisp-chat-default-port 5558
+  "Default TCP port for Lisp Chat server."
   :type 'integer
   :group 'lisp-chat)
 
@@ -285,9 +285,9 @@
                 (websocket-close lisp-chat-connection)
               (delete-process lisp-chat-connection)))
           (setq lisp-chat-connection nil))
-        
+
         (lisp-chat--insert-text (format "Reconnecting... (attempt %d/10)" curr-attempt) 'warning)
-        
+
         (condition-case err
             (progn
               (if (eq lisp-chat-connection-type 'websocket)
@@ -302,13 +302,13 @@
                        :name "lisp-chat-tcp" :buffer (current-buffer) :host address :service port
                        :filter #'lisp-chat--tcp-filter
                        :sentinel (lambda (proc event) (when (string-match-p "finished" event) (message "Lisp Chat: TCP Connection closed."))))))
-              
+
               (lisp-chat-clear)
               (setq lisp-chat-username nil
                     lisp-chat-users nil)
               (lisp-chat--update-header-line)
               (lisp-chat--update-prompt)
-              
+
               (lisp-chat--start-ping-timer)
               (when username
                 (setq lisp-chat-default-username username)
