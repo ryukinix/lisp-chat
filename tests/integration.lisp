@@ -135,7 +135,7 @@
       '(:expect "The user @tester-ua joined to the party!")
       '(:sleep 0.2)
       "/whois tester-ua"
-      '(:expect "using LispChatTestAgent/1.0"))))
+      '(:expect "LispChatTestAgent/1.0"))))
 
 (define-test log-commands-with-date-format
   :parent integration-tests
