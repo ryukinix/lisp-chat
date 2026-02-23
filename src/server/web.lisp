@@ -34,7 +34,8 @@
                       (setf client (make-client :name name
                                                 :socket ws
                                                 :address (get-remote-address env)
-                                                :time (get-time)))
+                                                :time (get-time)
+                                                :user-agent (gethash "user-agent" (getf env :headers))))
                       (with-lock-held (*client-lock*)
                         (push client *clients*))
                       (user-joined-message client)

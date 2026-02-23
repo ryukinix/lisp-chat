@@ -214,15 +214,19 @@
       ((not user) (command-message (format nil "error: ~s user not found" username)))
       (t
        (let ((formatted-time (format-time (client-time user)))
-             (latency (client-latency-ms user)))
+             (latency (client-latency-ms user))
+             (user-agent (client-user-agent user)))
          (command-message
-          (format nil "User @~a at ~a~a, online since ~a"
+          (format nil "User @~a at ~a~a, online since ~a~a"
                   (client-name user)
                   (client-address user)
                   (if latency
                       (format nil " with latency of ~,2fms" latency)
                       "")
-                  formatted-time)))))))
+                  formatted-time
+                  (if user-agent
+                      (format nil " | user-agent: ~a" user-agent)
+                      ""))))))))
 
 (defun /version (client &rest args)
   "/version returns the current version of lisp-chat"

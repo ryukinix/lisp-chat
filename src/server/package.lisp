@@ -23,6 +23,7 @@
            #:client-name
            #:client-address
            #:client-time
+           #:client-user-agent
            #:client-socket-type
            #:message-from
            #:message-time
