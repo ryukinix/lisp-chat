@@ -30,7 +30,8 @@
   socket
   address
   time
-  (connection-latency nil))
+  (connection-latency nil)
+  (user-agent nil))
 
 
 (defun client-socket-type (client)

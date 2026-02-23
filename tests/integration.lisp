@@ -24,11 +24,11 @@
             (progn ,@body)
          (usocket:socket-close ,socket)))))
 
-(defmacro with-websocket-client ((client messages-var) &body body)
+(defmacro with-websocket-client ((client messages-var &key additional-headers) &body body)
   (let ((url (gensym))
         (connected (gensym)))
     `(let* ((,url (format nil "ws://127.0.0.1:~a/ws" *websocket-port*))
-            (,client (make-client ,url))
+            (,client (make-client ,url :additional-headers ,additional-headers))
             (,connected nil)
             (,messages-var '()))
        (on :open ,client (lambda () (setf ,connected t)))
@@ -114,6 +114,28 @@
       '(:sleep 0.2)
       "/ping"
       '(:expect "latency:"))))
+
+(define-test websocket-whois-command
+  :parent integration-tests
+  (with-websocket-client (client messages)
+    (ws-interaction client (lambda () messages)
+      '(:expect "Type your username")
+      "tester-whois"
+      '(:expect "The user @tester-whois joined to the party!")
+      '(:sleep 0.2)
+      "/whois tester-whois"
+      '(:expect "User @tester-whois at 127.0.0.1"))))
+
+(define-test websocket-user-agent-info
+  :parent integration-tests
+  (with-websocket-client (client messages :additional-headers '(("User-Agent" . "LispChatTestAgent/1.0")))
+    (ws-interaction client (lambda () messages)
+      '(:expect "Type your username")
+      "tester-ua"
+      '(:expect "The user @tester-ua joined to the party!")
+      '(:sleep 0.2)
+      "/whois tester-ua"
+      '(:expect "LispChatTestAgent/1.0"))))
 
 (define-test log-commands-with-date-format
   :parent integration-tests
