@@ -80,7 +80,48 @@
 (defun args-to-string (args)
   (format nil "~{~a~^ ~}" args))
 
+
+(defun ensure-string (s)
+  (if (stringp s)
+      s
+      (write-to-string s)))
+
 ;; user commands prefixed with /
+(defun /search (client query &rest args &key user (limit "10") before after &allow-other-keys)
+  "/search QUERY searches for messages containing QUERY as substring.
+   QUERY is an mandatory parameter.
+   KEY PARAMETERS:
+   :user USERNAME   - Filter by a specific user.
+   :limit NUMBER    - Maximum number of messages to return (default 10).
+   :before ISO-DATE - ISO format datetime filter (e.g., 2026-02-22T14:30).
+   :after ISO-DATE  - ISO format datetime filter (e.g., 2026-02-22T14:30)."
+  (declare (ignorable client args))
+  (if (not query)
+      (command-message "error: QUERY is mandatory parameter. Try /search QUERY")
+      (let* ((parsed-limit (parse-integer (ensure-string limit) :junk-allowed t))
+             (before-time (parse-iso8601 (ensure-string before)))
+             (after-time (parse-iso8601 (ensure-string after)))
+             (messages *messages-log*) ;; newest first
+             (filtered (remove-if-not
+                        (lambda (m)
+                          (and (not (equal (message-from m) "@server"))
+                               (search (string-downcase query)
+                                       (string-downcase (message-content m)))
+                               (or (not user)
+                                   (equal (string-downcase (message-from m))
+                                          (string-downcase user)))
+                               (or (not before-time)
+                                   (<= (message-universal-time m) before-time))
+                               (or (not after-time)
+                                   (>= (message-universal-time m) after-time))))
+                        messages))
+             (limited (subseq filtered 0 (min (length filtered) parsed-limit))))
+        (if (not limited)
+            (command-message "the search returned a empty result")
+            (format nil "~{~a~^~%~}"
+                    (mapcar (lambda (m) (search-message m))
+                            (reverse limited)))))))
+
 (defun /users (client &rest args)
   "/users returns a list separated by commas of the currently logged users"
   (declare (ignorable client args))
@@ -201,11 +242,13 @@
 
 (defun /clear (client &rest args)
   "/clear clears the terminal screen"
-  (declare (ignorable client args)))
+  (declare (ignorable client args))
+  :ignore)
 
 (defun /quit (client &rest args)
   "/quit terminates the connection"
-  (declare (ignorable client args)))
+  (declare (ignorable client args))
+  :ignore)
 
 (defun cleanup-result-program (result)
   (string-trim '(#\Space #\Newline #\Return #\Tab #\Linefeed) result))
