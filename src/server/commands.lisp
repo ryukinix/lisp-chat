@@ -246,9 +246,10 @@
              (latency (client-latency-ms user))
              (user-agent (client-user-agent user)))
          (command-message
-          (format nil "User @~a at ~a~a, online since ~a~a"
+          (format nil "User @~a at ~a (~a connection)~a, online since ~a~a"
                   (client-name user)
                   (client-address user)
+                  (client-socket-type user)
                   (if latency
                       (format nil " with latency of ~,2fms" latency)
                       "")
@@ -267,11 +268,7 @@
 (defun /whoami (client &rest args)
   "/whoami returns information about the current client session"
   (declare (ignorable args))
-  (let ((name (client-name client))
-        (address (client-address client))
-        (connection-type (client-socket-type client)))
-    (command-message (format nil "You are @~a at ~a (~a connection)"
-                             name address connection-type))))
+  (/whois client (client-name client)))
 
 (defun /clear (client &rest args)
   "/clear clears the terminal screen"
