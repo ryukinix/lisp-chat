@@ -18,14 +18,36 @@
 (defun spacep (c)
   (eql c #\Space))
 
-(defun split (string &key (delimiterp #'spacep))
+(defun split-quotation-aware (string delimiterp)
+  "Split a string preserving quotation as single tokens"
+  (let ((tokens nil)
+        (token (make-array 10 :element-type 'character :adjustable t :fill-pointer 0))
+        (quote-char nil))
+    (loop for char across string
+          do (cond
+               ((and quote-char (char= char quote-char))
+                (setf quote-char nil))
+               ((and (not quote-char) (or (char= char #\") (char= char #\')))
+                (setf quote-char char))
+               ((and (not quote-char) (funcall delimiterp char))
+                (when (plusp (length token))
+                  (push (copy-seq token) tokens)
+                  (setf (fill-pointer token) 0)))
+               (t (vector-push-extend char token))))
+    (when (plusp (length token))
+      (push (copy-seq token) tokens))
+    (nreverse tokens)))
+
+(defun split (string &key (delimiterp #'spacep) quotation-aware)
   "Split a string by a delimiterp function character checking"
-  (loop for beg = (position-if-not delimiterp string)
-          then (position-if-not delimiterp string :start (1+ end))
-        for end = (and beg (position-if delimiterp string :start beg))
-        when beg
-          collect (subseq string beg end)
-        while end))
+  (if (not quotation-aware)
+      (loop for beg = (position-if-not delimiterp string)
+              then (position-if-not delimiterp string :start (1+ end))
+            for end = (and beg (position-if delimiterp string :start beg))
+            when beg
+              collect (subseq string beg end)
+            while end)
+      (split-quotation-aware string delimiterp)))
 
 (defun startswith (string substring)
   "Check if STRING starts with SUBSTRING."
@@ -58,7 +80,7 @@
           args))
 
 (defun extract-params (string)
-  (cdr (split string)))
+  (cdr (split string :quotation-aware t)))
 
 (defun extract-command (string)
   (car (split string)))
