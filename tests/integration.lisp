@@ -238,3 +238,14 @@
       "/lisp (print :KEYWORD)"
       '(:sleep 0.1)
       '(:expect ":KEYWORD"))))
+
+(define-test command-should-be-exact-match-and-not-startswith
+  :parent integration-tests
+  (with-tcp-client (stream)
+    (tcp-interaction stream
+      '(:expect "> Type your username: ")
+      "tester-lisp"
+      '(:ignore 1) ;; welcome message
+      "/whoaminot"
+      '(:sleep 0.1)
+      '(:expect "command /whoaminot doesn't exists"))))

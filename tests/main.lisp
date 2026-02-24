@@ -6,7 +6,7 @@
 (defvar *server-thread* nil)
 (defparameter *print-names* t)
 (defparameter *port* 9998)
-(defparameter *debug* nil)
+(defparameter *debug* (uiop:getenv "DEBUG"))
 (defparameter *websocket-port* 9999)
 (defparameter *lisp-command-timeout* 0.5)
 (defparameter *persistence-file* "messages.test.sexp")

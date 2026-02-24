@@ -15,7 +15,10 @@
 
 (defvar *uptime* (get-time) "Uptime of server variable")
 
-(defun split (string delimiterp)
+(defun spacep (c)
+  (eql c #\Space))
+
+(defun split (string &key (delimiterp #'spacep))
   "Split a string by a delimiterp function character checking"
   (loop for beg = (position-if-not delimiterp string)
           then (position-if-not delimiterp string :start (1+ end))
@@ -55,7 +58,10 @@
           args))
 
 (defun extract-params (string)
-  (subseq (split string (lambda (c) (eql c #\Space))) 1))
+  (cdr (split string)))
+
+(defun extract-command (string)
+  (car (split string)))
 
 (defun call-command (client message)
   (when (startswith message "/")
@@ -64,18 +70,19 @@
         (command-message (format nil "command '~a' finished with error: ~a" message c))))))
 
 (defun call-command-predefined (client message)
-  (let ((command (find message (get-commands) :test #'startswith)))
-    (let ((command-function (get-command command))
-          (args (extract-params message)))
-      (cond
-        ;; HACK(@lerax): sex 06 fev 2026 17:34:43 backward compatible with /log <n>
-        ((and (string= command "/log")
-              (eq (length args) 1))
-         (/log client :depth (car args) :date-format "date"))
-        ((string= command "/dm") (/dm client (car args) (args-to-string (cdr args))))
-        ((string= command "/lisp") (/lisp client (args-to-string args)))
-        (command-function (apply command-function (cons client (parse-keywords args))))
-        (t (command-message (format nil "command ~a doesn't exists" message)))))))
+  (let* ((command-name (extract-command message))
+         (command (find command-name (get-commands) :test #'string=))
+         (command-function (get-command command))
+         (args (extract-params message)))
+    (cond
+      ;; HACK(@lerax): sex 06 fev 2026 17:34:43 backward compatible with /log <n>
+      ((and (string= command "/log")
+            (eq (length args) 1))
+       (/log client :depth (car args) :date-format "date"))
+      ((string= command "/dm") (/dm client (car args) (args-to-string (cdr args))))
+      ((string= command "/lisp") (/lisp client (args-to-string args)))
+      (command-function (apply command-function (cons client (parse-keywords args))))
+      (t (command-message (format nil "command ~a doesn't exists" message))))))
 
 (defun args-to-string (args)
   (format nil "~{~a~^ ~}" args))
