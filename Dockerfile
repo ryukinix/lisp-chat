@@ -1,7 +1,5 @@
 FROM commonlispbr/roswell:latest
-RUN apt update && apt install libreadline8 libev4 wget file make -y
-# HACK: cl-tuition from quicklisp has problems
-RUN ros install atgreen/cl-tuition
+RUN apt update && apt install libev4 wget file make -y
 WORKDIR /lisp-chat
 RUN ln -s /lisp-chat /root/.roswell/local-projects/lisp-chat
 COPY ./lisp-chat.asd lisp-chat.asd
@@ -13,8 +11,7 @@ RUN bash ./scripts/bump_static.sh
 
 ARG APP_VERSION
 ENV APP_VERSION=$APP_VERSION
-RUN ros install ./lisp-chat.asd
-RUN ros run -s lisp-chat/server -q
+RUN ros build roswell/lisp-chat-server.ros
 EXPOSE 5558
 EXPOSE 5559
-ENTRYPOINT ["/root/.roswell/bin/lisp-chat-server"]
+ENTRYPOINT ["/lisp-chat/roswell/lisp-chat-server"]
