@@ -273,12 +273,12 @@
 (defun /clear (client &rest args)
   "/clear clears the terminal screen"
   (declare (ignorable client args))
-  :ignore)
+  'ignore)
 
 (defun /quit (client &rest args)
   "/quit terminates the connection"
   (declare (ignorable client args))
-  :ignore)
+  'ignore)
 
 (defun cleanup-result-program (result)
   (string-trim '(#\Space #\Newline #\Return #\Tab #\Linefeed) result))
