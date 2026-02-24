@@ -39,9 +39,9 @@ EOL
 # Copy the binary
 cp -v ./roswell/lisp-chat "$APPDIR/usr/bin/"
 
-# Copy libncurses and libtinfo
+# Copy shared libraries
 mkdir -p "$APPDIR/usr/lib/"
-for lib_base in "libncurses.so" "libtinfo.so"; do
+for lib_base in "libncurses.so" "libtinfo.so" "libcrypto.so" "libreadline.so"; do
     FOUND=0
     for version in "6" "5"; do
         LIB_PATTERN="${lib_base}.${version}"
