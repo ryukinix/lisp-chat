@@ -216,8 +216,13 @@
   "/nick changes the client-name given a NEW-NICK which should be a string"
   (declare (ignorable args))
   (if new-nick
-      (progn (setf (client-name client) new-nick)
-             (command-message (format nil "Your new nick is: @~a" new-nick)))
+      (progn
+        (push-message "@command"
+                      (format nil "User @~a is now known as @~a"
+                              (client-name client)
+                              new-nick))
+        (setf (client-name client) new-nick)
+        (command-message (format nil "Your new nick is: @~a" new-nick)))
       (command-message (format nil "/nick NEW-NICKNAME"))))
 
 (defun /dm (client &optional (username nil) msg-content)
