@@ -239,6 +239,17 @@
       '(:sleep 0.1)
       '(:expect ":KEYWORD"))))
 
+(define-test lisp-command-with-quotation
+  :parent integration-tests
+  (with-tcp-client (stream)
+    (tcp-interaction stream
+      '(:expect "> Type your username: ")
+      "tester-lisp"
+      '(:ignore 1) ;; welcome message
+      "/lisp (print \"Hello world\")"
+      '(:sleep 0.1)
+      '(:expect "\"Hello world\""))))
+
 (define-test command-should-be-exact-match-and-not-startswith
   :parent integration-tests
   (with-tcp-client (stream)

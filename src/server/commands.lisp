@@ -79,6 +79,12 @@
                        arg))
           args))
 
+(defun args-to-string (args)
+  (format nil "~{~a~^ ~}" args))
+
+(defun extract-args-as-string (string &key (accessor #'cdr))
+  (args-to-string (funcall accessor (split string))))
+
 (defun extract-params (string)
   (cdr (split string :quotation-aware t)))
 
@@ -101,14 +107,10 @@
       ((and (string= command "/log")
             (eq (length args) 1))
        (/log client :depth (car args) :date-format "date"))
-      ((string= command "/dm") (/dm client (car args) (args-to-string (cdr args))))
-      ((string= command "/lisp") (/lisp client (args-to-string args)))
+      ((string= command "/dm") (/dm client (car args) (extract-args-as-string message :accessor #'cddr)))
+      ((string= command "/lisp") (/lisp client (extract-args-as-string message)))
       (command-function (apply command-function (cons client (parse-keywords args))))
       (t (command-message (format nil "command ~a doesn't exists" message))))))
-
-(defun args-to-string (args)
-  (format nil "~{~a~^ ~}" args))
-
 
 (defun ensure-string (s)
   (if (stringp s)
