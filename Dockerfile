@@ -1,5 +1,5 @@
 FROM commonlispbr/roswell:latest
-RUN apt update && apt install libev4 wget file make -y
+RUN apt update && apt install libreadline8 libev4 wget file make -y
 # HACK: cl-tuition from quicklisp has problems
 RUN ros install atgreen/cl-tuition
 WORKDIR /lisp-chat
