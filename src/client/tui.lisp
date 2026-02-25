@@ -28,7 +28,33 @@
       (bt:condition-wait (channel-q-condition channel)
                          (channel-q-mutex channel)))
     (queue-pop (channel-queue channel))))
+
 (in-package :lisp-chat/tui)
+
+;;; Monkey-patch tuition:get-terminal-size to avoid poll(2) inside signal handler
+#+sbcl
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (sb-alien:define-alien-type winsize
+      (sb-alien:struct winsize
+                       (ws-row sb-alien:unsigned-short)
+                       (ws-col sb-alien:unsigned-short)
+                       (ws-xpixel sb-alien:unsigned-short)
+                       (ws-ypixel sb-alien:unsigned-short)))
+
+  (sb-alien:define-alien-routine ("ioctl" ioctl-get-winsize) sb-alien:int
+    (fd sb-alien:int)
+    (request sb-alien:unsigned-long)
+    (arg (* (sb-alien:struct winsize))))
+
+  (defun sbcl-get-terminal-size ()
+    (sb-alien:with-alien ((ws (sb-alien:struct winsize)))
+      (if (zerop (ioctl-get-winsize 1 #x5413 (sb-alien:addr ws)))
+          (cons (sb-alien:slot ws 'ws-col)
+                (sb-alien:slot ws 'ws-row))
+          (cons 80 24))))
+
+  (defun tuition::get-terminal-size ()
+    (sbcl-get-terminal-size)))
 
 ;;; Constants and Configuration
 
