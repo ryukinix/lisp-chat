@@ -64,18 +64,18 @@ deploy: docker-publish
 	ssh starfox bash /home/lerax/Deploy/lisp-chat.sh
 
 dep-tree:
-	qlot exec ros -s asdf-dependency-graph -e '(asdf-dependency-graph:generate "tree.png" "lisp-chat")'
+	ros -s asdf-dependency-graph -e '(asdf-dependency-graph:generate "tree.png" "lisp-chat")'
 
 .PHONY: check docker-build docs appimage docker-check docker-appimage
 
 check-integration:
-	qlot exec ros -s lisp-chat/tests -e '(parachute:test (quote lisp-chat/tests::integration-tests))'
+	ros -s lisp-chat/tests -e '(parachute:test (quote lisp-chat/tests::integration-tests))'
 
 check-unit:
-	qlot exec ros -s lisp-chat/tests -e '(parachute:test (quote lisp-chat/tests::unit-tests))'
+	ros -s lisp-chat/tests -e '(parachute:test (quote lisp-chat/tests::unit-tests))'
 
 check:
-	qlot exec ros $(ROS_TEST_FLAGS) -e '(asdf:test-system :lisp-chat/tests)'
+	ros $(ROS_TEST_FLAGS) -e '(asdf:test-system :lisp-chat/tests)'
 
 docker-check: docker-build
 	docker run --rm --entrypoint=ros $(DOCKER_IMG) $(ROS_TEST_FLAGS) -e '(asdf:test-system :lisp-chat/tests)'
