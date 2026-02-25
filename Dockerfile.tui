@@ -1,5 +1,4 @@
-FROM commonlispbr/roswell:latest
-RUN ros install qlot
+FROM fukamachi/qlot:latest
 RUN apt update && apt install libreadline8 libev4 wget file make git libncurses5-dev -y
 
 WORKDIR /lisp-chat
