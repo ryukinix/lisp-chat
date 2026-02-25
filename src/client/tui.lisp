@@ -1,6 +1,7 @@
 (defpackage :lisp-chat/tui
   (:use #:cl
         #:lisp-chat/config
+        #:lisp-chat/client/net
         #:tuition
         #:bordeaux-threads)
   (:local-nicknames (:vp :tuition.components.viewport)
@@ -137,28 +138,6 @@
 
 ;;; Helper Functions
 
-(defun websocket-p (host port)
-  (declare (ignore port))
-  (and (stringp host)
-       (or (search "ws://" host) (search "wss://" host))))
-
-(defgeneric connection-send (socket message))
-
-(defmethod connection-send ((socket usocket:usocket) message)
-  (write-line message (socket-stream socket))
-  (finish-output (socket-stream socket)))
-
-(defmethod connection-send (socket message)
-  (websocket-driver:send socket message))
-
-(defun send-message (socket message)
-  (connection-send socket message))
-
-(defgeneric read-message (socket))
-
-(defmethod read-message ((socket usocket:usocket))
-  (read-line (socket-stream socket) nil :eof))
-
 (defun handle-incoming-message (program msg)
   (when (stringp msg)
     (cond
@@ -169,7 +148,7 @@
   (make-thread
    (lambda ()
      (loop
-       (let ((msg (read-message socket)))
+       (let ((msg (connection-read socket)))
          (when (or (null msg) (eq msg :eof))
            (tui:send program (make-instance 'server-msg :text "Disconnected from server."))
            (return))
@@ -185,7 +164,7 @@
                     (when (connected model)
                       (handler-case
                           (when (username model)
-                           (send-message (socket model) "/ping system"))
+                           (connection-send (socket model) "/ping system"))
                         (error (c)
                           (declare (ignore c))
                           (setf (connected model) nil))))))
@@ -257,14 +236,20 @@
               (let* ((url (if (or (search "ws://" host) (search "wss://" host))
                              host
                              (format nil "ws://~a:~a/ws" host port)))
-                     (client (make-client url)))
-                (setf (socket model) client)
+                     (client (make-client url))
+                     (queue (make-safe-queue))
+                     (connection (make-ws-connection :client client :queue queue)))
+                (setf (socket model) connection)
+                (on :message client
+                    (lambda (msg)
+                      (queue-push queue msg)))
+                (on :close client
+                    (lambda (&key code reason)
+                      (declare (ignore code reason))
+                      (queue-push queue :eof)))
                 (start-connection client)
-                (let ((prog tui:*current-program*))
-                  (on :message client
-                      (lambda (msg)
-                        (handle-incoming-message prog msg))))
-                (setf (connected model) t))
+                (setf (connected model) t)
+                (start-listener tui:*current-program* connection))
               (let ((socket (socket-connect host port)))
                 (setf (socket model) socket)
                 (setf (connected model) t)
@@ -298,7 +283,7 @@
              ((connected model)
               (unless (username model)
                 (setf (pending-username model) text))
-              (send-message (socket model) text)
+              (connection-send (socket model) text)
               (ti:textinput-reset (input model)))
              (t
               (ti:textinput-reset (input model)))))))
@@ -347,8 +332,8 @@
                    (setf (ti:textinput-prompt (input model))
                          (render-user-prefix joined-user))
                    (recalculate-layout model)
-                   (send-message (socket model) "/users")
-                   (send-message (socket model) "/log 100"))))
+                   (connection-send (socket model) "/users")
+                   (connection-send (socket model) "/log 100"))))
               ;; Exit
               ((search "exited from the party :(" content)
                (let ((exited-user (subseq content 10 (search " exited" content))))

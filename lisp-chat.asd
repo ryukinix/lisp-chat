@@ -87,7 +87,8 @@
                "websocket-driver-client")
   :pathname "src"
   :components ((:file "config")
-               (:file "client/readline" :depends-on ("config"))))
+               (:file "client/net" :depends-on ("config"))
+               (:file "client/readline" :depends-on ("config" "client/net"))))
 
 (asdf:defsystem :lisp-chat/tui
   :class lisp-chat/system:custom-system-class
@@ -103,7 +104,8 @@
                "websocket-driver-client")
   :pathname "src"
   :components ((:file "config")
-               (:file "client/tui" :depends-on ("config"))))
+               (:file "client/net" :depends-on ("config"))
+               (:file "client/tui" :depends-on ("config" "client/net"))))
 
 
 (asdf:defsystem :lisp-chat
