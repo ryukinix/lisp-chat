@@ -15,14 +15,39 @@
 
 (defvar *uptime* (get-time) "Uptime of server variable")
 
-(defun split (string delimiterp)
+(defun spacep (c)
+  (eql c #\Space))
+
+(defun split-quotation-aware (string delimiterp)
+  "Split a string preserving quotation as single tokens"
+  (let ((tokens nil)
+        (token (make-array 10 :element-type 'character :adjustable t :fill-pointer 0))
+        (quote-char nil))
+    (loop for char across string
+          do (cond
+               ((and quote-char (char= char quote-char))
+                (setf quote-char nil))
+               ((and (not quote-char) (or (char= char #\") (char= char #\')))
+                (setf quote-char char))
+               ((and (not quote-char) (funcall delimiterp char))
+                (when (plusp (length token))
+                  (push (copy-seq token) tokens)
+                  (setf (fill-pointer token) 0)))
+               (t (vector-push-extend char token))))
+    (when (plusp (length token))
+      (push (copy-seq token) tokens))
+    (nreverse tokens)))
+
+(defun split (string &key (delimiterp #'spacep) quotation-aware)
   "Split a string by a delimiterp function character checking"
-  (loop for beg = (position-if-not delimiterp string)
-          then (position-if-not delimiterp string :start (1+ end))
-        for end = (and beg (position-if delimiterp string :start beg))
-        when beg
-          collect (subseq string beg end)
-        while end))
+  (if (not quotation-aware)
+      (loop for beg = (position-if-not delimiterp string)
+              then (position-if-not delimiterp string :start (1+ end))
+            for end = (and beg (position-if delimiterp string :start beg))
+            when beg
+              collect (subseq string beg end)
+            while end)
+      (split-quotation-aware string delimiterp)))
 
 (defun startswith (string substring)
   "Check if STRING starts with SUBSTRING."
@@ -54,8 +79,17 @@
                        arg))
           args))
 
+(defun args-to-string (args)
+  (format nil "~{~a~^ ~}" args))
+
+(defun extract-args-as-string (string &key (accessor #'cdr))
+  (args-to-string (funcall accessor (split string))))
+
 (defun extract-params (string)
-  (subseq (split string (lambda (c) (eql c #\Space))) 1))
+  (cdr (split string :quotation-aware t)))
+
+(defun extract-command (string)
+  (car (split string)))
 
 (defun call-command (client message)
   (when (startswith message "/")
@@ -64,22 +98,19 @@
         (command-message (format nil "command '~a' finished with error: ~a" message c))))))
 
 (defun call-command-predefined (client message)
-  (let ((command (find message (get-commands) :test #'startswith)))
-    (let ((command-function (get-command command))
-          (args (extract-params message)))
-      (cond
-        ;; HACK(@lerax): sex 06 fev 2026 17:34:43 backward compatible with /log <n>
-        ((and (string= command "/log")
-              (eq (length args) 1))
-         (/log client :depth (car args) :date-format "date"))
-        ((string= command "/dm") (/dm client (car args) (args-to-string (cdr args))))
-        ((string= command "/lisp") (/lisp client (args-to-string args)))
-        (command-function (apply command-function (cons client (parse-keywords args))))
-        (t (command-message (format nil "command ~a doesn't exists" message)))))))
-
-(defun args-to-string (args)
-  (format nil "~{~a~^ ~}" args))
-
+  (let* ((command-name (extract-command message))
+         (command (find command-name (get-commands) :test #'string=))
+         (command-function (get-command command))
+         (args (extract-params message)))
+    (cond
+      ;; HACK(@lerax): sex 06 fev 2026 17:34:43 backward compatible with /log <n>
+      ((and (string= command "/log")
+            (eq (length args) 1))
+       (/log client :depth (car args) :date-format "date"))
+      ((string= command "/dm") (/dm client (car args) (extract-args-as-string message :accessor #'cddr)))
+      ((string= command "/lisp") (/lisp client (extract-args-as-string message)))
+      (command-function (apply command-function (cons client (parse-keywords args))))
+      (t (command-message (format nil "command ~a doesn't exists" message))))))
 
 (defun ensure-string (s)
   (if (stringp s)
@@ -187,8 +218,13 @@
   "/nick changes the client-name given a NEW-NICK which should be a string"
   (declare (ignorable args))
   (if new-nick
-      (progn (setf (client-name client) new-nick)
-             (command-message (format nil "Your new nick is: @~a" new-nick)))
+      (progn
+        (push-message "@command"
+                      (format nil "User @~a is now known as @~a"
+                              (client-name client)
+                              new-nick))
+        (setf (client-name client) new-nick)
+        (command-message (format nil "Your new nick is: @~a" new-nick)))
       (command-message (format nil "/nick NEW-NICKNAME"))))
 
 (defun /dm (client &optional (username nil) msg-content)
@@ -217,9 +253,10 @@
              (latency (client-latency-ms user))
              (user-agent (client-user-agent user)))
          (command-message
-          (format nil "User @~a at ~a~a, online since ~a~a"
+          (format nil "User @~a at ~a (~a connection)~a, online since ~a~a"
                   (client-name user)
                   (client-address user)
+                  (client-socket-type user)
                   (if latency
                       (format nil " with latency of ~,2fms" latency)
                       "")
@@ -238,21 +275,17 @@
 (defun /whoami (client &rest args)
   "/whoami returns information about the current client session"
   (declare (ignorable args))
-  (let ((name (client-name client))
-        (address (client-address client))
-        (connection-type (client-socket-type client)))
-    (command-message (format nil "You are @~a at ~a (~a connection)"
-                             name address connection-type))))
+  (/whois client (client-name client)))
 
 (defun /clear (client &rest args)
   "/clear clears the terminal screen"
   (declare (ignorable client args))
-  :ignore)
+  'ignore)
 
 (defun /quit (client &rest args)
   "/quit terminates the connection"
   (declare (ignorable client args))
-  :ignore)
+  'ignore)
 
 (defun cleanup-result-program (result)
   (string-trim '(#\Space #\Newline #\Return #\Tab #\Linefeed) result))

@@ -24,5 +24,8 @@
 
 (define-test commands-string-utils
   :parent unit-tests
-  (is equal '("x" "y" "z") (lisp-chat/commands::split "x.y.z" (lambda (c) (eql c #\.))))
+  (is equal '("x" "y" "z") (lisp-chat/commands::split "x.y.z"
+                                                      :delimiterp (lambda (c) (eql c #\.))))
+  (is equal '("foo" "bar zoo") (lisp-chat/commands::split "foo 'bar zoo'"
+                                                      :quotation-aware t))
   (true (lisp-chat/commands::startswith "/command" "/")))
