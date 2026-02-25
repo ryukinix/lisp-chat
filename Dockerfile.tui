@@ -1,6 +1,6 @@
 FROM commonlispbr/roswell:latest
-RUN apt update && apt install libev4 wget file make git libncurses5-dev -y
 RUN ros install qlot
+RUN apt update && apt install libreadline8 libev4 wget file make git libncurses5-dev -y
 
 WORKDIR /lisp-chat
 RUN ln -s /lisp-chat /root/.roswell/local-projects/lisp-chat
