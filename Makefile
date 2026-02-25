@@ -27,7 +27,7 @@ client-online:
 	APP_ENV=PROD qlot exec ./roswell/lisp-chat.ros
 
 server:
-	qlot exec ./roswell/lisp-chat-server.ros
+	./roswell/lisp-chat-server.ros
 
 compile:
 	APP_VERSION=$(APP_VERSION) APP_ENV=PROD qlot exec ros build ./roswell/lisp-chat.ros
