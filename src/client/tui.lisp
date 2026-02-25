@@ -4,16 +4,13 @@
         #:lisp-chat/client/net
         #:tuition
         #:bordeaux-threads)
-  (:local-nicknames (:vp :tuition.components.viewport)
-                    (:ti :tuition.components.textinput))
+  (:local-nicknames (#:vp #:tuition.components.viewport)
+                    (#:ti #:tuition.components.textinput))
   (:import-from #:usocket
-                #:socket-connect
-                #:socket-stream
-                #:socket-close)
+                #:socket-connect)
   (:import-from #:websocket-driver
                 #:start-connection
-                #:on
-                #:close-connection)
+                #:on)
   (:import-from #:websocket-driver-client
                 #:make-client)
   (:export :main))
@@ -280,6 +277,11 @@
              ((string= text "/quit")
               (setf (connected model) nil)
               (tui:quit tui:*current-program*))
+             ((string= text "/clear")
+              (setf (messages model) nil)
+              (setf (last-date model) nil)
+              (render-messages model)
+              (ti:textinput-reset (input model)))
              ((connected model)
               (unless (username model)
                 (setf (pending-username model) text))
