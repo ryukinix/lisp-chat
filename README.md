@@ -64,6 +64,7 @@ To test this with alternative clients, you can use these options:
 * Terminal readline-based [python client](./bin/client.py)
 * Terminal ncurses [python client](./bin/client_curses.py)
 * Netcat client (wtf?)
+* [Lispinto Chat](https://github.com/mateusfccp/lispinto-chat): a Flutter client that runs on macOS, Android, iOS and [web](https://labs.mateusfccp.me/lispinto-chat).
 
 On Python client, I wrote in a way only using ths stdlib avoiding pain
 to handle the dependency hell, so you can just call that:
