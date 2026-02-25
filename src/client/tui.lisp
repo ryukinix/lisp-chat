@@ -178,19 +178,41 @@
                             (format nil "~{~a~^, ~}" colored-users)))))
     (vp:viewport-set-content (users-viewport model) content)))
 
+(defun render-messages (model)
+  (let ((w (vp:viewport-width (viewport model)))
+        (rendered-lines nil))
+    (dolist (msg (reverse (messages model)))
+      (cond
+        ((eq (first msg) :date)
+         (let* ((date (second msg))
+                (date-str (format nil "--- ~a ---" date))
+                (pad (max 0 (floor (- w (length date-str)) 2)))
+                (padding (make-string pad :initial-element #\Space)))
+           (push (tui:render-styled (tui:make-style :foreground (tui:color-rgb 80 80 80))
+                                    (format nil "~a~a" padding date-str))
+                 rendered-lines)))
+        ((eq (first msg) :msg)
+         (let ((wrapped (tui:wrap-text (second msg) w :break-words t)))
+           (dolist (line (tui:split-string-by-newline wrapped))
+             (push line rendered-lines))))))
+    (vp:viewport-set-content (viewport model) (format nil "~{~a~^~%~}" (reverse rendered-lines)))
+    (vp:viewport-goto-bottom (viewport model))))
+
 (defun recalculate-layout (model)
   (let* ((w (win-width model))
          (h (win-height model))
          (input-h 3)
          (users-h 3)
          (viewport-h (max 5 (- h input-h users-h)))
-         (new-width (max 10 (- w 2))))
+         (new-width (max 10 (- w 2)))
+         (prompt-len (tui:visible-length (ti:textinput-prompt (input model)))))
     (setf (vp:viewport-width (viewport model)) w
           (vp:viewport-height (viewport model)) viewport-h
           (vp:viewport-width (users-viewport model)) new-width
           (vp:viewport-height (users-viewport model)) 1 ;; content height (without border)
-          (ti:textinput-width (input model)) new-width)
-    (update-users-list model)))
+          (ti:textinput-width (input model)) (max 1 (- new-width prompt-len)))
+    (update-users-list model)
+    (render-messages model)))
 
 ;;; TUI Implementation
 
@@ -332,25 +354,15 @@
               ;; Handle date divider
               (when (and date (not (equal date (last-date model))))
                 (setf (last-date model) date)
-                (push (tui:render-styled (tui:make-style :foreground (tui:color-rgb 80 80 80))
-                                         (format nil "--- ~a ---" date))
-                      (messages model)))
+                (push (list :date date) (messages model)))
 
-              (let ((wrapped (tui:wrap-text formatted (vp:viewport-width (viewport model)) :break-words t)))
-                (dolist (line (tui:split-string-by-newline wrapped))
-                  (push line (messages model))))
-
-              (vp:viewport-set-content (viewport model) (format nil "~{~a~%~}" (reverse (messages model))))
-              (vp:viewport-goto-bottom (viewport model))))
+              (push (list :msg formatted) (messages model))))
           (progn
              ;; Filter raw pong messages too if they appear without standard formatting
              (unless (search "pong" text)
-                (let* ((colored-text (colorize-mentions text))
-                       (wrapped (tui:wrap-text colored-text (vp:viewport-width (viewport model)) :break-words t)))
-                  (dolist (line (tui:split-string-by-newline wrapped))
-                    (push line (messages model))))
-                (vp:viewport-set-content (viewport model) (format nil "~{~a~%~}" (reverse (messages model))))
-                (vp:viewport-goto-bottom (viewport model)))))))
+                (let ((colored-text (colorize-mentions text)))
+                  (push (list :msg colored-text) (messages model))))))))
+  (render-messages model)
   model)
 
 (defmethod tui:view ((model chat-model))
