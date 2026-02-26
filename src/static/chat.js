@@ -81,7 +81,7 @@ function formatMessage(text) {
     if (!text) return "";
 
     const urls = [];
-    const urlPattern = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+    const urlPattern = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;\*]*[-A-Z0-9+&@#\/%=~_|])/ig;
 
     // 1. Protect URLs
     let processed = text.replace(urlPattern, (match) => {
@@ -496,16 +496,16 @@ if (window.visualViewport) {
     const updateViewport = () => {
         const wasAtBottom = checkChatIsAtBottom();
         const isShrinking = window.visualViewport.height < lastViewportHeight;
-        
+
         document.body.style.height = `${window.visualViewport.height}px`;
         document.body.style.top = `${window.visualViewport.offsetTop}px`;
         document.body.style.left = `${window.visualViewport.offsetLeft}px`;
         document.body.style.width = `${window.visualViewport.width}px`;
-        
+
         if (wasAtBottom || (isShrinking && document.activeElement === input)) {
             chat.scrollTop = chat.scrollHeight;
         }
-        
+
         lastViewportHeight = window.visualViewport.height;
     };
     window.visualViewport.addEventListener('resize', updateViewport);
