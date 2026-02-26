@@ -48,7 +48,7 @@
   "Colors used for usernames and mentions.")
 
 (defvar lisp-chat-url-regexp
-  "\\bhttps?://[-A-Za-z0-9+&@#/%?=~_|!:,.;]*[-A-Za-z0-9+&@#/%=~_|]"
+  "\\bhttps?://[-A-Za-z0-9+&@#/%?=~_|!:,.;\*]*[-A-Za-z0-9+&@#/%=~_|]"
   "Regular expression for matching URLs.")
 
 (defvar lisp-chat-link-keymap
