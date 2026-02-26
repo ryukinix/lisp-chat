@@ -1,6 +1,7 @@
 ;;; lisp-chat.el --- Emacs client for Lisp Chat -*- lexical-binding: t; -*-
 
 ;; Author: Manoel V. Machado
+;; URL: https://github.com/ryukinix/lisp-chat
 ;; Version: 0.7.0
 ;; Package-Requires: ((emacs "26.1") (websocket "1.12"))
 ;; Keywords: comm, chat, lisp
