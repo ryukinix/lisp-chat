@@ -363,34 +363,38 @@
           (colorize-mentions content)))
 
 (defmethod tui:update-message ((model chat-model) (msg server-msg))
-  (dolist (text (tui:split-string-by-newline (server-msg-text msg)))
-    (let* ((regex "^\\|(\\d{4}-\\d{2}-\\d{2})? ?(\\d{2}:\\d{2}):(\\d{2})\\| \\[(.*?)\\]: (.*)$")
-           (match (multiple-value-list (cl-ppcre:scan-to-strings regex text))))
-      (if (first match)
-          (let* ((groups (second match))
-                 (date (or (aref groups 0)
-                           (today)))
-                 (time (format nil "~a:~a" (aref groups 1) (aref groups 2)))
-                 (user (aref groups 3))
-                 (content (aref groups 4)))
+  (let ((should-render nil))
+    (dolist (text (tui:split-string-by-newline (server-msg-text msg)))
+      (let* ((regex "^\\|(\\d{4}-\\d{2}-\\d{2})? ?(\\d{2}:\\d{2}):(\\d{2})\\| \\[(.*?)\\]: (.*)$")
+             (match (multiple-value-list (cl-ppcre:scan-to-strings regex text))))
+        (if (first match)
+            (let* ((groups (second match))
+                   (date (or (aref groups 0)
+                             (today)))
+                   (time (format nil "~a:~a" (aref groups 1) (aref groups 2)))
+                   (user (aref groups 3))
+                   (content (aref groups 4)))
 
-            ;; Process system messages for side-effects
-            (process-system-message model user content)
+              ;; Process system messages for side-effects
+              (process-system-message model user content)
 
-            ;; Only show if not ignored (like pong)
-            (unless (and (string= user "@server") (search "pong (system)" content))
-              ;; Handle date divider
-              (when (and date (not (equal date (last-date model))))
-                (setf (last-date model) date)
-                (push (list :date date) (messages model)))
+              ;; Only show if not ignored (like pong)
+              (unless (and (string= user "@server") (search "pong (system)" content))
+                ;; Handle date divider
+                (when (and date (not (equal date (last-date model))))
+                  (setf (last-date model) date)
+                  (push (list :date date) (messages model)))
 
-              (push (list :msg (format-chat-message time user content)) (messages model))))
-          (progn
-             ;; Filter raw pong messages too if they appear without standard formatting
-             (unless (search "pong" text)
-                (let ((colored-text (colorize-mentions text)))
-                  (push (list :msg colored-text) (messages model))))))))
-  (render-messages model)
+                (push (list :msg (format-chat-message time user content)) (messages model))
+                (setf should-render t)))
+            (progn
+               ;; Filter raw pong messages too if they appear without standard formatting
+               (unless (search "pong" text)
+                  (let ((colored-text (colorize-mentions text)))
+                    (push (list :msg colored-text) (messages model))
+                    (setf should-render t)))))))
+    (when should-render
+      (render-messages model)))
   model)
 
 (defmethod tui:view ((model chat-model))
