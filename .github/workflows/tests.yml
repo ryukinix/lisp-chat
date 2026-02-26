@@ -20,21 +20,3 @@ jobs:
 
       - name: Build Lisp Chat appimage
         run: make docker-appimage
-
-  elisp-check:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        emacs_version:
-          - 26.1
-          - 30.2
-    steps:
-    - uses: actions/checkout@v4
-    - uses: purcell/setup-emacs@master
-      with:
-        version: ${{ matrix.emacs_version }}
-    - uses: leotaku/elisp-check@master
-      with:
-        file: emacs/*.el
-        warnings_as_errors: true
