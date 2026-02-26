@@ -180,8 +180,11 @@
                             (format nil "~{~a~^, ~}" colored-users)))))
     (vp:viewport-set-content (users-viewport model) content)))
 
-(defun render-messages (model)
+(defun render-messages (model &optional (at-bottom-p nil at-bottom-provided-p))
   (let ((w (vp:viewport-width (viewport model)))
+        (at-bottom-p (if at-bottom-provided-p 
+                         at-bottom-p 
+                         (vp:viewport-at-bottom-p (viewport model))))
         (rendered-lines nil))
     (dolist (msg (reverse (messages model)))
       (cond
@@ -198,7 +201,8 @@
            (dolist (line (tui:split-string-by-newline wrapped))
              (push line rendered-lines))))))
     (vp:viewport-set-content (viewport model) (format nil "~{~a~^~%~}" (reverse rendered-lines)))
-    (vp:viewport-goto-bottom (viewport model))))
+    (when at-bottom-p
+      (vp:viewport-goto-bottom (viewport model)))))
 
 (defun recalculate-layout (model)
   (let* ((w (win-width model))
@@ -207,14 +211,15 @@
          (users-h 3)
          (viewport-h (max 5 (- h input-h users-h)))
          (new-width (max 10 (- w 2)))
-         (prompt-len (tui:visible-length (ti:textinput-prompt (input model)))))
+         (prompt-len (tui:visible-length (ti:textinput-prompt (input model))))
+         (at-bottom-p (vp:viewport-at-bottom-p (viewport model))))
     (setf (vp:viewport-width (viewport model)) w
           (vp:viewport-height (viewport model)) viewport-h
           (vp:viewport-width (users-viewport model)) new-width
           (vp:viewport-height (users-viewport model)) 1 ;; content height (without border)
           (ti:textinput-width (input model)) (max 1 (- new-width prompt-len)))
     (update-users-list model)
-    (render-messages model)))
+    (render-messages model at-bottom-p)))
 
 ;;; TUI Implementation
 
@@ -287,6 +292,7 @@
        (unless (username model)
          (setf (pending-username model) text))
        (connection-send (socket model) text)
+       (vp:viewport-goto-bottom (viewport model))
        (ti:textinput-reset (input model)))
       (t
        (ti:textinput-reset (input model))))))
@@ -363,34 +369,38 @@
           (colorize-mentions content)))
 
 (defmethod tui:update-message ((model chat-model) (msg server-msg))
-  (dolist (text (tui:split-string-by-newline (server-msg-text msg)))
-    (let* ((regex "^\\|(\\d{4}-\\d{2}-\\d{2})? ?(\\d{2}:\\d{2}):(\\d{2})\\| \\[(.*?)\\]: (.*)$")
-           (match (multiple-value-list (cl-ppcre:scan-to-strings regex text))))
-      (if (first match)
-          (let* ((groups (second match))
-                 (date (or (aref groups 0)
-                           (today)))
-                 (time (format nil "~a:~a" (aref groups 1) (aref groups 2)))
-                 (user (aref groups 3))
-                 (content (aref groups 4)))
+  (let ((should-render nil))
+    (dolist (text (tui:split-string-by-newline (server-msg-text msg)))
+      (let* ((regex "^\\|(\\d{4}-\\d{2}-\\d{2})? ?(\\d{2}:\\d{2}):(\\d{2})\\| \\[(.*?)\\]: (.*)$")
+             (match (multiple-value-list (cl-ppcre:scan-to-strings regex text))))
+        (if (first match)
+            (let* ((groups (second match))
+                   (date (or (aref groups 0)
+                             (today)))
+                   (time (format nil "~a:~a" (aref groups 1) (aref groups 2)))
+                   (user (aref groups 3))
+                   (content (aref groups 4)))
 
-            ;; Process system messages for side-effects
-            (process-system-message model user content)
+              ;; Process system messages for side-effects
+              (process-system-message model user content)
 
-            ;; Only show if not ignored (like pong)
-            (unless (and (string= user "@server") (search "pong (system)" content))
-              ;; Handle date divider
-              (when (and date (not (equal date (last-date model))))
-                (setf (last-date model) date)
-                (push (list :date date) (messages model)))
+              ;; Only show if not ignored (like pong)
+              (unless (and (string= user "@server") (search "pong (system)" content))
+                ;; Handle date divider
+                (when (and date (not (equal date (last-date model))))
+                  (setf (last-date model) date)
+                  (push (list :date date) (messages model)))
 
-              (push (list :msg (format-chat-message time user content)) (messages model))))
-          (progn
-             ;; Filter raw pong messages too if they appear without standard formatting
-             (unless (search "pong" text)
-                (let ((colored-text (colorize-mentions text)))
-                  (push (list :msg colored-text) (messages model))))))))
-  (render-messages model)
+                (push (list :msg (format-chat-message time user content)) (messages model))
+                (setf should-render t)))
+            (progn
+               ;; Filter raw pong messages too if they appear without standard formatting
+               (unless (search "pong" text)
+                  (let ((colored-text (colorize-mentions text)))
+                    (push (list :msg colored-text) (messages model))
+                    (setf should-render t)))))))
+    (when should-render
+      (render-messages model)))
   model)
 
 (defmethod tui:view ((model chat-model))
