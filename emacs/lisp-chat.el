@@ -344,25 +344,30 @@
 (defun lisp-chat-ret ()
   "Handle pressing Enter in the chat buffer."
   (interactive)
-  (let ((p-end (field-end (marker-position lisp-chat-input-marker))))
-    (if (< (point) p-end)
-        (goto-char (point-max))
-      (let* ((message (buffer-substring p-end (point-max))))
-        (unless (string-empty-p (string-trim message))
-          (let ((inhibit-read-only t))
-            (delete-region p-end (point-max)))
-          (let ((trimmed (string-trim message)))
-            (cond
-             ((string= trimmed "/quit")
-              (lisp-chat-quit))
-             ((string= trimmed "/clear")
-              (lisp-chat-clear))
-             (t
-              (if (null lisp-chat-username)
-                  (progn
-                    (setq lisp-chat--pending-username trimmed)
-                    (lisp-chat-send lisp-chat--pending-username))
-                (lisp-chat-send trimmed))))))))))
+  (if (and lisp-chat-connection
+           (if (eq lisp-chat-connection-type 'websocket)
+               (websocket-openp lisp-chat-connection)
+             (memq (process-status lisp-chat-connection) '(run open))))
+      (let ((p-end (field-end (marker-position lisp-chat-input-marker))))
+        (if (< (point) p-end)
+            (goto-char (point-max))
+          (let* ((message (buffer-substring p-end (point-max))))
+            (unless (string-empty-p (string-trim message))
+              (let ((inhibit-read-only t))
+                (delete-region p-end (point-max)))
+              (let ((trimmed (string-trim message)))
+                (cond
+                 ((string= trimmed "/quit")
+                  (lisp-chat-quit))
+                 ((string= trimmed "/clear")
+                  (lisp-chat-clear))
+                 (t
+                  (if (null lisp-chat-username)
+                      (progn
+                        (setq lisp-chat--pending-username trimmed)
+                        (lisp-chat-send lisp-chat--pending-username))
+                    (lisp-chat-send trimmed)))))))))
+    (lisp-chat-reconnect)))
 
 (defun lisp-chat-quit ()
   "Disconnect from the server and close the buffer."
