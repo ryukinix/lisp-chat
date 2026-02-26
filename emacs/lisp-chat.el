@@ -1,9 +1,14 @@
 ;;; lisp-chat.el --- Emacs client for Lisp Chat -*- lexical-binding: t; -*-
 
 ;; Author: Manoel V. Machado
+;; URL: https://github.com/ryukinix/lisp-chat
 ;; Version: 0.7.0
 ;; Package-Requires: ((emacs "26.1") (websocket "1.12"))
 ;; Keywords: comm, chat, lisp
+
+
+;;; Commentary:
+;; lisp-chat native Emacs client.
 
 ;;; Code:
 
@@ -31,7 +36,7 @@
   :group 'lisp-chat)
 
 (defcustom lisp-chat-default-username nil
-  "Default username for Lisp Chat. If nil, the user will be prompted."
+  "Default username for Lisp Chat.  If nil, the user will be prompted."
   :type '(choice (const :tag "Prompt" nil)
                  (string :tag "Username"))
   :group 'lisp-chat)
@@ -252,7 +257,8 @@
           (lisp-chat--insert-text (lisp-chat--format-message line))))))))
 
 (defun lisp-chat--tcp-filter (proc string)
-  "Filter for TCP process PROC."
+  "Filter for TCP process PROC.
+Argument STRING message from the server."
   (when (buffer-live-p (process-buffer proc))
     (with-current-buffer (process-buffer proc)
       (setq lisp-chat--tcp-buffer (concat lisp-chat--tcp-buffer string))
@@ -271,7 +277,8 @@
     (setq lisp-chat-last-date nil)))
 
 (defun lisp-chat-reconnect (&optional attempt)
-  "Reconnect to the server, trying up to 10 times."
+  "Reconnect to the server, trying up to 10 times.
+Optional argument ATTEMPT define the current attempt."
   (interactive)
   (let ((address lisp-chat-current-address)
         (port lisp-chat-current-port)
@@ -292,7 +299,7 @@
 
         (lisp-chat--insert-text (format "Reconnecting... (attempt %d/10)" curr-attempt) 'warning)
 
-        (condition-case err
+        (condition-case _err
             (progn
               (if (eq lisp-chat-connection-type 'websocket)
                   (setq lisp-chat-connection
@@ -306,7 +313,7 @@
                       (make-network-process
                        :name "lisp-chat-tcp" :buffer (current-buffer) :host address :service port
                        :filter #'lisp-chat--tcp-filter
-                       :sentinel (lambda (proc event) (when (string-match-p "finished" event) (message "Lisp Chat: TCP Connection closed."))))))
+                       :sentinel (lambda (_proc event) (when (string-match-p "finished" event) (message "Lisp Chat: TCP Connection closed."))))))
 
               (lisp-chat-clear)
               (setq lisp-chat-username nil
@@ -450,7 +457,9 @@
     (switch-to-buffer buf)))
 
 (defun lisp-chat-connect-tcp (host port)
-  "Connect to Lisp Chat server via TCP."
+  "Connect to Lisp Chat server via TCP.
+Argument HOST address of the server.
+Argument PORT of the server."
   (let ((buf (get-buffer-create "*lisp-chat*")))
     (with-current-buffer buf
       (lisp-chat-mode)
@@ -461,7 +470,7 @@
             (make-network-process
              :name "lisp-chat-tcp" :buffer buf :host host :service port
              :filter #'lisp-chat--tcp-filter
-             :sentinel (lambda (proc event) (when (string-match-p "finished" event) (message "Lisp Chat: TCP Connection closed.")))))
+             :sentinel (lambda (_proc event) (when (string-match-p "finished" event) (message "Lisp Chat: TCP Connection closed.")))))
       (lisp-chat--start-ping-timer))
     (switch-to-buffer buf)))
 
@@ -476,3 +485,5 @@ Otherwise, use TCP on PORT (default 8000)."
    (t (lisp-chat-connect-tcp address (or port (read-number "Port: " lisp-chat-default-port))))))
 
 (provide 'lisp-chat)
+
+;;; lisp-chat.el ends here
