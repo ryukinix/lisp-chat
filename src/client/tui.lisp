@@ -182,6 +182,7 @@
 
 (defun render-messages (model)
   (let ((w (vp:viewport-width (viewport model)))
+        (at-bottom-p (vp:viewport-at-bottom-p (viewport model)))
         (rendered-lines nil))
     (dolist (msg (reverse (messages model)))
       (cond
@@ -198,7 +199,8 @@
            (dolist (line (tui:split-string-by-newline wrapped))
              (push line rendered-lines))))))
     (vp:viewport-set-content (viewport model) (format nil "~{~a~^~%~}" (reverse rendered-lines)))
-    (vp:viewport-goto-bottom (viewport model))))
+    (when at-bottom-p
+      (vp:viewport-goto-bottom (viewport model)))))
 
 (defun recalculate-layout (model)
   (let* ((w (win-width model))
@@ -287,6 +289,7 @@
        (unless (username model)
          (setf (pending-username model) text))
        (connection-send (socket model) text)
+       (vp:viewport-goto-bottom (viewport model))
        (ti:textinput-reset (input model)))
       (t
        (ti:textinput-reset (input model))))))
