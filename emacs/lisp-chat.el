@@ -82,6 +82,10 @@
 
 ;;; Internal Functions
 
+(defun lisp-chat--user-agent ()
+  "Return the user-agent string for Lisp Chat."
+  (format "Emacs %s (%s)" emacs-version system-type))
+
 (defun lisp-chat--to-int32 (x)
   "Convert X to a 32-bit signed integer."
   (let ((val (logand x #xFFFFFFFF)))
@@ -294,6 +298,7 @@
                   (setq lisp-chat-connection
                         (websocket-open
                          address
+                         :custom-header-alist `(("User-Agent" . ,(lisp-chat--user-agent)))
                          :on-message (lambda (_ws frame) (lisp-chat--handle-server-message (websocket-frame-text frame)))
                          :on-close (lambda (_ws) (message "Lisp Chat: Connection closed."))
                          :on-error (lambda (_ws _type err) (message "Lisp Chat: WebSocket error: %S" err))))
@@ -344,25 +349,30 @@
 (defun lisp-chat-ret ()
   "Handle pressing Enter in the chat buffer."
   (interactive)
-  (let ((p-end (field-end (marker-position lisp-chat-input-marker))))
-    (if (< (point) p-end)
-        (goto-char (point-max))
-      (let* ((message (buffer-substring p-end (point-max))))
-        (unless (string-empty-p (string-trim message))
-          (let ((inhibit-read-only t))
-            (delete-region p-end (point-max)))
-          (let ((trimmed (string-trim message)))
-            (cond
-             ((string= trimmed "/quit")
-              (lisp-chat-quit))
-             ((string= trimmed "/clear")
-              (lisp-chat-clear))
-             (t
-              (if (null lisp-chat-username)
-                  (progn
-                    (setq lisp-chat--pending-username trimmed)
-                    (lisp-chat-send lisp-chat--pending-username))
-                (lisp-chat-send trimmed))))))))))
+  (if (and lisp-chat-connection
+           (if (eq lisp-chat-connection-type 'websocket)
+               (websocket-openp lisp-chat-connection)
+             (memq (process-status lisp-chat-connection) '(run open))))
+      (let ((p-end (field-end (marker-position lisp-chat-input-marker))))
+        (if (< (point) p-end)
+            (goto-char (point-max))
+          (let* ((message (buffer-substring p-end (point-max))))
+            (unless (string-empty-p (string-trim message))
+              (let ((inhibit-read-only t))
+                (delete-region p-end (point-max)))
+              (let ((trimmed (string-trim message)))
+                (cond
+                 ((string= trimmed "/quit")
+                  (lisp-chat-quit))
+                 ((string= trimmed "/clear")
+                  (lisp-chat-clear))
+                 (t
+                  (if (null lisp-chat-username)
+                      (progn
+                        (setq lisp-chat--pending-username trimmed)
+                        (lisp-chat-send lisp-chat--pending-username))
+                    (lisp-chat-send trimmed)))))))))
+    (lisp-chat-reconnect)))
 
 (defun lisp-chat-quit ()
   "Disconnect from the server and close the buffer."
@@ -377,12 +387,8 @@
   "Ensure the cursor stays after the prompt when typing, but allow navigation."
   (let ((p-marker (marker-position lisp-chat-input-marker)))
     (when (and p-marker
-               (not (memq this-command '(previous-line next-line backward-char forward-char
-                                         scroll-up-command scroll-down-command
-                                         mwheel-scroll beginning-of-buffer end-of-buffer
-                                         move-beginning-of-line move-end-of-line
-                                         mouse-set-point mouse-drag-region
-                                         isearch-forward isearch-backward)))
+               this-command
+               (string-match-p "insert\\|yank" (symbol-name this-command))
                (< (point) p-marker))
       (goto-char (point-max)))))
 
@@ -411,7 +417,7 @@
     (lisp-chat--update-prompt)
     (goto-char (point-max)))
   (lisp-chat--update-header-line)
-  (add-hook 'post-command-hook #'lisp-chat--ensure-point nil t))
+  (add-hook 'pre-command-hook #'lisp-chat--ensure-point nil t))
 
 ;;; Connection Entry Points
 
@@ -436,6 +442,7 @@
             lisp-chat-connection
             (websocket-open
              url
+             :custom-header-alist `(("User-Agent" . ,(lisp-chat--user-agent)))
              :on-message (lambda (_ws frame) (lisp-chat--handle-server-message (websocket-frame-text frame)))
              :on-close (lambda (_ws) (message "Lisp Chat: Connection closed."))
              :on-error (lambda (_ws _type err) (message "Lisp Chat: WebSocket error: %S" err))))
