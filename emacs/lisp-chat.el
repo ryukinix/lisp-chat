@@ -382,12 +382,8 @@
   "Ensure the cursor stays after the prompt when typing, but allow navigation."
   (let ((p-marker (marker-position lisp-chat-input-marker)))
     (when (and p-marker
-               (not (memq this-command '(previous-line next-line backward-char forward-char
-                                         scroll-up-command scroll-down-command
-                                         mwheel-scroll beginning-of-buffer end-of-buffer
-                                         move-beginning-of-line move-end-of-line
-                                         mouse-set-point mouse-drag-region
-                                         isearch-forward isearch-backward)))
+               this-command
+               (string-match-p "insert\\|yank" (symbol-name this-command))
                (< (point) p-marker))
       (goto-char (point-max)))))
 
@@ -416,7 +412,7 @@
     (lisp-chat--update-prompt)
     (goto-char (point-max)))
   (lisp-chat--update-header-line)
-  (add-hook 'post-command-hook #'lisp-chat--ensure-point nil t))
+  (add-hook 'pre-command-hook #'lisp-chat--ensure-point nil t))
 
 ;;; Connection Entry Points
 
