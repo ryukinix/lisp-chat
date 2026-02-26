@@ -99,16 +99,16 @@
 
 (defun call-command-predefined (client message)
   (let* ((command-name (extract-command message))
-         (command (find command-name (get-commands) :test #'string=))
+         (command (find command-name (get-commands) :test #'string-equal))
          (command-function (get-command command))
          (args (extract-params message)))
     (cond
       ;; HACK(@lerax): sex 06 fev 2026 17:34:43 backward compatible with /log <n>
-      ((and (string= command "/log")
+      ((and (string-equal command "/log")
             (eq (length args) 1))
        (/log client :depth (car args) :date-format "date"))
-      ((string= command "/dm") (/dm client (car args) (extract-args-as-string message :accessor #'cddr)))
-      ((string= command "/lisp") (/lisp client (extract-args-as-string message)))
+      ((string-equal command "/dm") (/dm client (car args) (extract-args-as-string message :accessor #'cddr)))
+      ((string-equal command "/lisp") (/lisp client (extract-args-as-string message)))
       (command-function (apply command-function (cons client (parse-keywords args))))
       (t (command-message (format nil "command ~a doesn't exists" message))))))
 
@@ -136,11 +136,12 @@
              (filtered (remove-if-not
                         (lambda (m)
                           (and (not (equal (message-from m) "@server"))
-                               (search (string-downcase query)
-                                       (string-downcase (message-content m)))
+                               (search query
+                                       (message-content m)
+                                       :test #'char-equal)
                                (or (not user)
-                                   (equal (string-downcase (message-from m))
-                                          (string-downcase user)))
+                                   (string-equal (message-from m)
+                                          user))
                                (or (not before-time)
                                    (<= (message-universal-time m) before-time))
                                (or (not after-time)
@@ -173,7 +174,7 @@
    If COMMAND-NAME is provided, show its documentation."
   (declare (ignorable client args))
   (if command-name
-      (let* ((cmd (if (char= (char command-name 0) #\/)
+      (let* ((cmd (if (startswith command-name "/")
                       command-name
                       (concatenate 'string "/" command-name)))
              (sym (get-command cmd)))
@@ -234,7 +235,7 @@
     (cond
       ((not username) (command-message "/dm USERNAME your message"))
       ((not user) (command-message (format nil "error: ~s user not found" username)))
-      ((equal from username) (command-message "you can't dm to yourself"))
+      ((string= from username) (command-message "you can't dm to yourself"))
       (t
        (prog1 'ignore
          (let ((msg (private-message from msg-content)))
