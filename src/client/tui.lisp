@@ -218,6 +218,31 @@
 
 ;;; TUI Implementation
 
+(defun connect-websocket (model host port)
+  (let* ((url (if (or (search "ws://" host) (search "wss://" host))
+                 host
+                 (format nil "ws://~a:~a/ws" host port)))
+         (client (make-client url))
+         (queue (make-safe-queue))
+         (connection (make-ws-connection :client client :queue queue)))
+    (setf (socket model) connection)
+    (on :message client
+        (lambda (msg)
+          (queue-push queue msg)))
+    (on :close client
+        (lambda (&key code reason)
+          (declare (ignore code reason))
+          (queue-push queue :eof)))
+    (start-connection client)
+    (setf (connected model) t)
+    (start-listener tui:*current-program* connection)))
+
+(defun connect-tcp (model host port)
+  (let ((socket (socket-connect host port)))
+    (setf (socket model) socket)
+    (setf (connected model) t)
+    (start-listener tui:*current-program* socket)))
+
 (defmethod tui:init ((model chat-model))
   (let ((host *host*)
         (port *port*))
@@ -230,27 +255,8 @@
     (handler-case
         (progn
           (if (websocket-p host port)
-              (let* ((url (if (or (search "ws://" host) (search "wss://" host))
-                             host
-                             (format nil "ws://~a:~a/ws" host port)))
-                     (client (make-client url))
-                     (queue (make-safe-queue))
-                     (connection (make-ws-connection :client client :queue queue)))
-                (setf (socket model) connection)
-                (on :message client
-                    (lambda (msg)
-                      (queue-push queue msg)))
-                (on :close client
-                    (lambda (&key code reason)
-                      (declare (ignore code reason))
-                      (queue-push queue :eof)))
-                (start-connection client)
-                (setf (connected model) t)
-                (start-listener tui:*current-program* connection))
-              (let ((socket (socket-connect host port)))
-                (setf (socket model) socket)
-                (setf (connected model) t)
-                (start-listener tui:*current-program* socket)))
+              (connect-websocket model host port)
+              (connect-tcp model host port))
 
           (start-ping-thread model))
 
@@ -265,41 +271,96 @@
   (recalculate-layout model)
   model)
 
+(defun handle-chat-input (model text)
+  "Processes the text input from the user."
+  (when (and text (plusp (length text)))
+    (cond
+      ((string= text "/quit")
+       (setf (connected model) nil)
+       (tui:quit tui:*current-program*))
+      ((string= text "/clear")
+       (setf (messages model) nil)
+       (setf (last-date model) nil)
+       (render-messages model)
+       (ti:textinput-reset (input model)))
+      ((connected model)
+       (unless (username model)
+         (setf (pending-username model) text))
+       (connection-send (socket model) text)
+       (ti:textinput-reset (input model)))
+      (t
+       (ti:textinput-reset (input model))))))
+
+(defun handle-viewport-navigation (model key)
+  "Handles viewport scrolling based on key input."
+  (cond
+    ((string-equal key "page-up") (vp:viewport-page-up (viewport model)))
+    ((string-equal key "page-down") (vp:viewport-page-down (viewport model)))
+    ((string-equal key "up") (vp:viewport-scroll-up (viewport model)))
+    ((string-equal key "down") (vp:viewport-scroll-down (viewport model)))))
+
 (defmethod tui:update-message ((model chat-model) (msg tui:key-msg))
   (let ((key (tui:key-msg-key msg)))
     (cond
       ((or (eq key :enter)
            (string-equal key "enter")
            (and (characterp key) (char= key #\Newline)))
-       (let ((text (ti:textinput-value (input model))))
-         (when (and text (plusp (length text)))
-           (cond
-             ((string= text "/quit")
-              (setf (connected model) nil)
-              (tui:quit tui:*current-program*))
-             ((string= text "/clear")
-              (setf (messages model) nil)
-              (setf (last-date model) nil)
-              (render-messages model)
-              (ti:textinput-reset (input model)))
-             ((connected model)
-              (unless (username model)
-                (setf (pending-username model) text))
-              (connection-send (socket model) text)
-              (ti:textinput-reset (input model)))
-             (t
-              (ti:textinput-reset (input model)))))))
+       (handle-chat-input model (ti:textinput-value (input model))))
       ((or (string-equal key "escape") (and (string-equal key "c") (tui:key-msg-ctrl msg)))
        (setf (connected model) nil)
        (tui:quit tui:*current-program*))
       (t
        (ti:textinput-update (input model) msg)
-       (cond
-         ((string-equal key "page-up") (vp:viewport-page-up (viewport model)))
-         ((string-equal key "page-down") (vp:viewport-page-down (viewport model)))
-         ((string-equal key "up") (vp:viewport-scroll-up (viewport model)))
-         ((string-equal key "down") (vp:viewport-scroll-down (viewport model))))))
-    model))
+       (handle-viewport-navigation model key))))
+  model)
+
+(defun process-system-message (model user content)
+  "Handles server-side events like user joins, exits, and commands."
+  (cond
+    ;; Join
+    ((and (string= user "@server") (search "joined to the party!" content))
+     (let ((joined-user (subseq content 10 (search " joined" content))))
+       (pushnew joined-user (users model) :test #'string=)
+       (update-users-list model)
+       ;; Check if it's us joining
+       (when (and (null (username model))
+                  (pending-username model)
+                  (string= joined-user (pending-username model)))
+         (setf (username model) joined-user
+               (pending-username model) nil)
+         (setf (ti:textinput-prompt (input model))
+               (render-user-prefix joined-user))
+         (recalculate-layout model)
+         (connection-send (socket model) "/users")
+         (connection-send (socket model) "/log 100"))))
+    ;; Exit
+    ((search "exited from the party :(" content)
+     (let ((exited-user (subseq content 10 (search " exited" content))))
+       (setf (users model) (remove exited-user (users model) :test #'string=))
+       (update-users-list model)))
+    ;; /users response
+    ((and (string= user "@server") (search "users: " content))
+     (let* ((list-str (subseq content 7))
+            (users-list (cl-ppcre:split ", " list-str)))
+       (setf (users model) users-list)
+       (update-users-list model)))
+    ;; /nick response
+    ((and (string= user "@server") (search "Your new nick is: @" content))
+     (let ((my-name (subseq content (1+ (search "@" content)))))
+       (setf (users model)
+             (remove (username model) (users model) :test #'string=))
+       (setf (username model) my-name)
+       (setf (ti:textinput-prompt (input model))
+             (render-user-prefix my-name))
+       (pushnew my-name (users model) :test #'string=)
+       (recalculate-layout model)))))
+
+(defun format-chat-message (time user content)
+  "Returns a styled string for displaying a chat message."
+  (format nil "~a [~a]: ~a"
+          (tui:render-styled (tui:make-style :foreground (tui:color-rgb 100 100 100)) time)
+          (tui:render-styled (tui:make-style :foreground (get-user-color user)) user)
+          (colorize-mentions content)))
 
 (defmethod tui:update-message ((model chat-model) (msg server-msg))
   (dolist (text (tui:split-string-by-newline (server-msg-text msg)))
@@ -311,56 +372,10 @@
                            (today)))
                  (time (format nil "~a:~a" (aref groups 1) (aref groups 2)))
                  (user (aref groups 3))
-                 (content (aref groups 4))
-                 (user-color (get-user-color user))
-                 (formatted (format nil "~a [~a]: ~a"
-                                    (tui:render-styled (tui:make-style :foreground (tui:color-rgb 100 100 100)) time)
-                                    (tui:render-styled (tui:make-style :foreground user-color) user)
-                                    (colorize-mentions content))))
+                 (content (aref groups 4)))
 
             ;; Process system messages for side-effects
-            (cond
-              ;; Join
-              ((and (string= user "@server") (search "joined to the party!" content))
-               (let ((joined-user (subseq content 10 (search " joined" content))))
-                 (pushnew joined-user (users model) :test #'string=)
-                 (update-users-list model)
-                 ;; Check if it's us joining
-                 (when (and (null (username model))
-                            (pending-username model)
-                            (string= joined-user (pending-username model)))
-                   (setf (username model) joined-user
-                         (pending-username model) nil)
-                   (setf (ti:textinput-prompt (input model))
-                         (render-user-prefix joined-user))
-                   (recalculate-layout model)
-                   (connection-send (socket model) "/users")
-                   (connection-send (socket model) "/log 100"))))
-              ;; Exit
-              ((search "exited from the party :(" content)
-               (let ((exited-user (subseq content 10 (search " exited" content))))
-                 (setf (users model) (remove exited-user (users model) :test #'string=))
-                 (update-users-list model)))
-              ;; /users response
-              ((and (string= user "@server") (search "users: " content))
-               (let* ((list-str (subseq content 7))
-                      (users-list (cl-ppcre:split ", " list-str)))
-                 (setf (users model) users-list)
-                 (update-users-list model)))
-              ;; /nick response
-              ((and (string= user "@server") (search "Your new nick is: @" content))
-               (let ((my-name (subseq content (1+ (search "@" content)))))
-                 (setf (users model)
-                       (remove (username model) (users model) :test #'string=))
-                 (setf (username model) my-name)
-                 (setf (ti:textinput-prompt (input model))
-                       (render-user-prefix my-name))
-                 (pushnew my-name (users model) :test #'string=)
-                 (recalculate-layout model)))
-               ;; /ping response (ignore)
-              ((and (string= user "@server") (search "pong (system)" content))
-               ;; Do nothing, just ignore
-               nil))
+            (process-system-message model user content)
 
             ;; Only show if not ignored (like pong)
             (unless (and (string= user "@server") (search "pong (system)" content))
@@ -369,7 +384,7 @@
                 (setf (last-date model) date)
                 (push (list :date date) (messages model)))
 
-              (push (list :msg formatted) (messages model))))
+              (push (list :msg (format-chat-message time user content)) (messages model))))
           (progn
              ;; Filter raw pong messages too if they appear without standard formatting
              (unless (search "pong" text)
