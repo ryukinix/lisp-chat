@@ -8,7 +8,7 @@ lint:
 	mallet --format line src
 
 docker-lint:
-	docker run --rm -t -v $(PWD):/src ryukinix/mallet:latest --format line src
+	docker run --rm -t -v $(PWD):/src fukamachi/mallet:latest --format line src
 
 version:
 	@echo $(APP_VERSION)
