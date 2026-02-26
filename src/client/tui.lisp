@@ -180,9 +180,11 @@
                             (format nil "~{~a~^, ~}" colored-users)))))
     (vp:viewport-set-content (users-viewport model) content)))
 
-(defun render-messages (model)
+(defun render-messages (model &optional (at-bottom-p nil at-bottom-provided-p))
   (let ((w (vp:viewport-width (viewport model)))
-        (at-bottom-p (vp:viewport-at-bottom-p (viewport model)))
+        (at-bottom-p (if at-bottom-provided-p 
+                         at-bottom-p 
+                         (vp:viewport-at-bottom-p (viewport model))))
         (rendered-lines nil))
     (dolist (msg (reverse (messages model)))
       (cond
@@ -209,14 +211,15 @@
          (users-h 3)
          (viewport-h (max 5 (- h input-h users-h)))
          (new-width (max 10 (- w 2)))
-         (prompt-len (tui:visible-length (ti:textinput-prompt (input model)))))
+         (prompt-len (tui:visible-length (ti:textinput-prompt (input model))))
+         (at-bottom-p (vp:viewport-at-bottom-p (viewport model))))
     (setf (vp:viewport-width (viewport model)) w
           (vp:viewport-height (viewport model)) viewport-h
           (vp:viewport-width (users-viewport model)) new-width
           (vp:viewport-height (users-viewport model)) 1 ;; content height (without border)
           (ti:textinput-width (input model)) (max 1 (- new-width prompt-len)))
     (update-users-list model)
-    (render-messages model)))
+    (render-messages model at-bottom-p)))
 
 ;;; TUI Implementation
 
