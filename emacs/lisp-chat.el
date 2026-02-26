@@ -82,6 +82,10 @@
 
 ;;; Internal Functions
 
+(defun lisp-chat--user-agent ()
+  "Return the user-agent string for Lisp Chat."
+  (format "Emacs %s (%s)" emacs-version system-type))
+
 (defun lisp-chat--to-int32 (x)
   "Convert X to a 32-bit signed integer."
   (let ((val (logand x #xFFFFFFFF)))
@@ -294,6 +298,7 @@
                   (setq lisp-chat-connection
                         (websocket-open
                          address
+                         :custom-header-alist `(("User-Agent" . ,(lisp-chat--user-agent)))
                          :on-message (lambda (_ws frame) (lisp-chat--handle-server-message (websocket-frame-text frame)))
                          :on-close (lambda (_ws) (message "Lisp Chat: Connection closed."))
                          :on-error (lambda (_ws _type err) (message "Lisp Chat: WebSocket error: %S" err))))
@@ -437,6 +442,7 @@
             lisp-chat-connection
             (websocket-open
              url
+             :custom-header-alist `(("User-Agent" . ,(lisp-chat--user-agent)))
              :on-message (lambda (_ws frame) (lisp-chat--handle-server-message (websocket-frame-text frame)))
              :on-close (lambda (_ws) (message "Lisp Chat: Connection closed."))
              :on-error (lambda (_ws _type err) (message "Lisp Chat: WebSocket error: %S" err))))
