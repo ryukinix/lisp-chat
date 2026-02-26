@@ -5,12 +5,11 @@
   (:use #:usocket
         #:cl
         #:lisp-chat/config
+        #:lisp-chat/client/net
         #:bordeaux-threads)
   (:import-from #:websocket-driver
                 #:start-connection
-                #:send
-                #:on
-                #:close-connection)
+                #:on)
   (:import-from #:websocket-driver-client
                 #:make-client)
   (:export :main))
@@ -25,27 +24,6 @@
 
 (defvar *stop* nil
   "Stop sign to end the client")
-
-;; WebSocket Support Types
-(defstruct safe-queue
-  (items '())
-  (lock (make-lock "queue-lock"))
-  (cvar (make-condition-variable :name "queue-cvar")))
-
-(defun queue-push (q item)
-  (with-lock-held ((safe-queue-lock q))
-    (setf (safe-queue-items q) (append (safe-queue-items q) (list item)))
-    (condition-notify (safe-queue-cvar q))))
-
-(defun queue-pop (q)
-  (with-lock-held ((safe-queue-lock q))
-    (loop while (null (safe-queue-items q))
-          do (condition-wait (safe-queue-cvar q) (safe-queue-lock q)))
-    (pop (safe-queue-items q))))
-
-(defstruct ws-connection
-  client
-  queue)
 
 (defun erase-last-line ()
   "Erase the last line by using ANSI Escape codes"
@@ -74,36 +52,10 @@
       (with-lock-held (*io-lock*)
         (erase-last-line)))))
 
-;; dynamic dispatch using generics: usocket vs websockets
-
-(defgeneric connection-fetch-message (socket))
-(defmethod connection-fetch-message ((socket ws-connection))
-  (queue-pop (ws-connection-queue socket)))
-
-(defmethod connection-fetch-message ((socket usocket:usocket))
-  (read-line (socket-stream socket) nil :eof))
-
-
-(defgeneric connection-send-message (message socket))
-(defmethod connection-send-message (message (socket ws-connection))
-  (send (ws-connection-client socket) message))
-
-(defmethod connection-send-message (message (socket usocket:usocket))
-  (write-line message (socket-stream socket))
-  (finish-output (socket-stream socket)))
-
-(defgeneric connection-close (socket))
-(defmethod connection-close ((socket usocket:usocket))
-  (socket-close socket))
-
-(defmethod connection-close ((socket ws-connection))
-  (close-connection (ws-connection-client socket)))
-
-
 (defun send-message (message socket)
   "Send a MESSAGE string through a SOCKET instance"
   (handler-case
-      (connection-send-message message socket)
+      (connection-send socket message)
     (error (c)
       (format t "~%Error sending message: ~a~%" c)
       (exit 1))))
@@ -111,7 +63,7 @@
 (defun fetch-message (socket)
   "Fetch a message from the SOCKET (TCP or WS)"
   (handler-case
-      (connection-fetch-message socket)
+      (connection-read socket)
     (error (c)
       (let ((decoding-error (find-symbol "CHARACTER-DECODING-ERROR" :babel-encodings)))
         (if (and decoding-error (typep c decoding-error))
@@ -229,10 +181,6 @@ The systematic pong is consumed and the @server response is not shown in the ter
       (destroy-thread background-ping)
       (destroy-thread broadcast)
       (connection-close socket))))
-
-(defun websocket-p (host port)
-  (declare (ignorable port))
-  (or (search "ws://" host) (search "wss://" host)))
 
 (defun client-loop-web (host port)
   (let* ((queue (make-safe-queue))

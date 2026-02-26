@@ -5,10 +5,18 @@ on:
     branches: [ master ]
 
 jobs:
-  integration-tests:
+  tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Build Docker Image & Run integration tests
         run: make docker-check
+
+  docker-appimage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Lisp Chat appimage
+        run: make docker-appimage

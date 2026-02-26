@@ -5,7 +5,7 @@ exec ros -Q -- $0 "$@"
 |#
 (progn ;;init forms
   (ros:ensure-asdf)
-  #+quicklisp (ql:quickload '(lisp-chat/client) :silent t))
+  #+quicklisp (ql:quickload '(lisp-chat/client lisp-chat/tui) :silent t))
 
 (defpackage :ros.script.lisp-chat
   (:use :cl))
@@ -20,10 +20,11 @@ exec ros -Q -- $0 "$@"
           "usage: lisp-chat [-h|--help] [host] [port]
 
 OPTIONS
-    host           server host, default: ~a
-    port           server port, default: ~a
-    -h | --help    show this message
-    -v | --version show version of the software
+    host            server host, default: ~a
+    port            server port, default: ~a
+    -r | --readline use the readline version
+    -h | --help     show this message
+    -v | --version  show version of the software
 " lisp-chat/config:*host*
   lisp-chat/config:*port*))
 
@@ -31,20 +32,30 @@ OPTIONS
   (when host
     (setq lisp-chat/config:*host* host)
     ;; If host is WS, we might want to default to websocket-port if port not provided
-    (when (and (lisp-chat/client::websocket-p host port)
+    (when (and (lisp-chat/tui::websocket-p host port)
                (null port))
       (setq lisp-chat/config:*port* lisp-chat/config:*websocket-port*)))
   (when port
     (setq lisp-chat/config:*port* (parse-integer port))))
 
+(defun clean-args (args)
+  "Remove dashed args like -flag and --flags"
+  (loop for arg in args
+        when (not (equal (aref arg 0) #\-))
+          collect arg))
+
 (defun main (&rest argv)
-  (let ((host (car argv))
-        (port (cadr argv)))
+  (let* ((args (clean-args argv))
+         (host (car args))
+         (port (cadr args)))
     (setup-host-port host port))
 
   (cond
     ((lisp-chat/config:has-any-flags argv "-h" "--help") (princ *usage*))
     ((lisp-chat/config:has-any-flags argv "-v" "--version") (princ (lisp-chat/config:get-version)))
-    (t (lisp-chat/client:main :host lisp-chat/config:*host*
-                            :port lisp-chat/config:*port*))))
+    ((lisp-chat/config:has-any-flags argv "-r" "--readline")
+   (lisp-chat/client:main :host lisp-chat/config:*host*
+                            :port lisp-chat/config:*port*))
+    (t (lisp-chat/tui:main :host lisp-chat/config:*host*
+                           :port lisp-chat/config:*port*))))
 ;;; vim: set ft=lisp lisp:

@@ -77,7 +77,7 @@
 (asdf:defsystem :lisp-chat/client
   :class lisp-chat/system:custom-system-class
   :author #.lisp-chat/system:*author*
-  :description "An experimental chat irc-like: client"
+  :description "An experimental chat irc-like: client (readline)"
   :version #.lisp-chat/system:*version*
   :build-metadata #.lisp-chat/system:*build-metadata*
   :license #.lisp-chat/system:*license*
@@ -87,7 +87,26 @@
                "websocket-driver-client")
   :pathname "src"
   :components ((:file "config")
-               (:file "client" :depends-on ("config"))))
+               (:file "client/net" :depends-on ("config"))
+               (:file "client/readline" :depends-on ("config" "client/net"))))
+
+(asdf:defsystem :lisp-chat/tui
+  :class lisp-chat/system:custom-system-class
+  :author #.lisp-chat/system:*author*
+  :description "An experimental chat irc-like: client (TUI)"
+  :version #.lisp-chat/system:*version*
+  :build-metadata #.lisp-chat/system:*build-metadata*
+  :license #.lisp-chat/system:*license*
+  :depends-on ("usocket"
+               "tuition"
+               "cl-ppcre"
+               "bordeaux-threads"
+               "websocket-driver-client")
+  :pathname "src"
+  :components ((:file "config")
+               (:file "client/net" :depends-on ("config"))
+               (:file "client/tui" :depends-on ("config" "client/net"))))
+
 
 (asdf:defsystem :lisp-chat
   :class lisp-chat/system:custom-system-class
@@ -104,7 +123,6 @@
   :author #.lisp-chat/system:*author*
   :license #.lisp-chat/system:*license*
   :depends-on ("lisp-chat/server"
-               "lisp-chat/client"
                "parachute")
   :pathname "tests"
   :components ((:file "package")
