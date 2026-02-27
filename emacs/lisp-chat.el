@@ -89,7 +89,7 @@
 
 (defun lisp-chat--user-agent ()
   "Return the user-agent string for Lisp Chat."
-  (format "Emacs %s (%s)" emacs-version system-type))
+  (format "Emacs/%s (%s)" emacs-version system-type))
 
 (defun lisp-chat--to-int32 (x)
   "Convert X to a 32-bit signed integer."

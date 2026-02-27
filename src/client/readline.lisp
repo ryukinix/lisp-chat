@@ -10,8 +10,6 @@
   (:import-from #:websocket-driver
                 #:start-connection
                 #:on)
-  (:import-from #:websocket-driver-client
-                #:make-client)
   (:export :main))
 
 (in-package :lisp-chat/client)
@@ -209,6 +207,7 @@ The systematic pong is consumed and the @server response is not shown in the ter
 
 (defun main (&key (host *host*) (port *port*))
   "Main function of client"
+  (setf *client-type* "readline-interface")
   (handler-case (client-loop host port)
     (#+sbcl sb-sys:interactive-interrupt
      #+ccl  ccl:interrupt-signal-condition
