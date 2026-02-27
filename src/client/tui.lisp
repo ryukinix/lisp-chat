@@ -11,8 +11,6 @@
   (:import-from #:websocket-driver
                 #:start-connection
                 #:on)
-  (:import-from #:websocket-driver-client
-                #:make-client)
   (:export :main))
 
 (in-package :lisp-chat/tui)
@@ -182,8 +180,8 @@
 
 (defun render-messages (model &optional (at-bottom-p nil at-bottom-provided-p))
   (let ((w (vp:viewport-width (viewport model)))
-        (at-bottom-p (if at-bottom-provided-p 
-                         at-bottom-p 
+        (at-bottom-p (if at-bottom-provided-p
+                         at-bottom-p
                          (vp:viewport-at-bottom-p (viewport model))))
         (rendered-lines nil))
     (dolist (msg (reverse (messages model)))
@@ -411,6 +409,7 @@
    (tui:render-border (ti:textinput-view (input model)) tui:*border-rounded*)))
 
 (defun main (&key (host *host*) (port *port*))
+  (setf *client-type* "TUI")
   (handler-case
       (let ((model (make-instance 'chat-model)))
         (setf *host* host

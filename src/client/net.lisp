@@ -1,5 +1,6 @@
 (defpackage :lisp-chat/client/net
-  (:use #:cl)
+  (:use #:cl
+        #:lisp-chat/config)
   (:import-from #:usocket
                 #:socket-stream
                 #:socket-close)
@@ -23,9 +24,31 @@
            #:ws-connection
            #:make-ws-connection
            #:ws-connection-client
-           #:ws-connection-queue))
+           #:ws-connection-queue
+           #:*client-type*
+           #:make-client))
 
 (in-package :lisp-chat/client/net)
+
+(defvar *client-type* nil)
+
+(defun user-agent-string ()
+  (format nil "LispChat/~a (~a; ~a; ~a) ~a/~a"
+          (get-version)
+          (software-type)
+          (machine-type)
+          *client-type*
+          (lisp-implementation-type)
+          (lisp-implementation-version)))
+
+(defun make-client (url &rest args)
+  (let ((user-agent (user-agent-string)))
+    (if (getf args :additional-headers)
+        (setf (getf args :additional-headers)
+              (acons "User-Agent" user-agent (getf args :additional-headers)))
+        (setf (getf args :additional-headers)
+              `(("User-Agent" . ,user-agent))))
+    (apply #'websocket-driver-client:make-client url args)))
 
 (defstruct safe-queue
   (items '())

@@ -12,6 +12,9 @@
 
 (in-package :lisp-chat/system)
 
+(defvar *lisp-chat-default-version* "0.7.0")
+(defvar *lisp-chat-default-build-metadata* "-dev")
+
 (defun version-separator (version)
   (or (search "-" version)
       (search "+" version)))
@@ -20,13 +23,13 @@
   (let ((index (version-separator version)))
     (if version
         (subseq version 0 index)
-        "0.4.0")))
+        *lisp-chat-default-version*)))
 
 (defun lisp-chat-parse-build-metadata (version)
   (let ((index (version-separator version)))
     (cond ((and version index) (subseq version index))
           ((and version) "")
-          (t "-dev"))))
+          (t *lisp-chat-default-build-metadata*))))
 
 (defvar *author* "Manoel Vilela")
 (defvar *version* (lisp-chat-parse-version (uiop:getenv "APP_VERSION")))
