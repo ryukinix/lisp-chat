@@ -20,7 +20,8 @@
    to *messages-stack*. FROM and CONTENT has type string, TIME is a list of decoded time parts."
   from
   content
-  time)
+  time
+  (channel "#general"))
 
 (defstruct client
   "This structure handle the creation/control of the clients of the server.
@@ -31,7 +32,8 @@
   address
   time
   (connection-latency nil)
-  (user-agent nil))
+  (user-agent nil)
+  (active-channel "#general"))
 
 
 (defun client-socket-type (client)
@@ -95,10 +97,11 @@
           (message-from message)
           (message-content message)))
 
-(defun user-messages (&key (date-format nil))
+(defun user-messages (&key (date-format nil) (channel "#general"))
   "Return only user messages, discard all messsages from @server"
   (mapcar (lambda (m) (formatted-message m :date-format date-format))
-          (remove-if #'(lambda (m) (equal (message-from m) "@server"))
+          (remove-if #'(lambda (m) (or (equal (message-from m) "@server")
+                                       (not (string-equal (message-channel m) channel))))
                      *messages-log*)))
 
 (defun message-universal-time (message)

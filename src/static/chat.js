@@ -421,7 +421,16 @@ function connect() {
     }
 
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+    const search = window.location.search.substring(1);
+    let wsUrl = `${protocol}//${window.location.host}/ws`;
+    if (search) {
+        if (search.includes("=")) {
+            wsUrl += `?${search}`;
+        } else {
+            wsUrl += `?channel=${search}`;
+        }
+    }
+    ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
         showNotification("Connected to server.");

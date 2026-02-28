@@ -1,19 +1,22 @@
 (in-package :lisp-chat/server)
 
-(defun push-message (from content)
+(defun push-message (from content &key (channel "#general"))
   "Push a messaged FROM as CONTENT into the *messages-stack*"
   (with-lock-held (*messages-lock*)
     (push (make-message :from from
                         :content content
-                        :time (get-time))
+                        :time (get-time)
+                        :channel channel)
           *messages-stack*))
   (signal-semaphore *message-semaphore*))
 
 (defun user-joined-message (client)
-  (push-message "@server" (format nil "The user @~a joined to the party!" (client-name client))))
+  (push-message "@server" (format nil "The user @~a joined to the party!" (client-name client))
+                :channel (client-active-channel client)))
 
 (defun user-exited-message (client)
-  (push-message "@server" (format nil "The user @~a exited from the party :(" (client-name client))))
+  (push-message "@server" (format nil "The user @~a exited from the party :(" (client-name client))
+                :channel (client-active-channel client)))
 
 (defun save-message-to-disk (message-raw)
   "Save a single MESSAGE-RAW struct into *persistence-file*"
@@ -71,11 +74,11 @@
                    (save-message-to-disk message-raw)
                    (let ((clients *clients*))
                      (loop for client in clients
+                           when (string-equal (message-channel message-raw) (client-active-channel client))
                            do (handler-case (send-message client message)
                                 (error (e)
                                   (debug-format t "Error broadcasting to ~a: ~a~%" (client-name client) e)
                                   (client-delete client))))))))))
-
 #+sbcl
 (sb-alien:define-alien-type tcp-info
   (sb-alien:struct tcp-info

@@ -136,6 +136,7 @@
              (filtered (remove-if-not
                         (lambda (m)
                           (and (not (equal (message-from m) "@server"))
+                               (string-equal (message-channel m) (client-active-channel client))
                                (search query
                                        (message-content m)
                                        :test #'char-equal)
@@ -155,9 +156,37 @@
                             (reverse limited)))))))
 
 (defun /users (client &rest args)
-  "/users returns a list separated by commas of the currently logged users"
+  "/users returns a list separated by commas of the currently logged users in the current channel"
+  (declare (ignorable args))
+  (let ((channel-users (remove-if-not (lambda (c) (string-equal (client-active-channel c) (client-active-channel client))) *clients*)))
+    (command-message (format nil "users: ~{~a~^, ~}" (mapcar #'client-name channel-users)))))
+
+(defun /join (client &optional (channel nil) &rest args)
+  "/join changes the active channel for the user"
+  (declare (ignorable args))
+  (if channel
+      (let* ((new-channel (if (uiop:string-prefix-p "#" channel) channel (concatenate 'string "#" channel)))
+             (old-channel (client-active-channel client)))
+        (if (string-equal new-channel old-channel)
+            (command-message (format nil "You are already in ~a" new-channel))
+            (prog1 'ignore
+              (user-exited-message client)
+              (setf (client-active-channel client) new-channel)
+              (user-joined-message client)
+              (send-message client (command-message (format nil "You joined the channel ~a" new-channel))))))
+      (command-message "/join #CHANNEL-NAME")))
+
+(defun /channels (client &rest args)
+  "/channels lists active channels and their user counts"
   (declare (ignorable client args))
-  (command-message (format nil "users: ~{~a~^, ~}" (mapcar #'client-name *clients*))))
+  (let ((counts (make-hash-table :test 'equal)))
+    (loop for c in *clients*
+          do (incf (gethash (client-active-channel c) counts 0)))
+    (let ((lines nil))
+      (maphash (lambda (chan count)
+                 (push (format nil "~a: ~a user~:p" chan count) lines))
+               counts)
+      (command-message (format nil "channels:~%~{~a~^~%~}" (sort lines #'string<))))))
 
 (defun /ping (client &rest args)
   "/ping responds with a 'pong' message, echoing the provided arguments or the user's nickname."
@@ -203,7 +232,7 @@
   "/log shows the last messages sent to the server.
    DEPTH is optional number of messages frames from log"
   (declare (ignorable client))
-  (let* ((messages (user-messages :date-format date-format))
+  (let* ((messages (user-messages :date-format date-format :channel (client-active-channel client)))
          (log-size (min (or (parse-integer depth :junk-allowed t) 20)
                         (length messages))))
     (format nil "~{~a~^~%~}" (reverse (subseq messages 0
@@ -223,7 +252,8 @@
         (push-message "@command"
                       (format nil "User @~a is now known as @~a"
                               (client-name client)
-                              new-nick))
+                              new-nick)
+                      :channel (client-active-channel client))
         (setf (client-name client) new-nick)
         (command-message (format nil "Your new nick is: @~a" new-nick)))
       (command-message (format nil "/nick NEW-NICKNAME"))))
@@ -308,4 +338,5 @@
     (prog1 'ignore
       (push-message "@command"
                     (format nil "user @~a called lisp code `~a` ~a"
-                            (client-name client) program result)))))
+                            (client-name client) program result)
+                    :channel (client-active-channel client)))))

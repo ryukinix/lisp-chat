@@ -12,7 +12,7 @@
         else
           when (> (length message) 0)
             do (push-message (client-name client)
-                             message)
+                             message :channel (client-active-channel client))
         finally (client-delete client)))
 
 (defun client-reader (client)

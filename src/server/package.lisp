@@ -25,9 +25,11 @@
            #:client-time
            #:client-user-agent
            #:client-socket-type
+           #:client-active-channel
            #:message-from
            #:message-time
            #:message-content
+           #:message-channel
            #:make-message
            #:message-time-hour-format
            #:message-time-date-format
@@ -38,6 +40,8 @@
            #:message-universal-time
            #:search-message
            #:push-message
+           #:user-joined-message
+           #:user-exited-message
            #:private-message
            #:command-message
            #:send-message

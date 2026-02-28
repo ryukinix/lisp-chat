@@ -20,9 +20,18 @@
                (setf (client-connection-latency client) (round rtt))))))
       (error () nil))))
 
+(defun parse-channel (query-string)
+  (let* ((params (uiop:split-string (or query-string "") :separator "&"))
+         (channel-param (find-if (lambda (p) (uiop:string-prefix-p "channel=" p)) params)))
+    (if channel-param
+        (let ((val (subseq channel-param 8)))
+          (if (uiop:string-prefix-p "#" val) val (concatenate 'string "#" val)))
+        "#general")))
+
 (defun ws-app (env)
   (let ((ws (make-server env))
-        (client nil))
+        (client nil)
+        (channel (parse-channel (getf env :query-string))))
     (on :message ws
         (lambda (message)
           ;; (debug-format t "Received WS message: ~s~%" message)
@@ -35,7 +44,8 @@
                                                 :socket ws
                                                 :address (get-remote-address env)
                                                 :time (get-time)
-                                                :user-agent (gethash "user-agent" (getf env :headers))))
+                                                :user-agent (gethash "user-agent" (getf env :headers))
+                                                :active-channel channel))
                       (with-lock-held (*client-lock*)
                         (push client *clients*))
                       (user-joined-message client)
@@ -45,7 +55,7 @@
                 (if response
                     (send-message client response)
                     (when (> (length message) 0)
-                      (push-message (client-name client) message)))))
+                      (push-message (client-name client) message :channel (client-active-channel client))))))
           (recalculate-client-latency client)))
     (on :open ws
         (lambda ()
