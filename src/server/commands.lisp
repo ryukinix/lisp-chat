@@ -155,10 +155,14 @@
                     (mapcar (lambda (m) (search-message m))
                             (reverse limited)))))))
 
-(defun /users (client &rest args)
-  "/users returns a list separated by commas of the currently logged users in the current channel"
+(defun /users (client &optional (channel nil) &rest args)
+  "/users returns a list separated by commas of the currently logged users in the current channel.
+   If CHANNEL is provided, show users in that channel."
   (declare (ignorable args))
-  (let ((channel-users (remove-if-not (lambda (c) (string-equal (client-active-channel c) (client-active-channel client))) *clients*)))
+  (let* ((target-channel (if channel
+                             (if (uiop:string-prefix-p "#" channel) channel (concatenate 'string "#" channel))
+                             (client-active-channel client)))
+         (channel-users (remove-if-not (lambda (c) (string-equal (client-active-channel c) target-channel)) *clients*)))
     (command-message (format nil "users: ~{~a~^, ~}" (mapcar #'client-name channel-users)))))
 
 (defun /join (client &optional (channel nil) &rest args)
