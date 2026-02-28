@@ -70,10 +70,10 @@
                                    (pop *messages-stack*))))
                (when message-raw
                  (let ((message (formatted-message message-raw)))
-                   (push message-raw *messages-log*)
-                   (save-message-to-disk message-raw)
-                   (let ((clients *clients*))
-                     (loop for client in clients
+                   (unless (gethash (message-channel message-raw) *private-channels*)
+                     (push message-raw *messages-log*)
+                     (save-message-to-disk message-raw))
+                   (let ((clients *clients*))                     (loop for client in clients
                            when (string-equal (message-channel message-raw) (client-active-channel client))
                            do (handler-case (send-message client message)
                                 (error (e)

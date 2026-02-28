@@ -4,6 +4,7 @@
 (defparameter *messages-stack* nil "Messages pending to be send by broadcasting")
 (defparameter *messages-log* nil  "Messages log")
 (defparameter *user-channels* (make-hash-table :test 'equal) "Mapping of usernames to their last active channel")
+(defparameter *private-channels* (make-hash-table :test 'equal) "Set of channels where messages are not saved")
 (defparameter *server-nickname* "@server" "The server nickname")
 
 ;; thread control
@@ -161,6 +162,7 @@
   (with-lock-held (*messages-lock*)
     (setf *messages-stack* nil))
   (setf *user-channels* (make-hash-table :test 'equal))
+  (setf *private-channels* (make-hash-table :test 'equal))
   (setf *messages-log* nil))
 
 (defun load-persistent-messages ()

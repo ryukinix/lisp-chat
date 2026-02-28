@@ -193,6 +193,34 @@
                counts)
       (command-message (format nil "channels:~%~{~a~^~%~}" (sort lines #'string<))))))
 
+(defun /private (client &optional (action nil) &rest args)
+  "/private toggles or sets the private mode for the current channel.
+   When active, messages are not saved to disk or history.
+   Usage: /private [on|off|status]"
+  (declare (ignorable args))
+  (let ((channel (client-active-channel client)))
+    (if (string-equal channel "#general")
+        (command-message "This mode cannot be activated in the #general channel.")
+        (let ((is-private (gethash channel *private-channels*)))
+          (cond
+            ((string-equal action "status")
+             (command-message (format nil "Private mode for ~a is currently ~:[OFF~;ON~]." channel is-private)))
+            ((or (null action) (string-equal action "on") (string-equal action "off"))
+             (let ((turn-on (cond
+                              ((string-equal action "on") t)
+                              ((string-equal action "off") nil)
+                              (t (not is-private)))))
+               (if (eq (not (null is-private)) turn-on)
+                   (command-message (format nil "Private mode is already ~:[OFF~;ON~]." turn-on))
+                   (prog1 'ignore
+                     (setf (gethash channel *private-channels*) turn-on)
+                     (push-message "@server"
+                                   (format nil "Private mode was ~:[deactivated~;activated~] by @~a"
+                                           turn-on (client-name client))
+                                   :channel channel)))))
+            (t
+             (command-message "Usage: /private [on|off|status]")))))))
+
 (defun /ping (client &rest args)
   "/ping responds with a 'pong' message, echoing the provided arguments or the user's nickname."
   (declare (ignorable client args))

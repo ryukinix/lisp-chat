@@ -20,6 +20,7 @@
            #:*clients*
            #:*messages-log*
            #:*user-channels*
+           #:*private-channels*
            #:*server-nickname*
            #:client-name
            #:client-address
