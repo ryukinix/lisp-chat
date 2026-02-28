@@ -181,16 +181,19 @@
               (send-message client (command-message (format nil "You joined the channel ~a" new-channel))))))
       (command-message "/join #CHANNEL-NAME")))
 
-(defun /channels (client &rest args)
-  "/channels lists active channels and their user counts"
+(defun /channels (client &rest args &key (usernames nil) &allow-other-keys)
+  "/channels lists active channels and their user counts.
+   If :usernames t is provided, lists usernames separated by commas instead."
   (declare (ignorable client args))
-  (let ((counts (make-hash-table :test 'equal)))
+  (let ((chan-users (make-hash-table :test 'equal)))
     (loop for c in *clients*
-          do (incf (gethash (client-active-channel c) counts 0)))
+          do (push (client-name c) (gethash (client-active-channel c) chan-users nil)))
     (let ((lines nil))
-      (maphash (lambda (chan count)
-                 (push (format nil "~a: ~a user~:p" chan count) lines))
-               counts)
+      (maphash (lambda (chan users)
+                 (if usernames
+                     (push (format nil "~a: ~{~a~^, ~}" chan (reverse users)) lines)
+                     (push (format nil "~a: ~a user~:p" chan (length users)) lines)))
+               chan-users)
       (command-message (format nil "channels:~%~{~a~^~%~}" (sort lines #'string<))))))
 
 (defun /private (client &optional (action nil) &rest args)
