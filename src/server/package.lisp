@@ -19,6 +19,7 @@
   (:export #:main
            #:*clients*
            #:*messages-log*
+           #:*user-channels*
            #:*server-nickname*
            #:client-name
            #:client-address

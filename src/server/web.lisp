@@ -26,7 +26,7 @@
     (if channel-param
         (let ((val (subseq channel-param 8)))
           (if (uiop:string-prefix-p "#" val) val (concatenate 'string "#" val)))
-        "#general")))
+        nil)))
 
 (defun ws-app (env)
   (let ((ws (make-server env))
@@ -39,17 +39,21 @@
               (let ((name (string-trim '(#\Space #\Return #\Newline) message)))
                 (if (zerop (length name))
                     (send ws "> Name cannot be empty. Try again: ")
-                    (progn
+                    (let* ((history-channel (gethash name *user-channels*))
+                           (active-channel (or channel history-channel "#general")))
                       (setf client (make-client :name name
                                                 :socket ws
                                                 :address (get-remote-address env)
                                                 :time (get-time)
                                                 :user-agent (gethash "user-agent" (getf env :headers))
-                                                :active-channel channel))
+                                                :active-channel active-channel))
+                      (setf (gethash name *user-channels*) active-channel)
                       (with-lock-held (*client-lock*)
                         (push client *clients*))
                       (user-joined-message client)
                       (recalculate-client-latency client)
+                      (when (and (not channel) history-channel)
+                        (send-message client (command-message (format nil "You were restored to channel ~a" active-channel))))
                       (debug-format t "New web-socket user ~a@~a~%" name (client-address client)))))
               (let ((response (lisp-chat/commands:call-command client message)))
                 (if response

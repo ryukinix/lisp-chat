@@ -154,7 +154,7 @@
   (with-tcp-client (stream)
     (tcp-interaction stream
       '(:expect "> Type your username: ")
-      "tester-lisp"
+      "tester-lisp-1"
       '(:ignore 1) ;; welcome message
       "/lisp (dotimes (x 1000) (when (eq x 2) (setq x 1)))"
       '(:sleep 1)
@@ -165,7 +165,7 @@
   (with-tcp-client (stream)
     (tcp-interaction stream
       '(:expect "> Type your username: ")
-      "tester-lisp"
+      "tester-lisp-2"
       '(:ignore 1) ;; welcome message
       "/lisp (loop for x from 1 to 5 collect x)"
       '(:sleep 0.1)
@@ -233,7 +233,7 @@
   (with-tcp-client (stream)
     (tcp-interaction stream
       '(:expect "> Type your username: ")
-      "tester-lisp"
+      "tester-lisp-3"
       '(:ignore 1) ;; welcome message
       "/lisp (print :KEYWORD)"
       '(:sleep 0.1)
@@ -244,7 +244,7 @@
   (with-tcp-client (stream)
     (tcp-interaction stream
       '(:expect "> Type your username: ")
-      "tester-lisp"
+      "tester-lisp-4"
       '(:ignore 1) ;; welcome message
       "/lisp (print \"Hello world\")"
       '(:sleep 0.1)
@@ -255,7 +255,7 @@
   (with-tcp-client (stream)
     (tcp-interaction stream
       '(:expect "> Type your username: ")
-      "tester-lisp"
+      "tester-lisp-5"
       '(:ignore 1) ;; welcome message
       "/whoaminot"
       '(:sleep 0.1)

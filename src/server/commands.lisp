@@ -176,6 +176,7 @@
             (prog1 'ignore
               (user-exited-message client)
               (setf (client-active-channel client) new-channel)
+              (setf (gethash (client-name client) *user-channels*) new-channel)
               (user-joined-message client)
               (send-message client (command-message (format nil "You joined the channel ~a" new-channel))))))
       (command-message "/join #CHANNEL-NAME")))
@@ -286,12 +287,14 @@
       (t
        (let ((formatted-time (format-time (client-time user)))
              (latency (client-latency-ms user))
-             (user-agent (client-user-agent user)))
+             (user-agent (client-user-agent user))
+             (channel (client-active-channel user)))
          (command-message
-          (format nil "User @~a at ~a (~a connection)~a, online since ~a~a"
+          (format nil "User @~a at ~a (~a connection) in ~a~a, online since ~a~a"
                   (client-name user)
                   (client-address user)
                   (client-socket-type user)
+                  channel
                   (if latency
                       (format nil " with latency of ~,2fms" latency)
                       "")
@@ -299,7 +302,6 @@
                   (if user-agent
                       (format nil " | user-agent: ~a" user-agent)
                       ""))))))))
-
 (defun /version (client &rest args)
   "/version returns the current version of lisp-chat"
   (declare (ignorable client args))
