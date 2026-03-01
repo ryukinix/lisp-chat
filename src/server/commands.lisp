@@ -177,8 +177,7 @@
               (user-exited-message client)
               (setf (client-active-channel client) new-channel)
               (setf (gethash (client-name client) *user-channels*) new-channel)
-              (user-joined-message client)
-              (send-message client (command-message (format nil "You joined the channel ~a" new-channel))))))
+              (user-joined-message client))))
       (command-message "/join #CHANNEL-NAME")))
 
 (defun /channels (client &rest args &key (usernames nil) (all nil) &allow-other-keys)

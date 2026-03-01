@@ -52,8 +52,6 @@
                         (push client *clients*))
                       (user-joined-message client)
                       (recalculate-client-latency client)
-                      (when (and (not channel) history-channel)
-                        (send-message client (command-message (format nil "You were restored to channel ~a" active-channel))))
                       (debug-format t "New web-socket user ~a@~a~%" name (client-address client)))))
               (let ((response (lisp-chat/commands:call-command client message)))
                 (if response
