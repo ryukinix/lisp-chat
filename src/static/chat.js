@@ -533,4 +533,9 @@ input.addEventListener("focus", () => {
     }, 300); // delay lets the keyboard open first
 });
 
+// Autofocus on desktop, prevent virtual keyboard popping up on mobile
+if (window.innerWidth > 768) {
+    input.focus();
+}
+
 connect();
