@@ -111,7 +111,12 @@ function formatMessage(text) {
         return `${prefix}<span style="color: ${color}">@${user}</span>`;
     });
 
-    // 5. Restore URLs
+    // 5. Channel Mentions
+    processed = processed.replace(/(^|\s)#([A-zÀ-ú0-9_\-]+)/g, (match, prefix, channel) => {
+        return `${prefix}<a href="?${channel}">#${channel}</a>`;
+    });
+
+    // 6. Restore URLs
     return processed.replace(/URLPLACEHOLDER(\d+)URL/g, (match, id) => {
         const url = urls[parseInt(id)];
         const escapedUrl = escapeHTML(url);
