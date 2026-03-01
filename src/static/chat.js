@@ -105,15 +105,15 @@ function formatMessage(text) {
     // Strikethrough
     processed = processed.replace(/~~(.*?)~~/g, '<del>$1</del>');
 
-    // 4. Mentions
+    // 4. Channel Mentions
+    processed = processed.replace(/(^|\s)#([A-zÀ-ú0-9_\-]+)/g, (match, prefix, channel) => {
+        return `${prefix}<a href="?${channel}">#${channel}</a>`;
+    });
+
+    // 5. Mentions
     processed = processed.replace(/(^|\s)@([A-zÀ-ú0-9_\-]+)/g, (match, prefix, user) => {
         const color = getUserColor(user);
         return `${prefix}<span style="color: ${color}">@${user}</span>`;
-    });
-
-    // 5. Channel Mentions
-    processed = processed.replace(/(^|\s)#([A-zÀ-ú0-9_\-]+)/g, (match, prefix, channel) => {
-        return `${prefix}<a href="?${channel}">#${channel}</a>`;
     });
 
     // 6. Restore URLs
