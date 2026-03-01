@@ -1,10 +1,11 @@
 ;;; lisp-chat.el --- Emacs client for Lisp Chat -*- lexical-binding: t; -*-
 
-;; Author: Manoel V. Machado
+;; Authors: Manoel V. Machado (manoel_vilela@engineer.com)
 ;; URL: https://github.com/ryukinix/lisp-chat
-;; Version: 0.7.0
 ;; Package-Requires: ((emacs "26.1") (websocket "1.12"))
 ;; Keywords: comm, chat, lisp
+;; SPDX-License-Identifier: MIT
+;; Version: 0.8.0
 
 
 ;;; Commentary:
@@ -237,7 +238,7 @@
                  (time (match-string 2 line))
                  (user (match-string 3 line))
                  (content (match-string 4 line))
-                 (effective-date (or date (format-time-string "%Y-%m-%d")))
+                 (effective-date (or date (format-time-string "%F")))
                  (user-color (lisp-chat--get-user-color user)))
 
             (when (and effective-date (not (equal effective-date lisp-chat-last-date)))
