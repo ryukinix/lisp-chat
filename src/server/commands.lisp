@@ -195,12 +195,13 @@
           do (push (client-name c) (gethash (client-active-channel c) chan-users nil)))
     (let ((lines nil))
       (maphash (lambda (chan users)
-                 (if usernames
-                     (push (if users
-                               (format nil "~a: ~{~a~^, ~}" chan (reverse users))
-                               (format nil "~a: 0 users" chan))
-                           lines)
-                     (push (format nil "~a: ~a user~:p" chan (length users)) lines)))
+                 (unless (gethash chan *private-channels*)
+                   (if usernames
+                       (push (if users
+                                 (format nil "~a: ~{~a~^, ~}" chan (reverse users))
+                                 (format nil "~a: 0 users" chan))
+                             lines)
+                       (push (format nil "~a: ~a user~:p" chan (length users)) lines))))
                chan-users)
       (command-message (format nil "channels:~%~{~a~^~%~}" (sort lines #'string<))))))
 

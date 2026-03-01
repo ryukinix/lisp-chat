@@ -260,3 +260,22 @@
       "/whoaminot"
       '(:sleep 0.1)
       '(:expect "command /whoaminot doesn't exists"))))
+
+(define-test channels-private-filtering
+  :parent integration-tests
+  (with-tcp-client (stream)
+    (tcp-interaction stream
+      '(:expect "> Type your username: ")
+      "tester-channels"
+      '(:wait-for "tester-channels joined")
+      "/join #hidden"
+      '(:wait-for "#hidden")
+      "/channels :all t"
+      '(:expect "channels:")
+      '(:expect "#general: 0 users")
+      '(:expect "#hidden: 1 user")
+      "/private on"
+      '(:wait-for "Private mode was activated")
+      "/channels :all t"
+      '(:expect "channels:")
+      '(:expect "#general: 0 users"))))
