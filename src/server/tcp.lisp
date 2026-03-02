@@ -12,7 +12,7 @@
         else
           when (> (length message) 0)
             do (push-message (client-name client)
-                             message)
+                             message :channel (client-active-channel client))
         finally (client-delete client)))
 
 (defun client-reader (client)
@@ -43,16 +43,23 @@
   (let ((client-stream (socket-stream connection)))
     (write-line "> Type your username: " client-stream)
     (finish-output client-stream)
-    (let ((client (make-client :name (read-line client-stream)
-                               :socket connection
-                               :address (socket-peer-address connection)
-                               :time (get-time))))
+    (let* ((name (read-line client-stream))
+           (history-channel (gethash name *user-channels*))
+           (active-channel (or history-channel "#general"))
+           (client (make-client :name name
+                                :socket connection
+                                :address (socket-peer-address connection)
+                                :time (get-time)
+                                :active-channel active-channel)))
+      (setf (gethash name *user-channels*) active-channel)
       (with-lock-held (*client-lock*)
         (debug-format t "Added new user ~a@~a ~%"
                       (client-name client)
                       (client-address client))
         (push client *clients*))
       (user-joined-message client)
+      (when history-channel
+        (send-message client (command-message (format nil "You were restored to channel ~a" active-channel))))
       (make-thread (lambda () (client-reader client))
                    :name (format nil "~a reader thread" (client-name client))))))
 

@@ -1,10 +1,11 @@
 ;;; lisp-chat.el --- Emacs client for Lisp Chat -*- lexical-binding: t; -*-
 
-;; Author: Manoel V. Machado
+;; Authors: Manoel V. Machado (manoel_vilela@engineer.com)
 ;; URL: https://github.com/ryukinix/lisp-chat
-;; Version: 0.7.0
 ;; Package-Requires: ((emacs "26.1") (websocket "1.12"))
 ;; Keywords: comm, chat, lisp
+;; SPDX-License-Identifier: MIT
+;; Version: 0.8.0
 
 
 ;;; Commentary:
@@ -73,6 +74,28 @@
     (when url
       (browse-url url))))
 
+(defvar lisp-chat-channel-keymap
+  (let ((map (make-sparse-keymap)))
+    (define-key map [mouse-2] #'lisp-chat-join-at-mouse)
+    (define-key map [mouse-1] #'lisp-chat-join-at-mouse)
+    (define-key map (kbd "RET") #'lisp-chat-join-at-point)
+    map)
+  "Keymap for channel links in Lisp Chat.")
+
+(defun lisp-chat-join-at-mouse (event)
+  "Join channel at mouse EVENT."
+  (interactive "e")
+  (save-excursion
+    (mouse-set-point event)
+    (lisp-chat-join-at-point)))
+
+(defun lisp-chat-join-at-point ()
+  "Join channel at point."
+  (interactive)
+  (let ((channel (get-text-property (point) 'lisp-chat-channel)))
+    (when channel
+      (lisp-chat-join channel))))
+
 (defvar-local lisp-chat-connection nil)
 (defvar-local lisp-chat-connection-type nil)
 (defvar-local lisp-chat-username nil)
@@ -124,6 +147,20 @@
                                help-echo ,(concat "mouse-1: browse " url)
                                keymap ,lisp-chat-link-keymap
                                lisp-chat-url ,url)
+                             text)
+        (setq pos end)))
+    ;; Channels
+    (setq pos 0)
+    (while (string-match "#\\([A-zÀ-ú0-9_.-]+\\)" text pos)
+      (let ((channel (match-string 0 text))
+            (start (match-beginning 0))
+            (end (match-end 0)))
+        (add-text-properties start end
+                             `(face link
+                               mouse-face highlight
+                               help-echo ,(concat "mouse-1: join " channel)
+                               keymap ,lisp-chat-channel-keymap
+                               lisp-chat-channel ,channel)
                              text)
         (setq pos end)))
     ;; Mentions
@@ -201,7 +238,7 @@
                  (time (match-string 2 line))
                  (user (match-string 3 line))
                  (content (match-string 4 line))
-                 (effective-date (or date (format-time-string "%Y-%m-%d")))
+                 (effective-date (or date (format-time-string "%F")))
                  (user-color (lisp-chat--get-user-color user)))
 
             (when (and effective-date (not (equal effective-date lisp-chat-last-date)))
@@ -268,6 +305,13 @@ Argument STRING message from the server."
           (lisp-chat--handle-server-message line))))))
 
 ;;; Public Commands
+
+(defun lisp-chat-join (channel)
+  "Join CHANNEL, clear the chat area, and request logs."
+  (interactive "sChannel to join: ")
+  (lisp-chat-clear)
+  (lisp-chat-send (concat "/join " channel))
+  (lisp-chat-send "/log 100"))
 
 (defun lisp-chat-clear ()
   "Clear the chat area."
@@ -373,6 +417,10 @@ Optional argument ATTEMPT define the current attempt."
                   (lisp-chat-quit))
                  ((string= trimmed "/clear")
                   (lisp-chat-clear))
+                 ((string-prefix-p "/join " trimmed)
+                  (let ((channel (string-trim (substring trimmed 6))))
+                    (unless (string-empty-p channel)
+                      (lisp-chat-join channel))))
                  (t
                   (if (null lisp-chat-username)
                       (progn

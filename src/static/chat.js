@@ -105,13 +105,18 @@ function formatMessage(text) {
     // Strikethrough
     processed = processed.replace(/~~(.*?)~~/g, '<del>$1</del>');
 
-    // 4. Mentions
+    // 4. Channel Mentions
+    processed = processed.replace(/(^|\s)#([A-zÀ-ú0-9_\-]+)/g, (match, prefix, channel) => {
+        return `${prefix}<a href="?${channel}">#${channel}</a>`;
+    });
+
+    // 5. Mentions
     processed = processed.replace(/(^|\s)@([A-zÀ-ú0-9_\-]+)/g, (match, prefix, user) => {
         const color = getUserColor(user);
         return `${prefix}<span style="color: ${color}">@${user}</span>`;
     });
 
-    // 5. Restore URLs
+    // 6. Restore URLs
     return processed.replace(/URLPLACEHOLDER(\d+)URL/g, (match, id) => {
         const url = urls[parseInt(id)];
         const escapedUrl = escapeHTML(url);
@@ -421,7 +426,16 @@ function connect() {
     }
 
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+    const search = window.location.search.substring(1);
+    let wsUrl = `${protocol}//${window.location.host}/ws`;
+    if (search) {
+        if (search.includes("=")) {
+            wsUrl += `?${search}`;
+        } else {
+            wsUrl += `?channel=${search}`;
+        }
+    }
+    ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
         showNotification("Connected to server.");
@@ -518,5 +532,10 @@ input.addEventListener("focus", () => {
         chat.scrollTop = chat.scrollHeight;
     }, 300); // delay lets the keyboard open first
 });
+
+// Autofocus on desktop, prevent virtual keyboard popping up on mobile
+if (window.innerWidth > 768) {
+    input.focus();
+}
 
 connect();

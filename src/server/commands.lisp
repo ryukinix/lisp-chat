@@ -136,6 +136,7 @@
              (filtered (remove-if-not
                         (lambda (m)
                           (and (not (equal (message-from m) "@server"))
+                               (string-equal (message-channel m) (client-active-channel client))
                                (search query
                                        (message-content m)
                                        :test #'char-equal)
@@ -154,10 +155,82 @@
                     (mapcar (lambda (m) (search-message m))
                             (reverse limited)))))))
 
-(defun /users (client &rest args)
-  "/users returns a list separated by commas of the currently logged users"
+(defun /users (client &optional (channel nil) &rest args)
+  "/users returns a list separated by commas of the currently logged users in the current channel.
+   If CHANNEL is provided, show users in that channel."
+  (declare (ignorable args))
+  (let* ((target-channel (if channel
+                             (if (uiop:string-prefix-p "#" channel) channel (concatenate 'string "#" channel))
+                             (client-active-channel client)))
+         (channel-users (remove-if-not (lambda (c) (string-equal (client-active-channel c) target-channel)) *clients*)))
+    (command-message (format nil "users: ~{~a~^, ~}" (mapcar #'client-name channel-users)))))
+
+(defun /join (client &optional (channel nil) &rest args)
+  "/join changes the active channel for the user"
+  (declare (ignorable args))
+  (if channel
+      (let* ((new-channel (if (uiop:string-prefix-p "#" channel) channel (concatenate 'string "#" channel)))
+             (old-channel (client-active-channel client)))
+        (if (string-equal new-channel old-channel)
+            (command-message (format nil "You are already in ~a" new-channel))
+            (prog1 'ignore
+              (user-exited-message client)
+              (setf (client-active-channel client) new-channel)
+              (setf (gethash (client-name client) *user-channels*) new-channel)
+              (user-joined-message client))))
+      (command-message "/join #CHANNEL-NAME")))
+
+(defun /channels (client &rest args &key (usernames nil) (all nil) &allow-other-keys)
+  "/channels lists active channels and their user counts.
+   If :usernames t is provided, lists usernames separated by commas instead.
+   If :all t is provided, includes channels with no active users but have message history."
   (declare (ignorable client args))
-  (command-message (format nil "users: ~{~a~^, ~}" (mapcar #'client-name *clients*))))
+  (let ((chan-users (make-hash-table :test 'equal)))
+    (when all
+      (loop for m in *messages-log*
+            do (unless (nth-value 1 (gethash (message-channel m) chan-users))
+                 (setf (gethash (message-channel m) chan-users) nil))))
+    (loop for c in *clients*
+          do (push (client-name c) (gethash (client-active-channel c) chan-users nil)))
+    (let ((lines nil))
+      (maphash (lambda (chan users)
+                 (unless (gethash chan *private-channels*)
+                   (if usernames
+                       (push (if users
+                                 (format nil "~a: ~{~a~^, ~}" chan (reverse users))
+                                 (format nil "~a: 0 users" chan))
+                             lines)
+                       (push (format nil "~a: ~a user~:p" chan (length users)) lines))))
+               chan-users)
+      (command-message (format nil "channels:~%~{~a~^~%~}" (sort lines #'string<))))))
+
+(defun /private (client &optional (action nil) &rest args)
+  "/private toggles or sets the private mode for the current channel.
+   When active, messages are not saved to disk or history.
+   Usage: /private [on|off|status]"
+  (declare (ignorable args))
+  (let ((channel (client-active-channel client)))
+    (if (string-equal channel "#general")
+        (command-message "This mode cannot be activated in the #general channel.")
+        (let ((is-private (gethash channel *private-channels*)))
+          (cond
+            ((string-equal action "status")
+             (command-message (format nil "Private mode for ~a is currently ~:[OFF~;ON~]." channel is-private)))
+            ((or (null action) (string-equal action "on") (string-equal action "off"))
+             (let ((turn-on (cond
+                              ((string-equal action "on") t)
+                              ((string-equal action "off") nil)
+                              (t (not is-private)))))
+               (if (eq (not (null is-private)) turn-on)
+                   (command-message (format nil "Private mode is already ~:[OFF~;ON~]." turn-on))
+                   (prog1 'ignore
+                     (setf (gethash channel *private-channels*) turn-on)
+                     (push-message "@server"
+                                   (format nil "Private mode was ~:[deactivated~;activated~] by @~a"
+                                           turn-on (client-name client))
+                                   :channel channel)))))
+            (t
+             (command-message "Usage: /private [on|off|status]")))))))
 
 (defun /ping (client &rest args)
   "/ping responds with a 'pong' message, echoing the provided arguments or the user's nickname."
@@ -203,7 +276,7 @@
   "/log shows the last messages sent to the server.
    DEPTH is optional number of messages frames from log"
   (declare (ignorable client))
-  (let* ((messages (user-messages :date-format date-format))
+  (let* ((messages (user-messages :date-format date-format :channel (client-active-channel client)))
          (log-size (min (or (parse-integer depth :junk-allowed t) 20)
                         (length messages))))
     (format nil "~{~a~^~%~}" (reverse (subseq messages 0
@@ -223,7 +296,8 @@
         (push-message "@command"
                       (format nil "User @~a is now known as @~a"
                               (client-name client)
-                              new-nick))
+                              new-nick)
+                      :channel (client-active-channel client))
         (setf (client-name client) new-nick)
         (command-message (format nil "Your new nick is: @~a" new-nick)))
       (command-message (format nil "/nick NEW-NICKNAME"))))
@@ -252,12 +326,14 @@
       (t
        (let ((formatted-time (format-time (client-time user)))
              (latency (client-latency-ms user))
-             (user-agent (client-user-agent user)))
+             (user-agent (client-user-agent user))
+             (channel (client-active-channel user)))
          (command-message
-          (format nil "User @~a at ~a (~a connection)~a, online since ~a~a"
+          (format nil "User @~a at ~a (~a connection) in ~a~a, online since ~a~a"
                   (client-name user)
                   (client-address user)
                   (client-socket-type user)
+                  channel
                   (if latency
                       (format nil " with latency of ~,2fms" latency)
                       "")
@@ -265,7 +341,6 @@
                   (if user-agent
                       (format nil " | user-agent: ~a" user-agent)
                       ""))))))))
-
 (defun /version (client &rest args)
   "/version returns the current version of lisp-chat"
   (declare (ignorable client args))
@@ -308,4 +383,5 @@
     (prog1 'ignore
       (push-message "@command"
                     (format nil "user @~a called lisp code `~a` ~a"
-                            (client-name client) program result)))))
+                            (client-name client) program result)
+                    :channel (client-active-channel client)))))
