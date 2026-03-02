@@ -90,14 +90,62 @@
     (declare (ignore rest-of-list))
     (format nil "~4d-~2,'0d-~2,'0d ~2,'0d:~2,'0d:~2,'0d" year month day hour minute second)))
 
+(defun spacep (c)
+  (eql c #\Space))
+
+(defun split-quotation-aware (string delimiterp)
+  "Split a string preserving quotation as single tokens"
+  (let ((tokens nil)
+        (token (make-array 10 :element-type 'character :adjustable t :fill-pointer 0))
+        (quote-char nil))
+    (loop for char across string
+          do (cond
+               ((and quote-char (char= char quote-char))
+                (setf quote-char nil))
+               ((and (not quote-char) (or (char= char #\") (char= char #\')))
+                (setf quote-char char))
+               ((and (not quote-char) (funcall delimiterp char))
+                (when (plusp (length token))
+                  (push (copy-seq token) tokens)
+                  (setf (fill-pointer token) 0)))
+               (t (vector-push-extend char token))))
+    (when (plusp (length token))
+      (push (copy-seq token) tokens))
+    (nreverse tokens)))
+
+(defun split (string &key (delimiterp #'spacep) quotation-aware)
+  "Split a string by a delimiterp function character checking"
+  (if (not quotation-aware)
+      (loop for beg = (position-if-not delimiterp string)
+              then (position-if-not delimiterp string :start (1+ end))
+            for end = (and beg (position-if delimiterp string :start beg))
+            when beg
+              collect (subseq string beg end)
+            while end)
+      (split-quotation-aware string delimiterp)))
+
+(defun startswith (string substring)
+  "Check if STRING starts with SUBSTRING."
+  (let ((l1 (length string))
+        (l2 (length substring)))
+    (when (and (> l2 0)
+               (>= l1 l2))
+      (loop for c1 across string
+            for c2 across substring
+            always (equal c1 c2)))))
+
 (defun formatted-message (message &key (date-format nil))
   "The default message format of this server. MESSAGE is a struct message"
-  (format nil "|~a| [~a]: ~a"
-          (if (string= date-format "date")
-              (message-time-date-format message)
-              (message-time-hour-format message))
-          (message-from message)
-          (message-content message)))
+  (let* ((time-str (if (string= date-format "date")
+                       (message-time-date-format message)
+                       (message-time-hour-format message)))
+         (from-str (message-from message))
+         (content-str (message-content message))
+         (lines (split content-str :delimiterp (lambda (c) (char= c #\Newline)))))
+    (format nil "~{~a~^~%~}"
+            (mapcar (lambda (line)
+                      (format nil "|~a| [~a]: ~a" time-str from-str line))
+                    lines))))
 
 (defun user-messages (&key (date-format nil) (channel "#general"))
   "Return only user messages, discard all messsages from @server"
