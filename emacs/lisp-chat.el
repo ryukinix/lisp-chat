@@ -107,6 +107,7 @@
 (defvar-local lisp-chat-input-marker nil)
 (defvar-local lisp-chat-current-address nil)
 (defvar-local lisp-chat-current-port nil)
+(defvar-local lisp-chat-users-request-count 0)
 
 ;;; Internal Functions
 
@@ -273,11 +274,16 @@
                   (lisp-chat--update-header-line)
                   (lisp-chat--update-prompt)))))
 
-            (unless (and (string= user "@server") (string-match "pong (system)" content))
-              (let ((timestamp (propertize (concat "[" time "] ") 'face 'shadow))
-                    (username (propertize (concat "[" user "]: ") 'face `(:foreground ,user-color :weight bold)))
-                    (body (lisp-chat--format-message content)))
-                (lisp-chat--insert-text (concat timestamp username body))))))
+            (let ((is-hidden-pong (and (string= user "@server") (string-match "pong (system)" content)))
+                  (is-hidden-users (and (string= user "@server") (string-prefix-p "users: " content))))
+              (when (and is-hidden-users (> lisp-chat-users-request-count 0))
+                (cl-decf lisp-chat-users-request-count)
+                (setq is-hidden-users nil))
+              (unless (or is-hidden-pong is-hidden-users)
+                (let ((timestamp (propertize (concat "[" time "] ") 'face 'shadow))
+                      (username (propertize (concat "[" user "]: ") 'face `(:foreground ,user-color :weight bold)))
+                      (body (lisp-chat--format-message content)))
+                  (lisp-chat--insert-text (concat timestamp username body)))))))
 
          ((string-match "> Type your username: " line)
           (if lisp-chat-default-username
@@ -311,6 +317,7 @@ Argument STRING message from the server."
   (interactive "sChannel to join: ")
   (lisp-chat-clear)
   (lisp-chat-send (concat "/join " channel))
+  (lisp-chat-send "/users")
   (lisp-chat-send "/log 100"))
 
 (defun lisp-chat-clear ()
@@ -417,6 +424,9 @@ Optional argument ATTEMPT define the current attempt."
                   (lisp-chat-quit))
                  ((string= trimmed "/clear")
                   (lisp-chat-clear))
+                 ((string= trimmed "/users")
+                  (cl-incf lisp-chat-users-request-count)
+                  (lisp-chat-send trimmed))
                  ((string-prefix-p "/join " trimmed)
                   (let ((channel (string-trim (substring trimmed 6))))
                     (unless (string-empty-p channel)
@@ -484,7 +494,7 @@ Optional argument ATTEMPT define the current attempt."
                        (when (buffer-live-p buf)
                          (with-current-buffer buf
                            (when (and lisp-chat-connection lisp-chat-username)
-                             (lisp-chat-send "/ping system")))))
+                             (lisp-chat-send "/users")))))
                      (current-buffer))))
 
 (defun lisp-chat-connect-websocket (url)
