@@ -50,7 +50,9 @@
            #:user-messages
            #:client-latency
            #:client-latency-ms
-           #:reset-server))
+           #:reset-server
+           #:split
+           #:startswith))
 
 (defpackage #:lisp-chat/commands
   (:use #:cl #:lisp-chat/server #:lisp-chat/config)
