@@ -39,52 +39,80 @@
             (progn ,@body)
          (close-connection ,client)))))
 
+(defun read-line-with-timeout (stream &optional (timeout 5))
+  "Read a line from STREAM with a timeout in seconds.
+Returns the line as a string, or NIL if it timed out."
+  (let ((start-time (get-internal-real-time))
+        (time-units internal-time-units-per-second)
+        (chars (make-array 0 :element-type 'character :adjustable t :fill-pointer 0)))
+    (loop
+      (cond
+        ((listen stream)
+         (let ((c (read-char stream nil nil)))
+           (unless c
+             (return (if (> (length chars) 0) (coerce chars 'string) nil)))
+           (if (char= c #\Newline)
+               (return (coerce chars 'string))
+               (vector-push-extend c chars))))
+        ((> (/ (- (get-internal-real-time) start-time) time-units) timeout)
+         (return (if (> (length chars) 0) (coerce chars 'string) nil)))
+        (t (sleep 0.01))))))
+
 (defun tcp-interaction (stream &rest steps)
   "Execute a sequence of steps:
    - string: send line to server
    - (:expect pattern): wait and check if line contains pattern
    - (:ignore [n]): read and discard n lines (default 1)
+   - (:wait-for pattern): wait until pattern matches
    - (:sleep n): sleep for n seconds"
   (dolist (step steps)
     (cond
       ((stringp step)
        (write-line step stream)
        (finish-output stream))
-      ((and (listp step) (eq (car step) :expect))
-       (let ((line (read-line stream)))
-         (when *debug* (format t "RECV: ~A~%" line))
-         (true (search (second step) line))))
-      ((and (listp step) (eq (car step) :ignore))
-       (loop repeat (or (second step) 1) do (read-line stream)))
-      ((and (listp step) (eq (car step) :wait-for))
+      ((and (listp step) (or (eq (car step) :expect)
+                             (eq (car step) :wait-for)))
        (let ((pattern (second step))
-             (found nil))
-         (loop repeat 10 do
-           (let ((line (read-line stream)))
-             (when (search pattern line)
-               (setf found t)
-               (return))))
+             (found nil)
+             (start-time (get-internal-real-time))
+             (time-units internal-time-units-per-second))
+         (loop
+           (let ((line (read-line-with-timeout stream 1)))
+             (when line
+               (when *debug* (format t "RECV: ~A~%" line))
+               (when (search pattern line)
+                 (setf found t)
+                 (return))))
+           (when (> (/ (- (get-internal-real-time) start-time) time-units) 5)
+             (return)))
          (true found "Pattern '~A' not found within limit." pattern)))
+      ((and (listp step) (eq (car step) :ignore))
+       (loop repeat (or (second step) 1) do (read-line-with-timeout stream 1)))
       ((and (listp step) (eq (car step) :sleep))
        (sleep (second step))))))
 
 (defun ws-interaction (client messages-fn &rest steps)
-  (dolist (step steps)
-    (cond
-      ((stringp step)
-       (send client step))
-      ((and (listp step) (eq (car step) :expect))
-       (let ((pattern (second step))
-             (found nil))
-         ;; Poll for message
-         (loop repeat 30 do
-           (when (some (lambda (m) (search pattern m)) (funcall messages-fn))
-             (setf found t)
-             (return))
-           (sleep 0.1))
-         (true found "Pattern '~A' not found. Messages received: ~S" pattern (funcall messages-fn))))
-      ((and (listp step) (eq (car step) :sleep))
-       (sleep (second step))))))
+  (let ((consumed-count 0))
+    (dolist (step steps)
+      (cond
+        ((stringp step)
+         (send client step))
+        ((and (listp step) (eq (car step) :expect))
+         (let ((pattern (second step))
+               (found nil))
+           ;; Poll for message
+           (loop repeat 50 do
+             (let ((all-msgs (reverse (funcall messages-fn))))
+               (loop for i from consumed-count below (length all-msgs) do
+                 (when (search pattern (nth i all-msgs))
+                   (setf found t)
+                   (setf consumed-count (1+ i))
+                   (return)))
+               (when found (return)))
+             (sleep 0.1))
+           (true found "Pattern '~A' not found. Messages received: ~S" pattern (funcall messages-fn))))
+        ((and (listp step) (eq (car step) :sleep))
+         (sleep (second step)))))))
 
 ;;; Tests
 
