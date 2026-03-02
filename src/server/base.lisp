@@ -134,6 +134,9 @@
             for c2 across substring
             always (equal c1 c2)))))
 
+(defun format-message-line (time from content)
+  (format nil "|~a| [~a]: ~a" time from content))
+
 (defun formatted-message (message &key (date-format nil))
   "The default message format of this server. MESSAGE is a struct message"
   (let* ((time-str (if (string= date-format "date")
@@ -144,7 +147,7 @@
          (lines (split content-str :delimiterp (lambda (c) (char= c #\Newline)))))
     (format nil "~{~a~^~%~}"
             (mapcar (lambda (line)
-                      (format nil "|~a| [~a]: ~a" time-str from-str line))
+                      (format-message-line time-str from-str line))
                     lines))))
 
 (defun user-messages (&key (date-format nil) (channel "#general"))
