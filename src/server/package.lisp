@@ -50,7 +50,7 @@
            #:user-messages
            #:client-latency
            #:client-latency-ms
-           #:reset-serverx
+           #:reset-server
            #:split
            #:startswith))
 
