@@ -35,8 +35,8 @@
   time
   (connection-latency nil)
   (user-agent nil)
-  (active-channel "#general"))
-
+  (active-channel "#general")
+  (session-id (princ-to-string (uuid:make-v4-uuid))))
 
 (defun client-socket-type (client)
   (typecase (client-socket client)
@@ -47,6 +47,11 @@
   (find client-name
         *clients*
         :test (lambda (name client) (equal name (client-name client)))))
+
+(defun get-client-by-session (session-id)
+  (find session-id
+        *clients*
+        :test (lambda (sid client) (string-equal sid (client-session-id client)))))
 
 (defun socket-peer-address (socket)
   "Given a USOCKET:SOCKET instance return a ipv4 encoded IP string"

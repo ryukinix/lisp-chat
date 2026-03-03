@@ -28,6 +28,7 @@
            #:client-user-agent
            #:client-socket-type
            #:client-active-channel
+           #:client-session-id
            #:message-from
            #:message-time
            #:message-content
