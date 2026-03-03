@@ -122,6 +122,7 @@
    (users :initform nil :accessor users)
    (connected :initform nil :accessor connected)
    (ping-thread :initform nil :accessor ping-thread)
+   (users-request-count :initform 0 :accessor users-request-count)
    (last-date :initform nil :accessor last-date)
    (win-width :initform 80 :accessor win-width)
    (win-height :initform 24 :accessor win-height)))
@@ -159,7 +160,7 @@
                     (when (connected model)
                       (handler-case
                           (when (username model)
-                           (connection-send (socket model) "/ping system"))
+                           (connection-send (socket model) "/users"))
                         (error (c)
                           (declare (ignore c))
                           (setf (connected model) nil))))))
@@ -286,6 +287,11 @@
        (setf (last-date model) nil)
        (render-messages model)
        (ti:textinput-reset (input model)))
+      ((string= text "/users")
+       (incf (users-request-count model))
+       (connection-send (socket model) text)
+       (vp:viewport-goto-bottom (viewport model))
+       (ti:textinput-reset (input model)))
       ((connected model)
        (unless (username model)
          (setf (pending-username model) text))
@@ -383,14 +389,19 @@
               (process-system-message model user content)
 
               ;; Only show if not ignored (like pong)
-              (unless (and (string= user "@server") (search "pong (system)" content))
-                ;; Handle date divider
-                (when (and date (not (equal date (last-date model))))
-                  (setf (last-date model) date)
-                  (push (list :date date) (messages model)))
+              (let ((is-hidden-pong (and (string= user "@server") (search "pong (system)" content)))
+                    (is-hidden-users (and (string= user "@server") (search "users: " content))))
+                (when (and is-hidden-users (> (users-request-count model) 0))
+                  (decf (users-request-count model))
+                  (setq is-hidden-users nil))
+                (unless (or is-hidden-pong is-hidden-users)
+                  ;; Handle date divider
+                  (when (and date (not (equal date (last-date model))))
+                    (setf (last-date model) date)
+                    (push (list :date date) (messages model)))
 
-                (push (list :msg (format-chat-message time user content)) (messages model))
-                (setf should-render t)))
+                  (push (list :msg (format-chat-message time user content)) (messages model))
+                  (setf should-render t))))
             (progn
                ;; Filter raw pong messages too if they appear without standard formatting
                (unless (search "pong" text)
