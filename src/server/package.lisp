@@ -22,6 +22,7 @@
            #:*user-channels*
            #:*private-channels*
            #:*server-nickname*
+           #:*raw-command-message*
            #:client-name
            #:client-address
            #:client-time

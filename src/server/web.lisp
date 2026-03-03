@@ -143,7 +143,8 @@
                               for v being the hash-values of kwargs-hash
                               append (list (intern (string-upcase k) "KEYWORD") v))))
               (result (handler-case
-                          (apply command-sym client (append args kwargs))
+                          (let ((*raw-command-message* t))
+                            (apply command-sym client (append args kwargs)))
                         (error (e)
                           (format nil "Error executing command: ~A" e)))))
          `(200 (:content-type "application/json")

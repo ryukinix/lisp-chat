@@ -6,6 +6,7 @@
 (defparameter *user-channels* (make-hash-table :test 'equal) "Mapping of usernames to their last active channel")
 (defparameter *private-channels* (make-hash-table :test 'equal) "Set of channels where messages are not saved")
 (defparameter *server-nickname* "@server" "The server nickname")
+(defvar *raw-command-message* nil "If true, return raw strings instead of formatted-messages")
 
 ;; thread control
 (defvar *message-semaphore* (make-semaphore :name "message semaphore"
@@ -198,10 +199,12 @@
 
 (defun command-message (content)
   "This function prepare the CONTENT as a message by the @server"
-  (let* ((from *server-nickname*)
-         (time (get-time))
-         (message (make-message :from from :content content :time time)))
-    (formatted-message message)))
+  (if *raw-command-message*
+      content
+      (let* ((from *server-nickname*)
+             (time (get-time))
+             (message (make-message :from from :content content :time time)))
+        (formatted-message message))))
 
 (defun private-message (client-name content)
   "This function prepare the CONTENT as a message by the @server"
