@@ -77,17 +77,21 @@
     (dolist (m messages)
       (format t "~a~%" (formatted-message m :date-format "date")))))
 
-(defun stats ()
+(defun stats (&key (days 7))
   (let ((messages (load-messages))
         (user-counts (make-hash-table :test 'equal))
         (channel-counts (make-hash-table :test 'equal))
         (hour-counts (make-hash-table))
+        (daily-counts (make-hash-table :test 'equal))
         (total 0))
     (setf total (length messages))
     (dolist (m messages)
       (incf (gethash (message-from m) user-counts 0))
       (incf (gethash (message-channel m) channel-counts 0))
-      (incf (gethash (nth 2 (message-time m)) hour-counts 0)))
+      (incf (gethash (nth 2 (message-time m)) hour-counts 0))
+      (let* ((time-list (message-time m))
+             (date-str (format nil "~4,'0d-~2,'0d-~2,'0d" (nth 5 time-list) (nth 4 time-list) (nth 3 time-list))))
+        (incf (gethash date-str daily-counts 0))))
     (format t "Total messages: ~d~%" total)
     (format t "~%Messages by user:~%")
     (let ((users nil))
@@ -103,7 +107,17 @@
     (loop for hour from 0 to 23
           do (let ((count (gethash hour hour-counts 0)))
                (when (> count 0)
-                 (format t "  ~2,'0d:00 - ~2,'0d:59: ~d~%" hour hour count))))))
+                 (format t "  ~2,'0d:00 - ~2,'0d:59: ~d~%" hour hour count))))
+    (format t "~%Messages in the last ~d days:~%" days)
+    (let ((now (get-universal-time))
+          (days-list nil))
+      (loop for i from (1- days) downto 0
+            do (multiple-value-bind (s m h date month year) (decode-universal-time (- now (* i 24 60 60)))
+                 (declare (ignore s m h))
+                 (let ((date-str (format nil "~4,'0d-~2,'0d-~2,'0d" year month date)))
+                   (push (cons date-str (gethash date-str daily-counts 0)) days-list))))
+      (dolist (d (nreverse days-list))
+        (format t "  ~10a: ~d~%" (car d) (cdr d))))))
 
 ;; CLI implementation using clingon
 
@@ -149,13 +163,16 @@
     (show-history :channel channel :user user :limit limit)))
 
 (defun stats-handler (cmd)
-  (declare (ignore cmd))
-  (stats))
+  (let ((days (clingon:getopt cmd :days)))
+    (if days
+        (stats :days days)
+        (stats))))
 
 (defun make-admin-command ()
   (clingon:make-command
    :name "lisp-chat-admin"
    :description "Admin tools for lisp-chat"
+   :version (get-version)
    :handler #'top-level-handler
    :sub-commands (list
                   (clingon:make-command
@@ -251,6 +268,13 @@
                   (clingon:make-command
                    :name "stats"
                    :description "Simple stats"
+                   :options (list
+                             (clingon:make-option
+                              :integer
+                              :description "number of days for daily count (default: 7)"
+                              :short-name #\d
+                              :long-name "days"
+                              :key :days))
                    :handler #'stats-handler))))
 
 (defun main (&optional (argv (uiop:command-line-arguments)))
