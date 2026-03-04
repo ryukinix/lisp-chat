@@ -121,7 +121,7 @@
   :depends-on ("lisp-chat/server"
                "clingon")
   :pathname "src"
-  :components ((:file "server/admin")))
+  :components ((:file "admin")))
 
 
 (asdf:defsystem :lisp-chat
