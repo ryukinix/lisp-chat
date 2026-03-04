@@ -131,39 +131,37 @@
 
 (defun delete-channel-handler (cmd)
   (with-global-options cmd
-    (let ((channel (clingon:getopt cmd :name)))
-      (if channel
-          (delete-channel channel)
+    (let ((args (clingon:command-arguments cmd)))
+      (if args
+          (delete-channel (first args))
           (format t "Error: channel name required.~%")))))
 
 (defun delete-user-handler (cmd)
   (with-global-options cmd
-    (let ((user (clingon:getopt cmd :name)))
-      (if user
-          (delete-user-messages user)
+    (let ((args (clingon:command-arguments cmd)))
+      (if args
+          (delete-user-messages (first args))
           (format t "Error: user name required.~%")))))
 
 (defun rename-channel-handler (cmd)
   (with-global-options cmd
-    (let ((old (clingon:getopt cmd :old))
-          (new (clingon:getopt cmd :new)))
-      (if (and old new)
-          (rename-channel old new)
+    (let ((args (clingon:command-arguments cmd)))
+      (if (>= (length args) 2)
+          (rename-channel (first args) (second args))
           (format t "Error: old and new names required.~%")))))
 
 (defun rename-user-handler (cmd)
   (with-global-options cmd
-    (let ((old (clingon:getopt cmd :old))
-          (new (clingon:getopt cmd :new)))
-      (if (and old new)
-          (rename-user old new)
+    (let ((args (clingon:command-arguments cmd)))
+      (if (>= (length args) 2)
+          (rename-user (first args) (second args))
           (format t "Error: old and new names required.~%")))))
 
 (defun search-handler (cmd)
   (with-global-options cmd
-    (let ((query (clingon:getopt cmd :query)))
-      (if query
-          (search-messages query)
+    (let ((args (clingon:command-arguments cmd)))
+      (if args
+          (search-messages (first args))
           (format t "Error: search query required.~%")))))
 
 (defun history-handler (cmd)
@@ -197,69 +195,27 @@
                   (clingon:make-command
                    :name "delete-channel"
                    :description "Delete a channel and its messages"
-                   :options (list
-                             (clingon:make-option
-                              :string
-                              :description "channel name"
-                              :short-name #\c
-                              :long-name "name"
-                              :key :name))
+                   :usage "<channel>"
                    :handler #'delete-channel-handler)
                   (clingon:make-command
                    :name "delete-user"
                    :description "Delete all messages of a specific user"
-                   :options (list
-                             (clingon:make-option
-                              :string
-                              :description "user name"
-                              :short-name #\u
-                              :long-name "name"
-                              :key :name))
+                   :usage "<user>"
                    :handler #'delete-user-handler)
                   (clingon:make-command
                    :name "rename-channel"
                    :description "Rename a channel"
-                   :options (list
-                             (clingon:make-option
-                              :string
-                              :description "old channel name"
-                              :short-name #\o
-                              :long-name "old"
-                              :key :old)
-                             (clingon:make-option
-                              :string
-                              :description "new channel name"
-                              :short-name #\n
-                              :long-name "new"
-                              :key :new))
+                   :usage "<old> <new>"
                    :handler #'rename-channel-handler)
                   (clingon:make-command
                    :name "rename-user"
                    :description "Rename a user"
-                   :options (list
-                             (clingon:make-option
-                              :string
-                              :description "old user name"
-                              :short-name #\o
-                              :long-name "old"
-                              :key :old)
-                             (clingon:make-option
-                              :string
-                              :description "new user name"
-                              :short-name #\n
-                              :long-name "new"
-                              :key :new))
+                   :usage "<old> <new>"
                    :handler #'rename-user-handler)
                   (clingon:make-command
                    :name "search"
                    :description "Search for a specific message in the log"
-                   :options (list
-                             (clingon:make-option
-                              :string
-                              :description "query string"
-                              :short-name #\q
-                              :long-name "query"
-                              :key :query))
+                   :usage "<query>"
                    :handler #'search-handler)
                   (clingon:make-command
                    :name "history"
