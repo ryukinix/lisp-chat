@@ -124,49 +124,61 @@
 (defun top-level-handler (cmd)
   (clingon:print-usage cmd t))
 
+(defmacro with-global-options (cmd &body body)
+  `(let ((file (clingon:getopt ,cmd :file)))
+     (let ((*persistence-file* (or file *persistence-file*)))
+       ,@body)))
+
 (defun delete-channel-handler (cmd)
-  (let ((channel (clingon:getopt cmd :name)))
-    (if channel
-        (delete-channel channel)
-        (format t "Error: channel name required.~%"))))
+  (with-global-options cmd
+    (let ((channel (clingon:getopt cmd :name)))
+      (if channel
+          (delete-channel channel)
+          (format t "Error: channel name required.~%")))))
 
 (defun delete-user-handler (cmd)
-  (let ((user (clingon:getopt cmd :name)))
-    (if user
-        (delete-user-messages user)
-        (format t "Error: user name required.~%"))))
+  (with-global-options cmd
+    (let ((user (clingon:getopt cmd :name)))
+      (if user
+          (delete-user-messages user)
+          (format t "Error: user name required.~%")))))
 
 (defun rename-channel-handler (cmd)
-  (let ((old (clingon:getopt cmd :old))
-        (new (clingon:getopt cmd :new)))
-    (if (and old new)
-        (rename-channel old new)
-        (format t "Error: old and new names required.~%"))))
+  (with-global-options cmd
+    (let ((old (clingon:getopt cmd :old))
+          (new (clingon:getopt cmd :new)))
+      (if (and old new)
+          (rename-channel old new)
+          (format t "Error: old and new names required.~%")))))
 
 (defun rename-user-handler (cmd)
-  (let ((old (clingon:getopt cmd :old))
-        (new (clingon:getopt cmd :new)))
-    (if (and old new)
-        (rename-user old new)
-        (format t "Error: old and new names required.~%"))))
+  (with-global-options cmd
+    (let ((old (clingon:getopt cmd :old))
+          (new (clingon:getopt cmd :new)))
+      (if (and old new)
+          (rename-user old new)
+          (format t "Error: old and new names required.~%")))))
 
 (defun search-handler (cmd)
-  (let ((query (clingon:getopt cmd :query)))
-    (if query
-        (search-messages query)
-        (format t "Error: search query required.~%"))))
+  (with-global-options cmd
+    (let ((query (clingon:getopt cmd :query)))
+      (if query
+          (search-messages query)
+          (format t "Error: search query required.~%")))))
 
 (defun history-handler (cmd)
-  (let ((channel (clingon:getopt cmd :channel))
-        (user (clingon:getopt cmd :user))
-        (limit (clingon:getopt cmd :limit)))
-    (show-history :channel channel :user user :limit limit)))
+  (with-global-options cmd
+    (let ((channel (clingon:getopt cmd :channel))
+          (user (clingon:getopt cmd :user))
+          (limit (clingon:getopt cmd :limit)))
+      (show-history :channel channel :user user :limit limit))))
 
 (defun stats-handler (cmd)
-  (let ((days (clingon:getopt cmd :days)))
-    (if days
-        (stats :days days)
-        (stats))))
+  (with-global-options cmd
+    (let ((days (clingon:getopt cmd :days)))
+      (if days
+          (stats :days days)
+          (stats)))))
 
 (defun make-admin-command ()
   (clingon:make-command
@@ -174,6 +186,13 @@
    :description "Admin tools for lisp-chat"
    :version (get-version)
    :handler #'top-level-handler
+   :options (list
+             (clingon:make-option
+              :string
+              :description "path to the messages file (default: messages.sexp)"
+              :short-name #\f
+              :long-name "file"
+              :key :file))
    :sub-commands (list
                   (clingon:make-command
                    :name "delete-channel"
