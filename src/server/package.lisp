@@ -28,6 +28,7 @@
            #:client-user-agent
            #:client-socket-type
            #:client-active-channel
+           #:message
            #:message-from
            #:message-time
            #:message-content
@@ -38,6 +39,7 @@
            #:get-client
            #:get-time
            #:format-time
+           #:formatted-message
            #:parse-iso8601
            #:message-universal-time
            #:search-message
