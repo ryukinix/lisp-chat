@@ -138,13 +138,19 @@
        (let* ((payload (parse-json-body env))
               (args (gethash "args" payload nil))
               (kwargs-hash (gethash "kwargs" payload nil))
+              (channel-override (gethash "channel" payload nil))
+              (active-client (if channel-override
+                                 (let ((new-client (copy-client client)))
+                                   (setf (client-active-channel new-client) channel-override)
+                                   new-client)
+                                 client))
               (kwargs (when kwargs-hash
                         (loop for k being the hash-keys of kwargs-hash
                               for v being the hash-values of kwargs-hash
                               append (list (intern (string-upcase k) "KEYWORD") v))))
               (result (handler-case
                           (let ((*raw-command-message* t))
-                            (apply command-sym client (append args kwargs)))
+                            (apply command-sym active-client (append args kwargs)))
                         (error (e)
                           (format nil "Error executing command: ~A" e)))))
          `(200 (:content-type "application/json")
