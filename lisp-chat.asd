@@ -57,7 +57,11 @@
                "clack-handler-hunchentoot"
                "websocket-driver"
                "yason"
-               "uuid")
+               "uuid"
+               "ningle"
+               "lack"
+               "lack-middleware-static"
+               "trivial-rfc-1123")
   :pathname "src"
   :components ((:file "config")
                (:module "server"

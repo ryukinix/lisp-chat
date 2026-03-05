@@ -23,9 +23,8 @@
           (error () (make-hash-table)))
         (make-hash-table))))
 
-(defun api-app (env path)
-  (let* ((command-name (concatenate 'string "/" (subseq path 14)))
-         (command-sym (lisp-chat/commands::get-command command-name))
+(defun api-app (env command-name)
+  (let* ((command-sym (lisp-chat/commands::get-command command-name))
          (headers (getf env :headers))
          (session-id (and headers (gethash "client-session" headers)))
          (is-unauthenticated (member command-name *api-unauthenticated-commands* :test #'string-equal))
