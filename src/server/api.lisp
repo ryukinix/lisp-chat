@@ -23,7 +23,9 @@
               (if (zerop (length body-str))
                   (make-hash-table)
                   (yason:parse body-str)))
-          (error () (make-hash-table)))
+          (error (e)
+            (format *error-output* "JSON Parse Error: ~A~%" e)
+            (make-hash-table)))
         (make-hash-table))))
 
 (defun api-app (env command-name)
@@ -56,8 +58,7 @@
                                    new-client)
                                  client))
               (kwargs (when kwargs-hash
-                        (loop for k being the hash-keys of kwargs-hash
-                              for v being the hash-values of kwargs-hash
+                        (loop for k being the hash-keys of kwargs-hash using (hash-value v)
                               append (list (intern (string-upcase k) "KEYWORD") v))))
               (result (handler-case
                           (let ((*raw-command-message* (not (member command-name *api-formatted-commands* :test #'string-equal))))

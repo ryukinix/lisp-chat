@@ -68,3 +68,17 @@
         (is = 200 status)
         ;; Verify the client actually changed channel
         (is string= "#new-channel" (lisp-chat/server::client-active-channel active-client))))))
+
+(define-test log-api-kwargs
+  :parent api-tests
+  (let ((current-date (get-current-date)))
+    (multiple-value-bind (body status)
+        (dex:post (api-url "/api/commands/log")
+                  :content "{\"kwargs\": {\"date-format\": \"date\"}}"
+                  :headers '(("Content-Type" . "application/json")))
+      (is = 200 status)
+      (let* ((data (yason:parse body))
+             (result (gethash "result" data)))
+        (true result)
+        (true (search current-date result)
+              (format nil "Expected current date ~A in result, got: ~A" current-date result))))))
