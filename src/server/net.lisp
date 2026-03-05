@@ -66,6 +66,11 @@
         (t
          (websocket-driver:send socket message))))))
 
+(defun message-should-not-be-saved-p (message-raw)
+  "Messages that should be saved in the disk"
+  (or (gethash (message-channel message-raw) *private-channels*)
+      (equal (message-from message-raw ) "@server")))
+
 (defun message-broadcast ()
   "This procedure is a general independent thread to run brodcasting
    all the clients when a message is ping on this server"
@@ -74,7 +79,7 @@
                                    (pop *messages-stack*))))
                (when message-raw
                  (let ((message (formatted-message message-raw)))
-                   (unless (gethash (message-channel message-raw) *private-channels*)
+                   (unless (message-should-not-be-saved-p message-raw)
                      (push message-raw *messages-log*)
                      (save-message-to-disk message-raw))
                    (let ((clients *clients*))
