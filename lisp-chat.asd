@@ -67,7 +67,8 @@
                              (:file "commands" :depends-on ("package" "base"))
                              (:file "net" :depends-on ("base"))
                              (:file "tcp" :depends-on ("net" "base" "commands"))
-                             (:file "web" :depends-on ("net" "base" "commands"))
+                             (:file "api" :depends-on ("base" "commands"))
+                             (:file "web" :depends-on ("net" "base" "commands" "api"))
                              (:file "main" :depends-on ("tcp" "web" "net"))))
                (:module "static"
                 :components
