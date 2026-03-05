@@ -28,6 +28,14 @@
         (let ((data (yason:parse (dex:response-body e))))
           (is string= "Unauthorized: valid Client-Session header required" (gethash "error" data)))))))
 
+(define-test invalid-json-api-commands
+  :parent api-tests
+  (let ((url (api-url "/api/commands/version")))
+    (handler-case
+        (dex:post url :content "{\"invalid json" :headers '(("Content-Type" . "application/json")))
+      (dex:http-request-failed (e)
+        (is = 400 (dex:response-status e))))))
+
 (define-test authenticated-api-commands
   :parent api-tests
   (with-websocket-client (client messages)

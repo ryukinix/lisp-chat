@@ -24,8 +24,8 @@
                   (make-hash-table)
                   (yason:parse body-str)))
           (error (e)
-            (format *error-output* "JSON Parse Error: ~A~%" e)
-            (make-hash-table)))
+            (declare (ignore e))
+            :error))
         (make-hash-table))))
 
 (defun api-app (env command-name)
@@ -48,27 +48,29 @@
       (is-blocked
        `(403 (:content-type "application/json") ("{\"error\": \"Not allowed: command is not available to use through API\"}")))
       (t
-       (let* ((payload (parse-json-body env))
-              (args (gethash "args" payload nil))
-              (kwargs-hash (gethash "kwargs" payload nil))
-              (channel-override (gethash "channel" payload nil))
-              (active-client (if channel-override
-                                 (let ((new-client (copy-client client)))
-                                   (setf (client-active-channel new-client) channel-override)
-                                   new-client)
-                                 client))
-              (kwargs (when kwargs-hash
-                        (loop for k being the hash-keys of kwargs-hash using (hash-value v)
-                              append (list (intern (string-upcase k) "KEYWORD") v))))
-              (result (handler-case
-                          (let ((*raw-command-message* (not (member command-name *api-formatted-commands* :test #'string-equal))))
-                            (apply command-sym active-client (append args kwargs)))
-                        (error (e)
-                          (format nil "Error executing command: ~A" e)))))
-         `(200 (:content-type "application/json")
-               (,(with-output-to-string (s)
-                   (yason:encode
-                    (let ((h (make-hash-table :test 'equal)))
-                      (setf (gethash "result" h) (format nil "~A" result))
-                      h)
-                    s)))))))))
+       (let ((payload (parse-json-body env)))
+         (if (eq payload :error)
+             `(400 (:content-type "application/json") ("{\"error\": \"Invalid JSON in request body\"}"))
+             (let* ((args (gethash "args" payload nil))
+                    (kwargs-hash (gethash "kwargs" payload nil))
+                    (channel-override (gethash "channel" payload nil))
+                    (active-client (if channel-override
+                                       (let ((new-client (copy-client client)))
+                                         (setf (client-active-channel new-client) channel-override)
+                                         new-client)
+                                       client))
+                    (kwargs (when kwargs-hash
+                              (loop for k being the hash-keys of kwargs-hash using (hash-value v)
+                                    append (list (intern (string-upcase k) "KEYWORD") v))))
+                    (result (handler-case
+                                (let ((*raw-command-message* (not (member command-name *api-formatted-commands* :test #'string-equal))))
+                                  (apply command-sym active-client (append args kwargs)))
+                              (error (e)
+                                (format nil "Error executing command: ~A" e)))))
+               `(200 (:content-type "application/json")
+                     (,(with-output-to-string (s)
+                         (yason:encode
+                          (let ((h (make-hash-table :test 'equal)))
+                            (setf (gethash "result" h) (format nil "~A" result))
+                            h)
+                          s)))))))))))
