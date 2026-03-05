@@ -118,6 +118,19 @@
                (:file "client/tui" :depends-on ("config" "client/net"))))
 
 
+(asdf:defsystem :lisp-chat/admin
+  :class lisp-chat/system:custom-system-class
+  :author #.lisp-chat/system:*author*
+  :description "Admin tools for lisp-chat"
+  :version #.lisp-chat/system:*version*
+  :build-metadata #.lisp-chat/system:*build-metadata*
+  :license #.lisp-chat/system:*license*
+  :depends-on ("lisp-chat/server"
+               "clingon")
+  :pathname "src"
+  :components ((:file "admin")))
+
+
 (asdf:defsystem :lisp-chat
   :class lisp-chat/system:custom-system-class
   :author #.lisp-chat/system:*author*
@@ -126,7 +139,8 @@
   :build-metadata #.lisp-chat/system:*build-metadata*
   :license #.lisp-chat/system:*license*
   :depends-on ("lisp-chat/client"
-               "lisp-chat/server")
+               "lisp-chat/server"
+               "lisp-chat/admin")
   :in-order-to ((test-op (test-op "lisp-chat/tests"))))
 
 (asdf:defsystem :lisp-chat/tests

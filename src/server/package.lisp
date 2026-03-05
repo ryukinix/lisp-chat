@@ -41,6 +41,7 @@
            #:get-client
            #:get-time
            #:format-time
+           #:formatted-message
            #:parse-iso8601
            #:message-universal-time
            #:search-message

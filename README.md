@@ -56,6 +56,16 @@ When running the server locally, the web interface is accessible at `http://loca
 
 ![lisp-chat-web](lisp-chat-web.png)
 
+# Admin Tool
+
+A command-line tool for managing the chat history and users is available. You can use it to delete channels, rename users, and see statistics. By default, it operates on `messages.sexp`, but you can specify a different file using the global `--file` (or `-f`) option.
+
+```bash
+$ ros roswell/lisp-chat-admin.ros --file custom-messages.sexp stats
+$ ros roswell/lisp-chat-admin.ros history
+$ ros roswell/lisp-chat-admin.ros --help
+```
+
 # Alternative clients
 
 To test this with alternative clients, you can use these options:

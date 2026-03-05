@@ -1,0 +1,16 @@
+#!/bin/sh
+#|-*- mode:lisp -*-|#
+#|
+exec ros -Q -- $0 "$@"
+|#
+(progn ;;init forms
+  (ros:ensure-asdf)
+  #+quicklisp (ql:quickload '(lisp-chat/admin) :silent t))
+
+(defpackage :ros.script.lisp-chat-admin
+  (:use :cl))
+(in-package :ros.script.lisp-chat-admin)
+
+(defun main (&rest argv)
+  (lisp-chat/admin:main argv))
+;;; vim: set ft=lisp lisp:

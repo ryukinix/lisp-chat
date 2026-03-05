@@ -159,8 +159,7 @@
 (defun user-messages (&key (date-format nil) (channel "#general"))
   "Return only user messages, discard all messsages from @server"
   (mapcar (lambda (m) (formatted-message m :date-format date-format))
-          (remove-if #'(lambda (m) (or (equal (message-from m) "@server")
-                                       (not (string-equal (message-channel m) channel))))
+          (remove-if-not #'(lambda (m) (string-equal (message-channel m) channel))
                      *messages-log*)))
 
 (defun message-universal-time (message)

@@ -12,7 +12,7 @@ const availableColors = [
     "#ffeaa7", "#55efc4", "#81ecec", "#74b9ff", "#a29bfe"
 ];
 
-let backgroundRequestsPending = 0;
+let userRequestsPending = 0;
 let fetchUsersInterval;
 let loggedIn = false;
 let ws;
@@ -291,10 +291,11 @@ function processServerMessage(content, isRealTime) {
         if (isJoin || isExit) return false;
     } else if (isUsersListResponse) {
         updateUserList(content);
-        if (backgroundRequestsPending > 0) {
-            backgroundRequestsPending--;
-            return false; // Swallow background updates
+        if (userRequestsPending > 0) {
+            userRequestsPending = 0;
+            return true;
         }
+        return false;
     }
     return true;
 }
@@ -409,9 +410,6 @@ function updateUserList(usersString) {
 
 function requestUserList(isBackground = false) {
     if (ws && ws.readyState === WebSocket.OPEN && loggedIn) {
-        if (isBackground) {
-            backgroundRequestsPending++;
-        }
         ws.send("/users");
     }
 }
@@ -487,6 +485,9 @@ form.addEventListener("submit", (e) => {
             keepAliveWorker.postMessage('start');
             fetchUsersInterval = true;
             setTimeout(() => requestUserList(true), 500); // Initial fetch
+        }
+        if (input.value === "/users") {
+            userRequestsPending++;
         }
         ws.send(input.value);
         input.value = "";
