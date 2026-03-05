@@ -60,8 +60,7 @@
                "uuid"
                "ningle"
                "lack"
-               "lack-middleware-static"
-               "trivial-rfc-1123")
+               "lack-middleware-static")
   :pathname "src"
   :components ((:file "config")
                (:module "server"
