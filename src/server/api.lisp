@@ -6,6 +6,9 @@
 (defparameter *api-blocked-commands*
   '("/lisp" "/session"))
 
+(defparameter *api-formatted-commands*
+  '("/search" "/log"))
+
 (defun read-stream-to-string (stream)
   (with-output-to-string (s)
     (loop for char = (read-char stream nil nil)
@@ -57,7 +60,7 @@
                               for v being the hash-values of kwargs-hash
                               append (list (intern (string-upcase k) "KEYWORD") v))))
               (result (handler-case
-                          (let ((*raw-command-message* t))
+                          (let ((*raw-command-message* (not (member command-name *api-formatted-commands* :test #'string-equal))))
                             (apply command-sym active-client (append args kwargs)))
                         (error (e)
                           (format nil "Error executing command: ~A" e)))))
