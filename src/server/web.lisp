@@ -98,7 +98,10 @@
         '(404 (:content-type "text/plain") ("Not Found")))))
 
 (defparameter *api-unauthenticated-commands*
-  '("/version" "/uptime" "/channels" "/users" "/help" "/man" "/ping" "/search" "/log" "/whoami" "/whois"))
+  '("/version" "/uptime" "/channels" "/users" "/help" "/man" "/search" "/log"))
+
+(defparameter *api-blocked-commands*
+  '("/lisp" "/session"))
 
 (defun read-stream-to-string (stream)
   (with-output-to-string (s)
@@ -123,6 +126,7 @@
          (headers (getf env :headers))
          (session-id (and headers (gethash "client-session" headers)))
          (is-unauthenticated (member command-name *api-unauthenticated-commands* :test #'string-equal))
+         (is-blocked (member command-name *api-blocked-commands* :test #'string-equal))
          (client (if session-id
                      (get-client-by-session session-id)
                      (when is-unauthenticated
@@ -134,6 +138,8 @@
        `(404 (:content-type "application/json") ("{\"error\": \"Command not found\"}")))
       ((not client)
        `(401 (:content-type "application/json") ("{\"error\": \"Unauthorized: valid Client-Session header required\"}")))
+      (is-blocked
+       `(403 (:content-type "application/json") ("{\"error\": \"Not allowed: command is not available to use through API\"}")))
       (t
        (let* ((payload (parse-json-body env))
               (args (gethash "args" payload nil))
