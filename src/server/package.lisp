@@ -22,12 +22,14 @@
            #:*user-channels*
            #:*private-channels*
            #:*server-nickname*
+           #:*raw-command-message*
            #:client-name
            #:client-address
            #:client-time
            #:client-user-agent
            #:client-socket-type
            #:client-active-channel
+           #:client-session-id
            #:message
            #:message-from
            #:message-time

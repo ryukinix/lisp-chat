@@ -6,6 +6,7 @@
 (defparameter *user-channels* (make-hash-table :test 'equal) "Mapping of usernames to their last active channel")
 (defparameter *private-channels* (make-hash-table :test 'equal) "Set of channels where messages are not saved")
 (defparameter *server-nickname* "@server" "The server nickname")
+(defvar *raw-command-message* nil "If true, return raw strings instead of formatted-messages")
 
 ;; thread control
 (defvar *message-semaphore* (make-semaphore :name "message semaphore"
@@ -35,8 +36,8 @@
   time
   (connection-latency nil)
   (user-agent nil)
-  (active-channel "#general"))
-
+  (active-channel "#general")
+  (session-id (princ-to-string (uuid:make-v4-uuid))))
 
 (defun client-socket-type (client)
   (typecase (client-socket client)
@@ -47,6 +48,11 @@
   (find client-name
         *clients*
         :test (lambda (name client) (equal name (client-name client)))))
+
+(defun get-client-by-session (session-id)
+  (find session-id
+        *clients*
+        :test (lambda (sid client) (string-equal sid (client-session-id client)))))
 
 (defun socket-peer-address (socket)
   "Given a USOCKET:SOCKET instance return a ipv4 encoded IP string"
@@ -192,10 +198,12 @@
 
 (defun command-message (content)
   "This function prepare the CONTENT as a message by the @server"
-  (let* ((from *server-nickname*)
-         (time (get-time))
-         (message (make-message :from from :content content :time time)))
-    (formatted-message message)))
+  (if *raw-command-message*
+      content
+      (let* ((from *server-nickname*)
+             (time (get-time))
+             (message (make-message :from from :content content :time time)))
+        (formatted-message message))))
 
 (defun private-message (client-name content)
   "This function prepare the CONTENT as a message by the @server"

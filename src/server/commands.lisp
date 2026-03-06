@@ -244,6 +244,11 @@
   (command-message
    (format nil "Server online since ~a" (format-time *uptime*))))
 
+(defun /session (client &rest args)
+  "/session returns the unique session UUID for the current client."
+  (declare (ignorable args))
+  (command-message (format nil "Your session ID is: ~A" (client-session-id client))))
+
 (defun /nick (client &optional (new-nick nil) &rest args)
   "/nick changes the client-name given a NEW-NICK which should be a string"
   (declare (ignorable args))

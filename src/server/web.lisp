@@ -71,38 +71,41 @@
       (declare (ignore responder))
       (start-connection ws))))
 
-(defun static-response-headers (content-type)
-  (let ((no-cache '("text/html")))
-    (cond
-      ((find content-type no-cache)
-       `(:content-type ,content-type
-        :cache-control "no-store, no-cache, must-revalidate, max-age=0"
-        :pragma "no-cache"
-        :expires "0"))
-      (t `(:content-type ,content-type)))))
+(defvar *web-app* (make-instance 'ningle:app))
 
-(defun static-app (path)
-  (let* ((file (merge-pathnames (subseq path 1) (merge-pathnames "src/static/"
-                                                                (asdf:system-source-directory :lisp-chat))))
-         (extension (pathname-type file))
-         (content-type (cond
-                         ((string= extension "html") "text/html")
-                         ((string= extension "css") "text/css")
-                         ((string= extension "js") "application/javascript")
-                         ((string= extension "json") "application/json")
-                         ((string= extension "png") "image/png")
-                         ((string= extension "ico") "image/x-icon")
-                         (t "text/plain"))))
-    (if (probe-file file)
-        `(200 ,(static-response-headers content-type) ,file)
-        '(404 (:content-type "text/plain") ("Not Found")))))
+(setf (ningle:route *web-app* "/api/commands/:command" :method :OPTIONS)
+      (lambda (params)
+        (let* ((command-name (cdr (assoc :command params)))
+               (env (lack.request:request-env ningle:*request*)))
+          (api-options-app env (concatenate 'string "/" command-name)))))
 
-(defun web-handler (env)
-  (let ((path (getf env :path-info)))
-    (cond
-      ((string= path "/ws")
-       (ws-app env))
-      ((string= path "/")
-       (static-app "/index.html"))
-      (t
-       (static-app path)))))
+(setf (ningle:route *web-app* "/api/commands/:command" :method :POST)
+      (lambda (params)
+        (let* ((command-name (cdr (assoc :command params)))
+               (env (lack.request:request-env ningle:*request*)))
+          (api-app env (concatenate 'string "/" command-name)))))
+
+(setf (ningle:route *web-app* "/ws")
+      (lambda (params)
+        (declare (ignore params))
+        (ws-app (lack.request:request-env ningle:*request*))))
+
+(setf (ningle:route *web-app* "/")
+      (lambda (params)
+        (declare (ignore params))
+        `(200 (:content-type "text/html"
+               :cache-control "no-store, no-cache, must-revalidate, max-age=0"
+               :pragma "no-cache"
+               :expires "0")
+              ,(pathname (merge-pathnames "src/static/index.html" (asdf:system-source-directory :lisp-chat))))))
+
+(defparameter *app*
+  (lack:builder
+   (:static :path (lambda (path)
+                    (if (or (string= path "/")
+                            (uiop:string-prefix-p "/api/" path)
+                            (string= path "/ws"))
+                        nil
+                        path))
+            :root (merge-pathnames "src/static/" (asdf:system-source-directory :lisp-chat)))
+   *web-app*))

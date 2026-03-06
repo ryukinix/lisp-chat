@@ -55,7 +55,12 @@
                "isolated"
                "clack"
                "clack-handler-hunchentoot"
-               "websocket-driver")
+               "websocket-driver"
+               "yason"
+               "uuid"
+               "ningle"
+               "lack"
+               "lack-middleware-static")
   :pathname "src"
   :components ((:file "config")
                (:module "server"
@@ -65,7 +70,8 @@
                              (:file "commands" :depends-on ("package" "base"))
                              (:file "net" :depends-on ("base"))
                              (:file "tcp" :depends-on ("net" "base" "commands"))
-                             (:file "web" :depends-on ("net" "base" "commands"))
+                             (:file "api" :depends-on ("base" "commands"))
+                             (:file "web" :depends-on ("net" "base" "commands" "api"))
                              (:file "main" :depends-on ("tcp" "web" "net"))))
                (:module "static"
                 :components
@@ -140,10 +146,13 @@
   :author #.lisp-chat/system:*author*
   :license #.lisp-chat/system:*license*
   :depends-on ("lisp-chat/server"
-               "parachute")
+               "parachute"
+               "dexador"
+               "yason")
   :pathname "tests"
   :components ((:file "package")
                (:file "main" :depends-on ("package"))
                (:file "unit" :depends-on ("main"))
-               (:file "integration" :depends-on ("main")))
+               (:file "integration" :depends-on ("main"))
+               (:file "api" :depends-on ("main")))
   :perform (test-op (o c) (symbol-call :lisp-chat/tests :run-tests)))

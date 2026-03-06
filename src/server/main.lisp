@@ -21,7 +21,7 @@
                                                 :name "Connection handler"))
            (setf broadcast-thread (make-thread #'message-broadcast
                                                :name "Message broadcast"))
-           (setf web-handler (clackup #'web-handler
+           (setf web-handler (clackup *app*
                                       :debug nil
                                       :address *host*
                                       :port *websocket-port*
