@@ -1,7 +1,7 @@
 (in-package :lisp-chat/server)
 
 (defparameter *api-unauthenticated-commands*
-  '("/version" "/uptime" "/channels" "/users" "/help" "/man" "/search" "/log"))
+  '("/version" "/uptime" "/channels" "/users" "/help" "/man" "/search" "/log" "/whois"))
 
 (defparameter *api-blocked-commands*
   '("/lisp" "/session"))
