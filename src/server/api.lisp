@@ -28,8 +28,18 @@
             :error))
         (make-hash-table))))
 
+(defun plist-to-json (plist)
+  (let ((yason:*symbol-key-encoder* #'yason:encode-symbol-as-lowercase)
+        (yason:*symbol-encoder* #'yason:encode-symbol-as-lowercase))
+      (with-output-to-string (s)
+        (yason:encode-plist plist s))))
+
+(defun json-response (code plist)
+  `(,code (:content-type "application/json")
+          (,(plist-to-json plist))))
+
 (defun api-app (env command-name)
-  (let* ((command-sym (lisp-chat/commands::get-command command-name))
+  (let* ((command-sym (lisp-chat/commands:get-command command-name))
          (headers (getf env :headers))
          (session-id (and headers (gethash "client-session" headers)))
          (is-unauthenticated (member command-name *api-unauthenticated-commands* :test #'string-equal))
@@ -41,12 +51,9 @@
                                     :active-channel "#general"
                                     :address (get-remote-address env))))))
     (cond
-      ((not command-sym)
-       `(404 (:content-type "application/json") ("{\"error\": \"Command not found\"}")))
-      ((not client)
-       `(401 (:content-type "application/json") ("{\"error\": \"Unauthorized: valid Client-Session header required\"}")))
-      (is-blocked
-       `(403 (:content-type "application/json") ("{\"error\": \"Not allowed: command is not available to use through API\"}")))
+      ((not command-sym) (json-response 404 '(:error "Command not found")))
+      ((not client) (json-response 401 '(:error "Unauthorized: valid Client-Session header required")))
+      (is-blocked (json-response 403 '(:error "Not allowed: command is not available to use through API")))
       (t
        (let ((payload (parse-json-body env)))
          (if (eq payload :error)
@@ -67,10 +74,4 @@
                                   (apply command-sym active-client (append args kwargs)))
                               (error (e)
                                 (format nil "Error executing command: ~A" e)))))
-               `(200 (:content-type "application/json")
-                     (,(with-output-to-string (s)
-                         (yason:encode
-                          (let ((h (make-hash-table :test 'equal)))
-                            (setf (gethash "result" h) (format nil "~A" result))
-                            h)
-                          s)))))))))))
+               (json-response 200 `(:result ,(format nil "~A" result))))))))))
