@@ -75,3 +75,12 @@
                               (error (e)
                                 (format nil "Error executing command: ~A" e)))))
                (json-response 200 `(:result ,(format nil "~A" result))))))))))
+
+(defun api-options-app (env command-name)
+  (declare (ignore env))
+  (let ((command-sym (lisp-chat/commands:get-command command-name)))
+    (if (not command-sym)
+        `(404 (:content-type "text/plain") ("Command not found"))
+        (let ((description (with-output-to-string (s)
+                             (describe command-sym s))))
+          `(200 (:content-type "text/plain") (,description))))))

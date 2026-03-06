@@ -73,6 +73,12 @@
 
 (defvar *web-app* (make-instance 'ningle:app))
 
+(setf (ningle:route *web-app* "/api/commands/:command" :method :OPTIONS)
+      (lambda (params)
+        (let* ((command-name (cdr (assoc :command params)))
+               (env (lack.request:request-env ningle:*request*)))
+          (api-options-app env (concatenate 'string "/" command-name)))))
+
 (setf (ningle:route *web-app* "/api/commands/:command" :method :POST)
       (lambda (params)
         (let* ((command-name (cdr (assoc :command params)))
