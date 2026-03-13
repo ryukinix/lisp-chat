@@ -30,20 +30,20 @@
            (join-thread broadcast-thread))
       (progn
         (debug-format t "~%Shutting down...~%")
-        (sleep 1)
         (when web-handler
           (debug-format t "Stopping web server...~%")
           (handler-case (stop web-handler)
             (condition (c) (debug-format t "Error stopping web server: ~a~%" c))))
         (when (and connection-thread (thread-alive-p connection-thread))
           (debug-format t "Stopping connection handler...~%")
-          (destroy-thread connection-thread))
+          (interrupt-thread-portable connection-thread)
+          (join-thread connection-thread))
+        ;; delete residual web clients...
+        (dolist (client *clients*)
+          (client-delete client))
         (when (and broadcast-thread (thread-alive-p broadcast-thread))
           (debug-format t "Stopping message broadcast...~%")
-          (destroy-thread broadcast-thread))
-        (let ((clients *clients*))
-          (loop for client in clients
-                do (client-close client)))))))
+          (destroy-thread broadcast-thread))))))
 
 (defun main (&key (host *host*) (port *port*) (should-quit t))
   "Well, this function run all the necessary shits."
@@ -52,7 +52,7 @@
         (error-code 0))
     (unwind-protect
          (handler-case
-             (progn (setq socket-server (socket-listen host port))
+             (progn (setq socket-server (socket-listen host port :reuse-address t))
                     (server-loop socket-server))
            (usocket:address-in-use-error ()
              (format *error-output*
@@ -65,11 +65,7 @@
                      "error: There is no way to use ~a as host to run the server.~%"
                      *host*)
              (setq error-code 2))
-           (#+sbcl sb-sys:interactive-interrupt
-            #+ccl  ccl:interrupt-signal-condition
-            #+clisp system::simple-interrupt-condition
-            #+ecl ext:interactive-interrupt
-            #+allegro excl:interrupt-signal ()
+           (#.(system-interrupt) ()
              (format t "~%Closing the lisp-chat server...~%")))
       (when socket-server
         (socket-close socket-server))

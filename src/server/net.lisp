@@ -87,9 +87,9 @@
                            when (string-equal (message-channel message-raw)
                                               (client-active-channel client))
                              do (handler-case (send-message client message)
-                                (error (e)
-                                  (debug-format t "Error broadcasting to ~a: ~a~%" (client-name client) e)
-                                  (client-delete client))))))))))
+                                  (error (e)
+                                    (debug-format t "Error broadcasting to ~a: ~a~%" (client-name client) e)
+                                    (client-delete client))))))))))
 #+sbcl
 (sb-alien:define-alien-type tcp-info
   (sb-alien:struct tcp-info
