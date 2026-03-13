@@ -70,7 +70,9 @@
                               (loop for k being the hash-keys of kwargs-hash using (hash-value v)
                                     append (list (intern (string-upcase k) "KEYWORD") v))))
                     (result (handler-case
-                                (let ((*raw-command-message* (not (member command-name *api-formatted-commands* :test #'string-equal))))
+                                (let ((*raw-command-message* (not (member command-name
+                                                                          *api-formatted-commands*
+                                                                          :test #'string-equal))))
                                   (apply command-sym active-client (append args kwargs)))
                               (error (e)
                                 (format nil "Error executing command: ~A" e)))))

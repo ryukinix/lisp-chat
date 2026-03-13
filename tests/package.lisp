@@ -1,5 +1,9 @@
 (defpackage :lisp-chat/tests
-  (:use :cl :cl-user :parachute :lisp-chat/config)
+  (:use :cl :parachute)
+  (:local-nicknames (:config :lisp-chat/config)
+                    (:server :lisp-chat/server)
+                    (:bt :bordeaux-threads)
+                    (:usocket :usocket))
   (:import-from :lisp-chat/server :interrupt-thread-portable)
   (:import-from :usocket :socket-connect :socket-close :socket-stream)
   (:import-from :websocket-driver :start-connection :send :on :close-connection)

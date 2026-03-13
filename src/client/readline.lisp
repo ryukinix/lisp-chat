@@ -2,11 +2,11 @@
 ;; Manoel Vilela
 
 (defpackage :lisp-chat/client
-  (:use #:usocket
-        #:cl
-        #:lisp-chat/config
-        #:lisp-chat/client/net
-        #:bordeaux-threads)
+  (:use #:cl)
+  (:local-nicknames (#:usocket #:usocket)
+                    (#:config #:lisp-chat/config)
+                    (#:net #:lisp-chat/client/net)
+                    (#:bt #:bordeaux-threads))
   (:import-from #:websocket-driver
                 #:start-connection
                 #:on)
@@ -14,7 +14,7 @@
 
 (in-package :lisp-chat/client)
 
-(defvar *io-lock* (make-lock "io mutex")
+(defvar *io-lock* (bt:make-lock "io mutex")
   "I/O Mutex for avoid terminal race conditions")
 
 (defvar *periodic-ping-interval* 30
@@ -47,13 +47,13 @@
          (message (and input (string-trim '(#\Return #\Newline) input))))
     (declare (ignorable prompt))
     (prog1 message
-      (with-lock-held (*io-lock*)
+      (bt:with-lock-held (*io-lock*)
         (erase-last-line)))))
 
 (defun send-message (message socket)
   "Send a MESSAGE string through a SOCKET instance"
   (handler-case
-      (connection-send socket message)
+      (net:connection-send socket message)
     (error (c)
       (format t "~%Error sending message: ~a~%" c)
       (exit 1))))
@@ -61,13 +61,11 @@
 (defun fetch-message (socket)
   "Fetch a message from the SOCKET (TCP or WS)"
   (handler-case
-      (connection-read socket)
+      (net:connection-read socket)
     (error (c)
       (let ((decoding-error (find-symbol "CHARACTER-DECODING-ERROR" :babel-encodings)))
         (if (and decoding-error (typep c decoding-error))
-            (progn
-              ; (format t "~%[Warning]: Decoding error from server: ~a (skipping line)~%" c)
-              nil) ;; Return nil to skip this message
+            nil ;; Return nil to skip this message
             (progn
               (format t "~%Error fetching message: ~a~%" c)
               (exit 1)))))))
@@ -83,7 +81,7 @@
 #-swank
 (defun receive-message (message)
   "Receive a message and print in the terminal carefully with IO race conditions"
-  (with-lock-held (*io-lock*)
+  (bt:with-lock-held (*io-lock*)
     (unless (system-pongp message)
      (let ((line cl-readline:*line-buffer*)
            (prompt cl-readline:+prompt+))
@@ -131,9 +129,7 @@
   (handler-case (server-listener socket)
     (error (c)
       (if (< retries 10)
-          (progn
-            ; (format t "~%[Warning]: Communication error (~a). Retrying...~%" c)
-            (server-broadcast socket (1+ retries)))
+          (server-broadcast socket (1+ retries))
           (progn
             (format t "~%Fatal error in listener: ~a~%" c)
             (exit 1))))))
@@ -162,52 +158,53 @@
 The systematic pong is consumed and the @server response is not shown in the terminal
 "
   (loop (sleep *periodic-ping-interval*)
-        (ignore-errors
-         (send-message "/ping system" socket))))
+        (handler-case
+            (send-message "/ping system" socket)
+          (error () nil))))
 
 (defun process-connection (socket host port)
   (declare (ignorable port))
   (let ((username (login socket)))
-    (if (websocket-p host port)
+    (if (net:websocket-p host port)
         (format t "Connected via websocket: ~a@~a~%" username host)
         (format t "Connected via TCP socket: ~a@~a:~a~%" username host port))
-    (let ((broadcast (make-thread (lambda () (server-broadcast socket))
+    (let ((broadcast (bt:make-thread (lambda () (server-broadcast socket))
                                   :name "server broadcast"))
-          (background-ping (make-thread (lambda () (client-background-ping socket))
+          (background-ping (bt:make-thread (lambda () (client-background-ping socket))
                                         :name "background ping")))
       (client-sender socket username)
-      (destroy-thread background-ping)
-      (destroy-thread broadcast)
-      (connection-close socket))))
+      (bt:destroy-thread background-ping)
+      (bt:destroy-thread broadcast)
+      (net:connection-close socket))))
 
 (defun client-loop-web (host port)
-  (let* ((queue (make-safe-queue))
-         (client (make-client host))
-         (connection (make-ws-connection :client client :queue queue)))
+  (let* ((queue (net:make-safe-queue))
+         (client (net:make-client host))
+         (connection (net:make-ws-connection :client client :queue queue)))
     (on :message client
         (lambda (message)
-          (queue-push queue message)))
+          (net:queue-push queue message)))
     (on :close client
         (lambda (&key code reason)
           (declare (ignore code reason))
-          (queue-push queue :eof)))
+          (net:queue-push queue :eof)))
     (start-connection client)
     (process-connection connection host port)))
 
 (defun client-loop-tcp (host port)
-  (let ((socket (socket-connect host port)))
+  (let ((socket (usocket:socket-connect host port)))
     (process-connection socket host port)))
 
 (defun client-loop (host port)
   "Dispatch client threads for basic functioning system"
-  (if (websocket-p host port)
+  (if (net:websocket-p host port)
       (client-loop-web host port)
       (client-loop-tcp host port)))
 
 
-(defun main (&key (host *host*) (port *port*))
+(defun main (&key (host config:*host*) (port config:*port*))
   "Main function of client"
-  (setf *client-type* "readline-interface")
+  (setf net:*client-type* "readline-interface")
   (handler-case (client-loop host port)
     (#+sbcl sb-sys:interactive-interrupt
      #+ccl  ccl:interrupt-signal-condition

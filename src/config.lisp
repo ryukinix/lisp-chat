@@ -24,6 +24,7 @@
 (defparameter *persistence-file* "messages.sexp")
 
 (defun get-version ()
+  "Get the application version."
   (let ((system (asdf:find-system :lisp-chat)))
     (format nil "~a~a"
             (asdf:component-version system)
@@ -31,5 +32,6 @@
 
 
 (defun has-any-flags (argv &rest flags)
+  "Check if any of the given flags are present"
   (loop for flag in flags
         thereis (find flag argv :test #'equal)))

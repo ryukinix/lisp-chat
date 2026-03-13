@@ -18,7 +18,7 @@
 
 (defmacro with-tcp-client ((stream) &body body)
   (let ((socket (gensym)))
-    `(let* ((,socket (usocket:socket-connect "127.0.0.1" *port*))
+    `(let* ((,socket (usocket:socket-connect "127.0.0.1" config:*port*))
             (,stream (usocket:socket-stream ,socket)))
        (unwind-protect
             (progn ,@body)
@@ -27,7 +27,7 @@
 (defmacro with-websocket-client ((client messages-var &key additional-headers) &body body)
   (let ((url (gensym))
         (connected (gensym)))
-    `(let* ((,url (format nil "ws://127.0.0.1:~a/ws" *websocket-port*))
+    `(let* ((,url (format nil "ws://127.0.0.1:~a/ws" config:*websocket-port*))
             (,client (make-client ,url :additional-headers ,additional-headers))
             (,connected nil)
             (,messages-var '()))
@@ -79,7 +79,7 @@ Returns the line as a string, or NIL if it timed out."
          (loop
            (let ((line (read-line-with-timeout stream 1)))
              (when line
-               (when *debug* (format t "RECV: ~A~%" line))
+               (when config:*debug* (format t "RECV: ~A~%" line))
                (when (search pattern line)
                  (setf found t)
                  (return))))
@@ -238,7 +238,6 @@ Returns the line as a string, or NIL if it timed out."
       "/search msg :limit 2"
       '(:expect "MSG2")
       '(:expect "msg3"))))
-
 
 
 (define-test search-command-with-date-filters

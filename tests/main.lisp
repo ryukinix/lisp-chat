@@ -5,12 +5,12 @@
 
 (defvar *server-thread* nil)
 (defparameter *print-names* t)
-(defparameter *port* 9996)
-(defparameter *debug* (or (uiop:getenv "DEBUG")
+(defparameter config:*port* 9996)
+(defparameter config:*debug* (or (uiop:getenv "DEBUG")
                           (uiop:getenv "ACTIONS_STEP_DEBUG")))
-(defparameter *websocket-port* 9997)
-(defparameter *lisp-command-timeout* 0.5)
-(defparameter *persistence-file* "messages.test.sexp")
+(defparameter config:*websocket-port* 9997)
+(defparameter config:*lisp-command-timeout* 0.5)
+(defparameter config:*persistence-file* "messages.test.sexp")
 
 
 (defun start-test-server ()
@@ -29,6 +29,7 @@
   (sleep 1))
 
 (defun run-tests ()
+  "Run all lisp-chat tests, exit with 1 if fails, 0 otherwise"
   (start-test-server)
   (unwind-protect
        (let ((report (parachute:test 'lisp-chat-tests)))

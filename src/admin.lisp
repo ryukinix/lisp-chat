@@ -1,10 +1,12 @@
 (defpackage #:lisp-chat/admin
-  (:use #:cl #:lisp-chat/server #:lisp-chat/config)
+  (:use #:cl)
+  (:local-nicknames (#:server #:lisp-chat/server)
+                    (#:config #:lisp-chat/config))
   (:export #:main))
 
 (in-package #:lisp-chat/admin)
 
-(defun load-messages (&optional (file *persistence-file*))
+(defun load-messages (&optional (file config:*persistence-file*))
   (when (probe-file file)
     (let ((*package* (find-package :lisp-chat/server)))
       (with-open-file (in file :direction :input)
@@ -12,7 +14,7 @@
               until (eq msg :eof)
               collect msg)))))
 
-(defun save-messages (messages &optional (file *persistence-file*))
+(defun save-messages (messages &optional (file config:*persistence-file*))
   (with-open-file (out file
                        :direction :output
                        :if-exists :supersede
@@ -24,7 +26,7 @@
 
 (defun delete-channel (channel)
   (let* ((messages (load-messages))
-         (filtered (remove-if (lambda (m) (equal (message-channel m) channel))
+         (filtered (remove-if (lambda (m) (equal (server:message-channel m) channel))
                               messages)))
     (save-messages filtered)
     (format t "Deleted channel ~a and its messages (~d messages removed).~%"
@@ -32,29 +34,29 @@
 
 (defun delete-user-messages (user)
   (let* ((messages (load-messages))
-         (filtered (remove-if (lambda (m) (equal (message-from m) user))
+         (filtered (remove-if (lambda (m) (equal (server:message-from m) user))
                               messages)))
     (save-messages filtered)
     (format t "Deleted all messages from user ~a (~d messages removed).~%"
             user (- (length messages) (length filtered)))))
 
 (defun rename-channel (old-name new-name)
-  (let* ((messages (load-messages))
-         (changed 0))
+  (let ((messages (load-messages))
+        (changed 0))
     (dolist (m messages)
-      (when (equal (message-channel m) old-name)
-        (setf (message-channel m) new-name)
+      (when (equal (server:message-channel m) old-name)
+        (setf (server:message-channel m) new-name)
         (incf changed)))
     (save-messages messages)
     (format t "Renamed channel ~a to ~a (~d messages updated).~%"
             old-name new-name changed)))
 
 (defun rename-user (old-name new-name)
-  (let* ((messages (load-messages))
-         (changed 0))
+  (let ((messages (load-messages))
+        (changed 0))
     (dolist (m messages)
-      (when (equal (message-from m) old-name)
-        (setf (message-from m) new-name)
+      (when (equal (server:message-from m) old-name)
+        (setf (server:message-from m) new-name)
         (incf changed)))
     (save-messages messages)
     (format t "Renamed user ~a to ~a (~d messages updated).~%"
@@ -63,19 +65,19 @@
 (defun search-messages (query)
   (let ((messages (load-messages)))
     (dolist (m messages)
-      (when (search query (message-content m) :test #'char-equal)
-        (format t "~a~%" (search-message m))))))
+      (when (search query (server:message-content m) :test #'char-equal)
+        (format t "~a~%" (server:search-message m))))))
 
 (defun show-history (&key channel user limit)
   (let ((messages (load-messages)))
     (when channel
-      (setf messages (remove-if-not (lambda (m) (equal (message-channel m) channel)) messages)))
+      (setf messages (remove-if-not (lambda (m) (equal (server:message-channel m) channel)) messages)))
     (when user
-      (setf messages (remove-if-not (lambda (m) (equal (message-from m) user)) messages)))
+      (setf messages (remove-if-not (lambda (m) (equal (server:message-from m) user)) messages)))
     (when limit
       (setf messages (last messages limit)))
     (dolist (m messages)
-      (format t "~a~%" (formatted-message m :date-format "date")))))
+      (format t "~a~%" (server:formatted-message m :date-format "date")))))
 
 (defun stats (&key (days 7))
   (let ((messages (load-messages))
@@ -86,10 +88,10 @@
         (total 0))
     (setf total (length messages))
     (dolist (m messages)
-      (incf (gethash (message-from m) user-counts 0))
-      (incf (gethash (message-channel m) channel-counts 0))
-      (incf (gethash (nth 2 (message-time m)) hour-counts 0))
-      (let* ((time-list (message-time m))
+      (incf (gethash (server:message-from m) user-counts 0))
+      (incf (gethash (server:message-channel m) channel-counts 0))
+      (incf (gethash (nth 2 (server:message-time m)) hour-counts 0))
+      (let* ((time-list (server:message-time m))
              (date-str (format nil "~4,'0d-~2,'0d-~2,'0d" (nth 5 time-list) (nth 4 time-list) (nth 3 time-list))))
         (incf (gethash date-str daily-counts 0))))
     (format t "Total messages: ~d~%" total)
@@ -126,7 +128,7 @@
 
 (defmacro with-global-options (cmd &body body)
   `(let ((file (clingon:getopt ,cmd :file)))
-     (let ((*persistence-file* (or file *persistence-file*)))
+     (let ((config:*persistence-file* (or file config:*persistence-file*)))
        ,@body)))
 
 (defun delete-channel-handler (cmd)
@@ -182,7 +184,7 @@
   (clingon:make-command
    :name "lisp-chat-admin"
    :description "Admin tools for lisp-chat"
-   :version (get-version)
+   :version (config:get-version)
    :handler #'top-level-handler
    :options (list
              (clingon:make-option
@@ -253,5 +255,6 @@
                    :handler #'stats-handler))))
 
 (defun main (&optional (argv (uiop:command-line-arguments)))
+  "Main entry point"
   (let ((app (make-admin-command)))
     (clingon:run app argv)))

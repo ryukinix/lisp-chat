@@ -2,10 +2,10 @@
 ;; Manoel Vilela
 
 (defpackage #:lisp-chat/server
-  (:use #:usocket
-        #:cl
-        #:lisp-chat/config
-        #:bordeaux-threads)
+  (:use #:cl)
+  (:local-nicknames (:config :lisp-chat/config)
+                    (:bt :bordeaux-threads)
+                    (:usocket :usocket))
   (:import-from #:websocket-driver
                 #:make-server
                 #:ws
@@ -59,7 +59,9 @@
            #:startswith))
 
 (defpackage #:lisp-chat/commands
-  (:use #:cl #:lisp-chat/server #:lisp-chat/config)
+  (:use #:cl)
+  (:local-nicknames (:server :lisp-chat/server)
+                    (:config :lisp-chat/config))
   (:export #:get-command
            #:get-commands
            #:call-command))

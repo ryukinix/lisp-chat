@@ -1,9 +1,9 @@
 (defpackage :lisp-chat/tui
-  (:use #:cl
-        #:lisp-chat/config
-        #:lisp-chat/client/net
-        #:tuition
-        #:bordeaux-threads)
+  (:use #:cl)
+  (:local-nicknames (#:config #:lisp-chat/config)
+                    (#:net #:lisp-chat/client/net)
+                    (#:bt #:bordeaux-threads)
+                    (#:tui #:tuition))
   (:local-nicknames (#:vp #:tuition.components.viewport)
                     (#:ti #:tuition.components.textinput))
   (:import-from #:usocket
@@ -49,7 +49,7 @@
                 (sb-alien:slot ws 'ws-row))
           (cons 80 24))))
 
-  (defun tuition::get-terminal-size ()
+  (defun tuition:get-terminal-size ()
     (sbcl-get-terminal-size)))
 
 ;;; Constants and Configuration
@@ -129,7 +129,7 @@
 
 ;;; Messages
 
-(defmessage server-msg
+(tui:defmessage server-msg
   ((text :initarg :text :accessor server-msg-text)))
 
 ;;; Helper Functions
@@ -141,10 +141,10 @@
        (tui:send program (make-instance 'server-msg :text msg))))))
 
 (defun start-listener (program socket)
-  (make-thread
+  (bt:make-thread
    (lambda ()
      (loop
-       (let ((msg (connection-read socket)))
+       (let ((msg (net:connection-read socket)))
          (when (or (null msg) (eq msg :eof))
            (tui:send program (make-instance 'server-msg :text "Disconnected from server."))
            (return))
@@ -153,14 +153,14 @@
 
 (defun start-ping-thread (model)
   (setf (ping-thread model)
-        (make-thread
+        (bt:make-thread
          (lambda ()
            (loop while (connected model)
                  do (sleep 30)
                     (when (connected model)
                       (handler-case
                           (when (username model)
-                           (connection-send (socket model) "/users"))
+                           (net:connection-send (socket model) "/users"))
                         (error (c)
                           (declare (ignore c))
                           (setf (connected model) nil))))))
@@ -226,30 +226,30 @@
   (let* ((url (if (or (search "ws://" host) (search "wss://" host))
                  host
                  (format nil "ws://~a:~a/ws" host port)))
-         (client (make-client url))
-         (queue (make-safe-queue))
-         (connection (make-ws-connection :client client :queue queue)))
+         (client (net:make-client url))
+         (queue (net:make-safe-queue))
+         (connection (net:make-ws-connection :client client :queue queue)))
     (setf (socket model) connection)
     (on :message client
         (lambda (msg)
-          (queue-push queue msg)))
+          (net:queue-push queue msg)))
     (on :close client
         (lambda (&key code reason)
           (declare (ignore code reason))
-          (queue-push queue :eof)))
+          (net:queue-push queue :eof)))
     (start-connection client)
     (setf (connected model) t)
     (start-listener tui:*current-program* connection)))
 
 (defun connect-tcp (model host port)
-  (let ((socket (socket-connect host port)))
+  (let ((socket (usocket:socket-connect host port)))
     (setf (socket model) socket)
     (setf (connected model) t)
     (start-listener tui:*current-program* socket)))
 
 (defmethod tui:init ((model chat-model))
-  (let ((host *host*)
-        (port *port*))
+  (let ((host config:*host*)
+        (port config:*port*))
     (setf (viewport model) (vp:make-viewport :height 20 :width 60)
           (users-viewport model) (vp:make-viewport :height 1 :width 60)
           (input model) (ti:make-textinput :prompt "> " :placeholder "Type a message..."))
@@ -258,7 +258,7 @@
 
     (handler-case
         (progn
-          (if (websocket-p host port)
+          (if (net:websocket-p host port)
               (connect-websocket model host port)
               (connect-tcp model host port))
 
@@ -289,13 +289,13 @@
        (ti:textinput-reset (input model)))
       ((string= text "/users")
        (incf (users-request-count model))
-       (connection-send (socket model) text)
+       (net:connection-send (socket model) text)
        (vp:viewport-goto-bottom (viewport model))
        (ti:textinput-reset (input model)))
       ((connected model)
        (unless (username model)
          (setf (pending-username model) text))
-       (connection-send (socket model) text)
+       (net:connection-send (socket model) text)
        (vp:viewport-goto-bottom (viewport model))
        (ti:textinput-reset (input model)))
       (t
@@ -341,8 +341,8 @@
          (setf (ti:textinput-prompt (input model))
                (render-user-prefix joined-user))
          (recalculate-layout model)
-         (connection-send (socket model) "/users")
-         (connection-send (socket model) "/log 100"))))
+         (net:connection-send (socket model) "/users")
+         (net:connection-send (socket model) "/log 100"))))
     ;; Exit
     ((search "exited from the party :(" content)
      (let ((exited-user (subseq content 10 (search " exited" content))))
@@ -402,12 +402,11 @@
 
                   (push (list :msg (format-chat-message time user content)) (messages model))
                   (setf should-render t))))
-            (progn
-               ;; Filter raw pong messages too if they appear without standard formatting
-               (unless (search "pong" text)
-                  (let ((colored-text (colorize-mentions text)))
-                    (push (list :msg colored-text) (messages model))
-                    (setf should-render t)))))))
+            ;; Filter raw pong messages too if they appear without standard formatting
+            (unless (search "pong" text)
+              (let ((colored-text (colorize-mentions text)))
+                (push (list :msg colored-text) (messages model))
+                (setf should-render t))))))
     (when should-render
       (render-messages model)))
   model)
@@ -419,12 +418,13 @@
    (vp:viewport-view (viewport model))
    (tui:render-border (ti:textinput-view (input model)) tui:*border-rounded*)))
 
-(defun main (&key (host *host*) (port *port*))
-  (setf *client-type* "TUI")
+(defun main (&key (host config:*host*) (port config:*port*))
+  "Main entry point for the TUI client."
+  (setf net:*client-type* "TUI")
   (handler-case
       (let ((model (make-instance 'chat-model)))
-        (setf *host* host
-              *port* port)
+        (setf config:*host* host
+              config:*port* port)
         (tui:run (tui:make-program model :alt-screen t :mouse :cell-motion)))
     (error (c)
       (format t "Fatal error: ~a~%" c)

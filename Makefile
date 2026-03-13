@@ -5,10 +5,10 @@ PUBLIC_IMG = ryukinix/$(DOCKER_IMG):$(VERSION)
 ROS_TEST_FLAGS = -e "(sb-ext:disable-debugger)" -s lisp-chat/tests
 
 lint:
-	mallet --format line src
+	mallet --format line src tests
 
 docker-lint:
-	docker run --rm -t -v $(PWD):/src fukamachi/mallet:latest --format line src
+	docker run --rm -t -v $(PWD):/src fukamachi/mallet:latest --format line src tests
 
 version:
 	@echo $(APP_VERSION)
