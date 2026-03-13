@@ -8,7 +8,10 @@ exec ros -Q -- $0 "$@"
   #+quicklisp(ql:quickload '(:lisp-chat/server) :silent t))
 
 (defpackage :ros.script.lisp-chat-server
-  (:use :cl))
+  (:use :cl)
+  (:local-nicknames (#:config #:lisp-chat/config)
+                    (#:server #:lisp-chat/server)))
+
 (in-package :ros.script.lisp-chat-server)
 
 
@@ -21,8 +24,8 @@ OPTIONS
     port           server port, default: ~a
     -h | --help    show this message
     -v | --version show version of the software
-" lisp-chat/config:*host*
-  lisp-chat/config:*port*))
+" config:*host*
+  config:*port*))
 
 (defun main (&rest argv)
   (declare (ignorable argv))
@@ -30,15 +33,15 @@ OPTIONS
   (let ((host (car argv))
         (port (cadr argv)))
     (when host
-      (setq lisp-chat/config:*host* host))
+      (setq config:*host* host))
     (when port
-      (setq lisp-chat/config:*port* (parse-integer port))
-      (setq lisp-chat/config:*websocket-port*
-            (1+ lisp-chat/config:*port*))))
+      (setq config:*port* (parse-integer port))
+      (setq config:*websocket-port*
+            (1+ config:*port*))))
 
   (cond
-    ((lisp-chat/config:has-any-flags argv "-h" "--help") (princ *usage*))
-    ((lisp-chat/config:has-any-flags argv "-v" "--version") (princ (lisp-chat/config:get-version)))
-    (t (lisp-chat/server:main :host lisp-chat/config:*host*
-                              :port lisp-chat/config:*port*))))
+    ((config:has-any-flags argv "-h" "--help") (princ *usage*))
+    ((config:has-any-flags argv "-v" "--version") (princ (config:get-version)))
+    (t (server:main :host config:*host*
+                    :port config:*port*))))
 ;;; vim: set ft=lisp lisp:

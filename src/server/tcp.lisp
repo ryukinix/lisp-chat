@@ -29,7 +29,7 @@
   USOCKET:SOCKET-ACCEPT. This shit create a lot of side effects as messages
   if the debug is on because this makes all the log stuff to make analysis"
   (debug-format t "Incoming connection from ~a ~%" (socket-peer-address connection))
-  (let ((client-stream (socket-stream connection)))
+  (let ((client-stream (usocket:socket-stream connection)))
     (write-line "> Type your username: " client-stream)
     (finish-output client-stream)
     (let* ((name (read-line client-stream))
@@ -41,7 +41,7 @@
                                 :time (get-time)
                                 :active-channel active-channel)))
       (setf (gethash name *user-channels*) active-channel)
-      (with-lock-held (*client-lock*)
+      (bt:with-lock-held (*client-lock*)
         (debug-format t "Added new user ~a@~a ~%"
                       (client-name client)
                       (client-address client))
@@ -49,7 +49,7 @@
       (user-joined-message client)
       (when history-channel
         (send-message client (command-message (format nil "You were restored to channel ~a" active-channel))))
-      (make-thread
+      (bt:make-thread
          (lambda () (client-reader client))
          :name (format nil "reader-thread: ~a" (client-name client))))))
 
@@ -70,14 +70,14 @@ exceptions."
                  (string= prefix (subseq name 0 (length prefix))))
         (when (bt:thread-alive-p thread)
           (interrupt-thread-portable thread)
-          (join-thread thread)))))))
+          (bt:join-thread thread)))))))
 
 (defun connection-handler (socket-server)
   "This is a special thread just for accepting connections from SOCKET-SERVER
    and creating new clients from it."
   (handler-case
-       (loop for connection = (socket-accept socket-server)
-         do (make-thread (lambda () (safe-client-thread connection))
+       (loop for connection = (usocket:socket-accept socket-server)
+         do (bt:make-thread (lambda () (safe-client-thread connection))
                          :name "create client"))
     (#.(system-interrupt) ()
       (interrupt-client-reader-threads))))

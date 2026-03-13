@@ -2,29 +2,31 @@
 
 (defun push-message (from content &key (channel "#general"))
   "Push a messaged FROM as CONTENT into the *messages-stack*"
-  (with-lock-held (*messages-lock*)
+  (bt:with-lock-held (*messages-lock*)
     (push (make-message :from from
                         :content content
                         :time (get-time)
                         :channel channel)
           *messages-stack*))
-  (signal-semaphore *message-semaphore*))
+  (bt:signal-semaphore *message-semaphore*))
 
 (defun user-joined-message (client)
+  "Create a user joined message for the given client."
   (push-message "@server" (format nil "The user @~a joined to the party! ~a"
                                   (client-name client)
                                   (client-active-channel client))
                 :channel (client-active-channel client)))
 
 (defun user-exited-message (client)
+  "Create a user exited message for the given client."
   (push-message "@server" (format nil "The user @~a exited from the party :( ~a"
                                   (client-name client)
                                   (client-active-channel client))
                 :channel (client-active-channel client)))
 
 (defun save-message-to-disk (message-raw)
-  "Save a single MESSAGE-RAW struct into *persistence-file*"
-  (with-open-file (out *persistence-file*
+  "Save a single MESSAGE-RAW struct into config:*persistence-file*"
+  (with-open-file (out config:*persistence-file*
                        :direction :output
                        :if-exists :append
                        :if-does-not-exist :create)
@@ -36,14 +38,14 @@
   (let ((socket (client-socket client)))
     (typecase socket
       (usocket:stream-usocket
-       (socket-close socket))
+       (usocket:socket-close socket))
       (t
        (websocket-driver:close-connection socket)))))
 
 (defun client-delete (client)
   "Delete a CLIENT from the list *clients*"
   (let ((removed? nil))
-    (with-lock-held (*client-lock*)
+    (bt:with-lock-held (*client-lock*)
       (when (member client *clients*)
         (setf *clients* (remove client *clients*))
         (setf removed? t)))
@@ -60,7 +62,7 @@
     (let ((socket (client-socket client)))
       (typecase socket
         (usocket:stream-usocket
-         (let ((stream (socket-stream socket)))
+         (let ((stream (usocket:socket-stream socket)))
            (write-line message stream)
            (finish-output stream)))
         (t
@@ -74,9 +76,9 @@
 (defun message-broadcast ()
   "This procedure is a general independent thread to run brodcasting
    all the clients when a message is ping on this server"
-  (loop when (wait-on-semaphore *message-semaphore*)
-          do (let* ((message-raw (with-lock-held (*messages-lock*)
-                                   (pop *messages-stack*))))
+  (loop when (bt:wait-on-semaphore *message-semaphore*)
+          do (let ((message-raw (bt:with-lock-held (*messages-lock*)
+                                 (pop *messages-stack*))))
                (when message-raw
                  (let ((message (formatted-message message-raw)))
                    (unless (message-should-not-be-saved-p message-raw)

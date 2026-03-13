@@ -8,7 +8,12 @@ exec ros -Q -- $0 "$@"
   #+quicklisp (ql:quickload '(lisp-chat/client lisp-chat/tui) :silent t))
 
 (defpackage :ros.script.lisp-chat
-  (:use :cl))
+  (:use :cl)
+  (:local-nicknames (#:config #:lisp-chat/config)
+                    (#:client #:lisp-chat/client)
+                    (#:net #:lisp-chat/client/net)
+                    (#:tui #:lisp-chat/tui)))
+
 (in-package :ros.script.lisp-chat)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
@@ -25,18 +30,19 @@ OPTIONS
     -r | --readline use the readline version
     -h | --help     show this message
     -v | --version  show version of the software
-" lisp-chat/config:*host*
-  lisp-chat/config:*port*))
+"
+          config:*host*
+          config:*port*))
 
 (defun setup-host-port (host port)
   (when host
     (setq lisp-chat/config:*host* host)
     ;; If host is WS, we might want to default to websocket-port if port not provided
-    (when (and (lisp-chat/tui::websocket-p host port)
+    (when (and (net:websocket-p host port)
                (null port))
-      (setq lisp-chat/config:*port* lisp-chat/config:*websocket-port*)))
+      (setq config:*port* config:*websocket-port*)))
   (when port
-    (setq lisp-chat/config:*port* (parse-integer port))))
+    (setq config:*port* (parse-integer port))))
 
 (defun clean-args (args)
   "Remove dashed args like -flag and --flags"
@@ -51,11 +57,11 @@ OPTIONS
     (setup-host-port host port))
 
   (cond
-    ((lisp-chat/config:has-any-flags argv "-h" "--help") (princ *usage*))
-    ((lisp-chat/config:has-any-flags argv "-v" "--version") (princ (lisp-chat/config:get-version)))
-    ((lisp-chat/config:has-any-flags argv "-r" "--readline")
-   (lisp-chat/client:main :host lisp-chat/config:*host*
-                            :port lisp-chat/config:*port*))
-    (t (lisp-chat/tui:main :host lisp-chat/config:*host*
-                           :port lisp-chat/config:*port*))))
+    ((config:has-any-flags argv "-h" "--help") (princ *usage*))
+    ((config:has-any-flags argv "-v" "--version") (princ (config:get-version)))
+    ((config:has-any-flags argv "-r" "--readline")
+     (client:main :host config:*host*
+                  :port config:*port*))
+    (t (tui:main :host config:*host*
+                 :port config:*port*))))
 ;;; vim: set ft=lisp lisp:

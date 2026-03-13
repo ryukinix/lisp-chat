@@ -4,7 +4,7 @@
   :parent lisp-chat-tests)
 
 (defun api-url (path)
-  (format nil "http://127.0.0.1:~a~a" *websocket-port* path))
+  (format nil "http://127.0.0.1:~a~a" config:*websocket-port* path))
 
 (define-test unauthenticated-api-commands
   :parent api-tests

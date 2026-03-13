@@ -48,7 +48,7 @@
                                                 :user-agent (gethash "user-agent" (getf env :headers))
                                                 :active-channel active-channel))
                       (setf (gethash name *user-channels*) active-channel)
-                      (with-lock-held (*client-lock*)
+                      (bt:with-lock-held (*client-lock*)
                         (push client *clients*))
                       (user-joined-message client)
                       (recalculate-client-latency client)
@@ -75,14 +75,14 @@
 
 (setf (ningle:route *web-app* "/api/commands/:command" :method :OPTIONS)
       (lambda (params)
-        (let* ((command-name (cdr (assoc :command params)))
-               (env (lack.request:request-env ningle:*request*)))
+        (let ((command-name (cdr (assoc :command params)))
+              (env (lack.request:request-env ningle:*request*)))
           (api-options-app env (concatenate 'string "/" command-name)))))
 
 (setf (ningle:route *web-app* "/api/commands/:command" :method :POST)
       (lambda (params)
-        (let* ((command-name (cdr (assoc :command params)))
-               (env (lack.request:request-env ningle:*request*)))
+        (let ((command-name (cdr (assoc :command params)))
+              (env (lack.request:request-env ningle:*request*)))
           (api-app env (concatenate 'string "/" command-name)))))
 
 (setf (ningle:route *web-app* "/ws")

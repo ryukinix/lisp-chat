@@ -9,10 +9,10 @@
 (defvar *raw-command-message* nil "If true, return raw strings instead of formatted-messages")
 
 ;; thread control
-(defvar *message-semaphore* (make-semaphore :name "message semaphore"
+(defvar *message-semaphore* (bt:make-semaphore :name "message semaphore"
                                             :count 0))
-(defvar *client-lock* (make-lock "client list lock"))
-(defvar *messages-lock* (make-lock "messages stack lock"))
+(defvar *client-lock* (bt:make-lock "client list lock"))
+(defvar *messages-lock* (bt:make-lock "messages stack lock"))
 (defvar *day-names* '("Monday" "Tuesday" "Wednesday"
                       "Thursday" "Friday" "Saturday" "Sunday")
   "Day names")
@@ -42,7 +42,7 @@
 (defun system-interrupt ()
   #+sbcl 'sb-sys:interactive-interrupt
   #+ccl  'ccl:interrupt-signal-condition
-  #+clisp 'system::simple-interrupt-condition
+  #+clisp '#.(intern "SIMPLE-INTERRUPT-CONDITION" "SYSTEM")
   #+ecl 'ext:interactive-interrupt
   #+allegro 'excl:interrupt-signal)
 
@@ -51,11 +51,13 @@
                        (lambda () (error (system-interrupt)))))
 
 (defun client-socket-type (client)
+  "Return the socket type for the given client."
   (typecase (client-socket client)
     (usocket:stream-usocket "TCP")
     (t "WebSocket")))
 
 (defun get-client (client-name)
+  "Get client by name"
   (find client-name
         *clients*
         :test (lambda (name client) (equal name (client-name client)))))
@@ -68,17 +70,17 @@
 (defun socket-peer-address (socket)
   "Given a USOCKET:SOCKET instance return a ipv4 encoded IP string"
   (format nil "~{~a~^.~}\:~a"
-          (map 'list #'identity (get-peer-address socket))
-          (get-peer-port socket)))
+          (map 'list #'identity (usocket:get-peer-address socket))
+          (usocket:get-peer-port socket)))
 
 (defun client-stream (c)
   "Select the stream IO from the client"
-  (socket-stream (client-socket c)))
+  (usocket:socket-stream (client-socket c)))
 
 (defun debug-format (&rest args)
-  "If *debug* from lisp-chat-config is true, print debug info on
+  "If config:*debug* from lisp-chat-config is true, print debug info on
    running based on ARGS"
-  (when *debug*
+  (when config:*debug*
       (apply #'format args)))
 
 (defun get-time ()
@@ -86,6 +88,7 @@
   (multiple-value-list (get-decoded-time)))
 
 (defun format-time (time)
+  "Format a time list into a string."
   (multiple-value-bind
         (second minute hour date month year day-of-week dst-p tz)
       (values-list time)
@@ -98,11 +101,13 @@
             (- tz))))
 
 (defun message-time-hour-format (message)
+  "Format message time to hour format"
   (destructuring-bind (second minute hour &rest rest-of-list) (message-time message)
     (declare (ignore rest-of-list))
     (format nil "~2,'0d:~2,'0d:~2,'0d" hour minute second)))
 
 (defun message-time-date-format (message)
+  "Format message time to date format"
   (destructuring-bind (second minute hour day month year &rest rest-of-list) (message-time message)
     (declare (ignore rest-of-list))
     (format nil "~4d-~2,'0d-~2,'0d ~2,'0d:~2,'0d:~2,'0d" year month day hour minute second)))
@@ -226,18 +231,19 @@
     (formatted-message message)))
 
 (defun reset-server ()
-  (with-lock-held (*client-lock*)
+  "Reset the server state."
+  (bt:with-lock-held (*client-lock*)
     (setf *clients* nil))
-  (with-lock-held (*messages-lock*)
+  (bt:with-lock-held (*messages-lock*)
     (setf *messages-stack* nil))
   (setf *user-channels* (make-hash-table :test 'equal))
   (setf *private-channels* (make-hash-table :test 'equal))
   (setf *messages-log* nil))
 
 (defun load-persistent-messages ()
-  "Load messages from *persistence-file* into *messages-log*"
-  (when (probe-file *persistence-file*)
-    (with-open-file (in *persistence-file* :direction :input)
+  "Load messages from config:*persistence-file* into *messages-log*"
+  (when (probe-file config:*persistence-file*)
+    (with-open-file (in config:*persistence-file* :direction :input)
       (handler-case
           (let ((msgs (loop for msg = (read in nil :eof)
                             until (eq msg :eof)
