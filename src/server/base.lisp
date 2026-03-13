@@ -39,6 +39,17 @@
   (active-channel "#general")
   (session-id (princ-to-string (uuid:make-v4-uuid))))
 
+(defun system-interrupt ()
+  #+sbcl 'sb-sys:interactive-interrupt
+  #+ccl  'ccl:interrupt-signal-condition
+  #+clisp 'system::simple-interrupt-condition
+  #+ecl 'ext:interactive-interrupt
+  #+allegro 'excl:interrupt-signal)
+
+(defun interrupt-thread-portable (thread)
+  (bt:interrupt-thread thread
+                       (lambda () (error (system-interrupt)))))
+
 (defun client-socket-type (client)
   (typecase (client-socket client)
     (usocket:stream-usocket "TCP")

@@ -19,21 +19,10 @@
   "This procedure is a wrapper for CLIENT-READER-ROUTINE
    treating all the possible errors based on HANDLER-CASE macro."
   (handler-case (client-reader-routine client)
-    (end-of-file () (client-delete client))
-    (#+sbcl sb-int:simple-stream-error
-     #-sbcl error
-     ()
-      (progn (debug-format t "~a@~a timed output"
-                           (client-name client)
-                           (client-address client))
-             (client-delete client)))
-    (#+sbcl sb-bsd-sockets:not-connected-error
-     #-sbcl error
-     ()
-      (progn (debug-format t "~a@~a not connected more."
-                           (client-name client)
-                           (client-address client))
-             (client-delete client)))))
+    (#.(system-interrupt) () (client-delete client))
+    (error (c)
+      (declare (ignore c))
+      (client-delete client))))
 
 (defun create-client (connection)
   "This procedure create a new client based on CONNECTION made by
@@ -60,8 +49,9 @@
       (user-joined-message client)
       (when history-channel
         (send-message client (command-message (format nil "You were restored to channel ~a" active-channel))))
-      (make-thread (lambda () (client-reader client))
-                   :name (format nil "~a reader thread" (client-name client))))))
+      (make-thread
+         (lambda () (client-reader client))
+         :name (format nil "reader-thread: ~a" (client-name client))))))
 
 ;; a function defined to handle the errors of client thread
 (defun safe-client-thread (connection)
@@ -71,9 +61,23 @@ exceptions."
     (end-of-file () nil)
     (usocket:address-in-use-error () nil)))
 
+(defun interrupt-client-reader-threads ()
+  (let ((prefix "reader-thread:"))
+  (dolist (thread (bt:all-threads))
+    (let ((name (bt:thread-name thread)))
+      (when (and name
+                 (> (length name) (length prefix))
+                 (string= prefix (subseq name 0 (length prefix))))
+        (when (bt:thread-alive-p thread)
+          (interrupt-thread-portable thread)
+          (join-thread thread)))))))
+
 (defun connection-handler (socket-server)
   "This is a special thread just for accepting connections from SOCKET-SERVER
    and creating new clients from it."
-  (loop for connection = (socket-accept socket-server)
-        do (make-thread (lambda () (safe-client-thread connection))
-                        :name "create client")))
+  (handler-case
+       (loop for connection = (socket-accept socket-server)
+         do (make-thread (lambda () (safe-client-thread connection))
+                         :name "create client"))
+    (#.(system-interrupt) ()
+      (interrupt-client-reader-threads))))

@@ -24,8 +24,7 @@
 
 (defun stop-test-server ()
   (when (and *server-thread* (bt:thread-alive-p *server-thread*))
-    #-sbcl (bt:destroy-thread *server-thread*)
-    #+sbcl (bt:interrupt-thread *server-thread* (lambda () (error 'sb-sys:interactive-interrupt))))
+    (interrupt-thread-portable *server-thread*))
   (setf *server-thread* nil)
   (sleep 1))
 
