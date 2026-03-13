@@ -1,5 +1,5 @@
 (defpackage :lisp-chat/tests
-  (:use :cl :cl-user :parachute)
+  (:use :cl :parachute)
   (:local-nicknames (:config :lisp-chat/config)
                     (:server :lisp-chat/server)
                     (:bt :bordeaux-threads)

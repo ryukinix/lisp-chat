@@ -29,6 +29,7 @@
   (sleep 1))
 
 (defun run-tests ()
+  "Run all lisp-chat tests, exit with 1 if fails, 0 otherwise"
   (start-test-server)
   (unwind-protect
        (let ((report (parachute:test 'lisp-chat-tests)))

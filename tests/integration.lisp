@@ -240,7 +240,6 @@ Returns the line as a string, or NIL if it timed out."
       '(:expect "msg3"))))
 
 
-
 (define-test search-command-with-date-filters
   :parent integration-tests
   (let ((today (get-current-date)))
