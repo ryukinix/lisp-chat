@@ -119,7 +119,9 @@
   (let* ((target-channel (if channel
                              (if (uiop:string-prefix-p "#" channel) channel (concatenate 'string "#" channel))
                              (server:client-active-channel client)))
-         (channel-users (remove-if-not (lambda (c) (string-equal (server:client-active-channel c) target-channel)) server:*clients*)))
+         (channel-users (remove-if-not (lambda (c) (string-equal (server:client-active-channel c)
+                                                            target-channel))
+                                       server:*clients*)))
     (server:command-message (format nil "users: ~{~a~^, ~}" (mapcar #'server:client-name channel-users)))))
 
 (defun /join (client &optional (channel nil) &rest args)

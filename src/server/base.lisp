@@ -42,7 +42,7 @@
 (defun system-interrupt ()
   #+sbcl 'sb-sys:interactive-interrupt
   #+ccl  'ccl:interrupt-signal-condition
-  #+clisp '#.(intern "SIMPLE-INTERRUPT-CONDITION" "SYSTEM")
+  #+clisp 'system::simple-interrupt-condition
   #+ecl 'ext:interactive-interrupt
   #+allegro 'excl:interrupt-signal)
 

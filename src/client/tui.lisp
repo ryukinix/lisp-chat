@@ -49,7 +49,7 @@
                 (sb-alien:slot ws 'ws-row))
           (cons 80 24))))
 
-  (defun #.(intern "GET-TERMINAL-SIZE" "TUITION") ()
+  (defun tuition:get-terminal-size ()
     (sbcl-get-terminal-size)))
 
 ;;; Constants and Configuration

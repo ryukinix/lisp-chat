@@ -208,7 +208,7 @@ The systematic pong is consumed and the @server response is not shown in the ter
   (handler-case (client-loop host port)
     (#+sbcl sb-sys:interactive-interrupt
      #+ccl  ccl:interrupt-signal-condition
-     #+clisp #.(intern "SIMPLE-INTERRUPT-CONDITION" "SYSTEM")
+     #+clisp system::simple-interrupt-condition
      #+ecl ext:interactive-interrupt
      #+allegro excl:interrupt-signal ()
       (exit 0))
