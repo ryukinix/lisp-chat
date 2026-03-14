@@ -4,6 +4,7 @@ const input = document.getElementById("message-input");
 const userList = document.getElementById("user-list");
 const LOG_HISTORY_SIZE = 100;
 const MAX_CACHE_SIZE = 200;
+const desktopMinWidth = 768;
 const messageCache = new Set();
 const messageHistory = [];
 const availableColors = [
@@ -142,7 +143,6 @@ function updateUsernamePrefix() {
         prefix.style.fontWeight = "bold";
         input.placeholder = "";
         input.disabled = false;
-        if (window.innerWidth > 768) input.focus();
     } else {
         prefix.textContent = "";
         if (username) {
@@ -151,8 +151,11 @@ function updateUsernamePrefix() {
         } else {
             input.placeholder = "Type your username...";
             input.disabled = false;
-            if (window.innerWidth > 768) input.focus();
         }
+    }
+    
+    if (!input.disabled && window.innerWidth > desktopMinWidth) {
+        input.focus();
     }
 }
 
@@ -582,7 +585,7 @@ input.addEventListener("focus", () => {
 });
 
 // Autofocus on desktop, prevent virtual keyboard popping up on mobile
-if (window.innerWidth > 768) {
+if (window.innerWidth > desktopMinWidth) {
     input.focus();
 }
 
