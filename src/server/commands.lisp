@@ -13,8 +13,6 @@
                              cl:macroexpand
                              cl:macroexpand-1)))
 
-(defvar *uptime* (server:get-time) "Uptime of server variable")
-
 (defun get-commands ()
   "Returns a list of all available command strings."
   (let ((commands '()))
@@ -245,7 +243,7 @@
   "/uptime returns a human-readable string to preset the uptime since the server started."
   (declare (ignorable client args))
   (server:command-message
-   (format nil "Server online since ~a" (server:format-time *uptime*))))
+   (format nil "Server online since ~a" (server:format-time server:*uptime*))))
 
 (defun /session (client &rest args)
   "/session returns the unique session UUID for the current client."

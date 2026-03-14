@@ -16,6 +16,8 @@
 (defvar *day-names* '("Monday" "Tuesday" "Wednesday"
                       "Thursday" "Friday" "Saturday" "Sunday")
   "Day names")
+(defvar *uptime* nil "Uptime of server variable, initialized at server start")
+
 
 (defstruct message
   "This structure abstract the type message with is saved
