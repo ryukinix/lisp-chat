@@ -45,3 +45,16 @@
    (is equal
        3
        (count #\@ message-string :test #'char-equal))))
+
+(define-test channel-normalization
+  :parent unit-tests
+  (is string= "#general" (server:normalize-channel "general"))
+  (is string= "#general" (server:normalize-channel "#general"))
+  (is string= "#general" (server:normalize-channel "%23general"))
+  (is string= "#general" (server:normalize-channel "  #general  "))
+  (is string= "#general" (server:normalize-channel "%23#general"))
+  (is eq nil (server:normalize-channel ""))
+  (is eq nil (server:normalize-channel "  "))
+  (is eq nil (server:normalize-channel "#"))
+  (is eq nil (server:normalize-channel "%23"))
+  (is eq nil (server:normalize-channel nil)))

@@ -115,7 +115,7 @@
    If CHANNEL is provided, show users in that channel."
   (declare (ignorable args))
   (let* ((target-channel (if channel
-                             (if (uiop:string-prefix-p "#" channel) channel (concatenate 'string "#" channel))
+                             (server:normalize-channel channel)
                              (server:client-active-channel client)))
          (channel-users (remove-if-not (lambda (c) (string-equal (server:client-active-channel c)
                                                             target-channel))
@@ -126,7 +126,7 @@
   "/join changes the active channel for the user"
   (declare (ignorable args))
   (if channel
-      (let ((new-channel (if (uiop:string-prefix-p "#" channel) channel (concatenate 'string "#" channel)))
+      (let ((new-channel (server:normalize-channel channel))
             (old-channel (server:client-active-channel client)))
         (if (string-equal new-channel old-channel)
             (server:command-message (format nil "You are already in ~a" new-channel))

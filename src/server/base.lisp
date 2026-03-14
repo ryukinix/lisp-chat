@@ -171,6 +171,18 @@
             for c2 across substring
             always (equal c1 c2)))))
 
+(defun normalize-channel (channel)
+  "Normalize channel name. Ensure it starts with #."
+  (when (and channel (> (length channel) 0))
+    (let ((c (string-trim '(#\Space #\Return #\Newline #\Tab) channel)))
+      (when (uiop:string-prefix-p "%23" c)
+        (setf c (subseq c 3)))
+      (when (uiop:string-prefix-p "#" c)
+        (setf c (subseq c 1)))
+      (if (zerop (length c))
+          nil
+          (concatenate 'string "#" c)))))
+
 (defun format-message-line (time from content)
   (format nil "|~a| [~a]: ~a" time from content))
 
