@@ -62,6 +62,9 @@
       ((and (string-equal command "/log")
             (eq (length args) 1))
        (/log client :depth (car args) :date-format "date"))
+      ((and (string-equal command "/users")
+            (eq (length args) 1))
+       (/users client :channel (car args)))
       ((string-equal command "/dm") (/dm client (car args) (extract-args-as-string message :accessor #'cddr)))
       ((string-equal command "/lisp") (/lisp client (extract-args-as-string message)))
       (command-function (apply command-function (cons client (parse-keywords args))))
@@ -73,14 +76,15 @@
       (write-to-string s)))
 
 ;; user commands prefixed with /
-(defun /search (client query &rest args &key user (limit "10") before after &allow-other-keys)
+(defun /search (client query &rest args &key user (limit "10") before after (global nil) &allow-other-keys)
   "/search QUERY searches for messages containing QUERY as substring.
    QUERY is an mandatory parameter.
    KEY PARAMETERS:
    :user USERNAME   - Filter by a specific user.
    :limit NUMBER    - Maximum number of messages to return (default 10).
    :before ISO-DATE - ISO format datetime filter (e.g., 2026-02-22T14:30).
-   :after ISO-DATE  - ISO format datetime filter (e.g., 2026-02-22T14:30)."
+   :after ISO-DATE  - ISO format datetime filter (e.g., 2026-02-22T14:30).
+   :global BOOLEAN  - Search across all channels."
   (declare (ignorable client args))
   (if (not query)
       (server:command-message "error: QUERY is mandatory parameter. Try /search QUERY")
@@ -91,7 +95,8 @@
              (filtered (remove-if-not
                         (lambda (m)
                           (and (not (equal (server:message-from m) "@server"))
-                               (string-equal (server:message-channel m) (server:client-active-channel client))
+                               (or global
+                                   (string-equal (server:message-channel m) (server:client-active-channel client)))
                                (search query
                                        (server:message-content m)
                                        :test #'char-equal)
@@ -107,19 +112,21 @@
         (if (not limited)
             (server:command-message "the search returned a empty result")
             (format nil "~{~a~^~%~}"
-                    (mapcar (lambda (m) (server:search-message m))
+                    (mapcar (lambda (m) (server:search-message m :global global))
                             (reverse limited)))))))
 
-(defun /users (client &optional (channel nil) &rest args)
-  "/users returns a list separated by commas of the currently logged users in the current channel.
-   If CHANNEL is provided, show users in that channel."
-  (declare (ignorable args))
+(defun /users (client &key (channel nil) (global nil) &allow-other-keys)
+  "/users returns a list separated by commas of the currently logged users.
+   If CHANNEL is provided, show users in that channel.
+   If GLOBAL is provided, show users in all channels."
   (let* ((target-channel (if channel
                              (server:normalize-channel channel)
                              (server:client-active-channel client)))
-         (channel-users (remove-if-not (lambda (c) (string-equal (server:client-active-channel c)
-                                                            target-channel))
-                                       server:*clients*)))
+         (channel-users (if global
+                            server:*clients*
+                            (remove-if-not (lambda (c) (string-equal (server:client-active-channel c)
+                                                               target-channel))
+                                           server:*clients*))))
     (server:command-message (format nil "users: ~{~a~^, ~}" (mapcar #'server:client-name channel-users)))))
 
 (defun /join (client &optional (channel nil) &rest args)
@@ -230,11 +237,14 @@
          (note "Note: /clear and /quit are front-end commands, depending the implementation of the client."))
     (server:command-message (format nil "Manual of lisp-chat:~%~{~a~^~%~}~%~%~a" docs note))))
 
-(defun /log (client &key (depth "20") (date-format nil) &allow-other-keys)
+(defun /log (client &key (depth "20") (date-format nil) (global nil) &allow-other-keys)
   "/log shows the last messages sent to the server.
-   DEPTH is optional number of messages frames from log"
+   DEPTH is optional number of messages frames from log
+   GLOBAL is optional boolean to search across all channels"
   (declare (ignorable client))
-  (let* ((messages (server:user-messages :date-format date-format :channel (server:client-active-channel client)))
+  (let* ((messages (server:user-messages :date-format date-format
+                                         :channel (server:client-active-channel client)
+                                         :global global))
          (log-size (min (or (parse-integer depth :junk-allowed t) 20)
                         (length messages))))
     (format nil "~{~a~^~%~}" (reverse (subseq messages 0

@@ -186,12 +186,14 @@
 (defun format-message-line (time from content)
   (format nil "|~a| [~a]: ~a" time from content))
 
-(defun formatted-message (message &key (date-format nil))
+(defun formatted-message (message &key (date-format nil) (global nil))
   "The default message format of this server. MESSAGE is a struct message"
   (let* ((time-str (if (string= date-format "date")
                        (message-time-date-format message)
                        (message-time-hour-format message)))
-         (from-str (message-from message))
+         (from-str (if global
+                       (format nil "~a:~a" (message-channel message) (message-from message))
+                       (message-from message)))
          (content-str (message-content message))
          (lines (split content-str :empty-seqs t :delimiterp (lambda (c) (char= c #\Newline)))))
     (format nil "~{~a~^~%~}"
@@ -199,10 +201,10 @@
                       (format-message-line time-str from-str line))
                     lines))))
 
-(defun user-messages (&key (date-format nil) (channel "#general"))
+(defun user-messages (&key (date-format nil) (channel "#general") (global nil))
   "Return only user messages, discard all messsages from @server"
-  (mapcar (lambda (m) (formatted-message m :date-format date-format))
-          (remove-if-not #'(lambda (m) (string-equal (message-channel m) channel))
+  (mapcar (lambda (m) (formatted-message m :date-format date-format :global global))
+          (remove-if-not #'(lambda (m) (or global (string-equal (message-channel m) channel)))
                      *messages-log*)))
 
 (defun message-universal-time (message)
@@ -231,13 +233,16 @@
                                (nth 0 date-fields)))      ;; year
     (error () nil)))
 
-(defun search-message (message &key)
+(defun search-message (message &key (global nil))
   "Format a message for the /search command.
-   The user part is prefixed with search:username."
-  (format nil "|~a| [search:~a]: ~a"
-          (message-time-date-format message)
-          (message-from message)
-          (message-content message)))
+   The user part is prefixed with search:username or channel:username if global."
+  (let ((user-part (if global
+                       (format nil "~a:~a" (message-channel message) (message-from message))
+                       (format nil "search:~a" (message-from message)))))
+    (format nil "|~a| [~a]: ~a"
+            (message-time-date-format message)
+            user-part
+            (message-content message))))
 
 (defun command-message (content)
   "This function prepare the CONTENT as a message by the @server"
