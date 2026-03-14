@@ -139,6 +139,10 @@ code {
     font-family: monospace;
 }
 
+.command {
+    color: #55efc4;
+}
+
 @media (max-width: 600px) {
     body {
         flex-direction: column;

@@ -116,7 +116,12 @@ function formatMessage(text) {
         return `${prefix}<span style="color: ${color}">@${user}</span>`;
     });
 
-    // 6. Restore URLs
+    // 6. Commands
+    processed = processed.replace(/(^|\s)(\/[a-zA-Z0-9_\-]+)/g, (match, prefix, command) => {
+        return `${prefix}<span class="command">${command}</span>`;
+    });
+
+    // 7. Restore URLs
     return processed.replace(/URLPLACEHOLDER(\d+)URL/g, (match, id) => {
         const url = urls[parseInt(id)];
         const escapedUrl = escapeHTML(url);
