@@ -1,15 +1,21 @@
+[![MELPA](https://melpa.org/packages/lisp-chat-badge.svg)](https://melpa.org/#/lisp-chat)
+
 # Lisp Chat Emacs Client
 
 An Emacs Lisp client for Lisp Chat with an ERC-like interface.
 
 ## Prerequisites
 
-- Emacs 26.1 or later.
+- Emacs 27.1 or later.
 - `websocket` package (installable via MELPA: `M-x package-install RET websocket RET`).
 
 ## Installation
 
-Add the `emacs` directory to your `load-path` in your `init.el`:
+The recommended way to install `lisp-chat` is via [MELPA](https://melpa.org/#/lisp-chat):
+
+`M-x package-install RET lisp-chat RET`
+
+For manual installation, add the `emacs` directory to your `load-path` in your `init.el`:
 
 ```elisp
 (add-to-list 'load-path "/path/to/lisp-chat/emacs")

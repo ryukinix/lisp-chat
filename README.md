@@ -4,7 +4,7 @@
 
 
 [![Quicklisp dist](http://quickdocs.org/badge/lisp-chat.svg)](http://quickdocs.org/lisp-chat/)
-
+[![MELPA](https://melpa.org/packages/lisp-chat-badge.svg)](https://melpa.org/#/lisp-chat)
 # Lisp Chat
 
 An experimental chat irc-like written in Lisp.
