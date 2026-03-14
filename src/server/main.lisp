@@ -46,7 +46,8 @@
           (bt:destroy-thread broadcast-thread))))))
 
 (defun main (&key (host config:*host*) (port config:*port*) (should-quit t))
-  "Well, this function run all the necessary shits."
+  "Main entrypoint to start the tcp-server and http server (with websockets)"
+  (setq *uptime* (get-time))
   (load-persistent-messages)
   (let ((socket-server nil)
         (error-code 0))
