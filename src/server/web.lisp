@@ -24,8 +24,7 @@
   (let* ((params (uiop:split-string (or query-string "") :separator "&"))
          (channel-param (find-if (lambda (p) (uiop:string-prefix-p "channel=" p)) params)))
     (if channel-param
-        (let ((val (subseq channel-param 8)))
-          (if (uiop:string-prefix-p "#" val) val (concatenate 'string "#" val)))
+        (normalize-channel (subseq channel-param 8))
         nil)))
 
 (defun ws-app (env)

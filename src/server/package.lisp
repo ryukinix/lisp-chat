@@ -57,7 +57,8 @@
            #:client-latency-ms
            #:reset-server
            #:split
-           #:startswith))
+           #:startswith
+           #:normalize-channel))
 
 (defpackage #:lisp-chat/commands
   (:use #:cl)
