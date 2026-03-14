@@ -142,6 +142,7 @@ function updateUsernamePrefix() {
         prefix.style.fontWeight = "bold";
         input.placeholder = "";
         input.disabled = false;
+        if (window.innerWidth > 768) input.focus();
     } else {
         prefix.textContent = "";
         if (username) {
@@ -150,6 +151,7 @@ function updateUsernamePrefix() {
         } else {
             input.placeholder = "Type your username...";
             input.disabled = false;
+            if (window.innerWidth > 768) input.focus();
         }
     }
 }
