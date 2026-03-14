@@ -143,6 +143,7 @@
    If :all t is provided, includes channels with no active users but have message history."
   (declare (ignorable client args))
   (let ((chan-users (make-hash-table :test 'equal)))
+    (setf (gethash "#general" chan-users) nil)
     (when all
       (loop for m in server:*messages-log*
             do (unless (nth-value 1 (gethash (server:message-channel m) chan-users))
