@@ -251,6 +251,23 @@ function processStructuredMessage(line, match) {
         if (!shouldRender) return;
     }
 
+    const lastMsg = chat.lastElementChild;
+    if (lastMsg && lastMsg.classList.contains("message") &&
+        lastMsg.dataset.date === effectiveDate &&
+        lastMsg.dataset.timeHm === timeHM &&
+        lastMsg.dataset.timeS === timeS &&
+        lastMsg.dataset.from === from) {
+        
+        const contentSpan = lastMsg.querySelector(".msg-content");
+        contentSpan.appendChild(document.createElement("br"));
+        const newContent = document.createElement("span");
+        newContent.innerHTML = formatMessage(content);
+        while(newContent.firstChild) {
+            contentSpan.appendChild(newContent.firstChild);
+        }
+        return;
+    }
+
     const div = createMessageElement(effectiveDate, timeHM, timeS, from, content);
     const seconds = calculateSeconds(timeHM, timeS);
 
@@ -309,6 +326,9 @@ function createMessageElement(date, timeHM, timeS, from, content) {
     const div = document.createElement("div");
     div.className = "message";
     div.dataset.date = date;
+    div.dataset.timeHm = timeHM;
+    div.dataset.timeS = timeS;
+    div.dataset.from = from;
 
     const timeSpan = document.createElement("span");
     timeSpan.className = "timestamp";
