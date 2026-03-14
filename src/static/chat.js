@@ -159,22 +159,22 @@ function updateUsernamePrefix() {
     }
 }
 
-function showLoginNotification() {
-    if (document.getElementById("login-notification")) return;
+function showLoginPanel() {
+    if (document.getElementById("login-panel")) return;
     const main = document.getElementById("main");
     if (!main) return;
-    const notif = document.createElement("div");
-    notif.id = "login-notification";
-    notif.innerHTML = `
+    const panel = document.createElement("div");
+    panel.id = "login-panel";
+    panel.innerHTML = `
         <h2>Login</h2>
-        <p>Set your username to start chatting</p>
+        <p>Set a username</p>
     `;
-    main.appendChild(notif);
+    main.appendChild(panel);
 }
 
-function hideLoginNotification() {
-    const notif = document.getElementById("login-notification");
-    if (notif) notif.remove();
+function hideLoginPanel() {
+    const panel = document.getElementById("login-panel");
+    if (panel) panel.remove();
 }
 
 function showNotification(text) {
@@ -234,7 +234,7 @@ function handleAuthHandshake(line) {
         } else {
             loggedIn = false;
             updateUsernamePrefix();
-            showLoginNotification();
+            showLoginPanel();
         }
         return true;
     }
@@ -527,7 +527,7 @@ form.addEventListener("submit", (e) => {
             setCookie("username", username, 30);
             loggedIn = true;
             updateUsernamePrefix();
-            hideLoginNotification();
+            hideLoginPanel();
             ws.send(input.value); // sends username
             ws.send(`/log :depth ${LOG_HISTORY_SIZE} :date-format date`);
             input.value = "";
