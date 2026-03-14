@@ -24,8 +24,14 @@
 
 (define-test commands-string-utils
   :parent unit-tests
-  (is equal '("x" "y" "z") (server:split "x.y.z"
-                                                      :delimiterp (lambda (c) (eql c #\.))))
-  (is equal '("foo" "bar zoo") (server:split "foo 'bar zoo'"
-                                                      :quotation-aware t))
+  (is equal
+      '("x" "y" "z")
+      (server:split "x.y.z"
+                    :delimiterp (lambda (c) (eql c #\.))))
+  (is equal
+      '("foo" "bar zoo")
+      (server:split "foo 'bar zoo'" :quotation-aware t))
+  (is equal
+      '("foo" "" "bar")
+      (server:split "foo  bar" :empty-seqs t))
   (true (server:startswith "/command" "/")))
