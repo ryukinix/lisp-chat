@@ -7,10 +7,10 @@
   :parent unit-tests
   (let ((time '(0 30 12 11 2 2026 2 nil 0))) ;; 2026-02-11 12:30:00 Wednesday GMT+0
     (is string= "12:30:00 of Wednesday, 2026-02-11 (GMT+0)"
-        (lisp-chat/server:format-time time))
-    (let ((msg (lisp-chat/server:make-message :from "test" :content "hi" :time time)))
-      (is string= "12:30:00" (lisp-chat/server:message-time-hour-format msg))
-      (is string= "2026-02-11 12:30:00" (lisp-chat/server:message-time-date-format msg)))))
+        (server:format-time time))
+    (let ((msg (server:make-message :from "test" :content "hi" :time time)))
+      (is string= "12:30:00" (server:message-time-hour-format msg))
+      (is string= "2026-02-11 12:30:00" (server:message-time-date-format msg)))))
 
 (define-test system-version-parsing
   :parent unit-tests
@@ -35,3 +35,13 @@
       '("foo" "" "bar")
       (server:split "foo  bar" :empty-seqs t))
   (true (server:startswith "/command" "/")))
+
+(define-test message-formatting
+  :parent unit-tests
+  (let* ((message (server:make-message :from "@server"
+                                       :content (format nil "line1~%~%xline2")
+                                       :time (server:get-time)))
+         (message-string (server:formatted-message message)))
+   (is equal
+       3
+       (count #\@ message-string :test #'char-equal))))
