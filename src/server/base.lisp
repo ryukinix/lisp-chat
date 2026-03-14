@@ -135,16 +135,29 @@
       (push (copy-seq token) tokens))
     (nreverse tokens)))
 
-(defun split (string &key (delimiterp #'spacep) quotation-aware)
+(defun split-with-empty-seqs (string delimiterp)
+  "Slit a string maintaing empty strings when there is multiple consecutive delimiters"
+  (loop for start = 0 then (1+ pos)
+        for pos = (position-if delimiterp string :start start)
+        collect (subseq string start pos)
+        while pos))
+
+(defun split-trivial (string delimiterp)
+  (loop for beg = (position-if-not delimiterp string)
+          then (position-if-not delimiterp string :start (1+ end))
+        for end = (and beg (position-if delimiterp string :start beg))
+        when beg
+          collect (subseq string beg end)
+        while end))
+
+(defun split (string &key (delimiterp #'spacep) quotation-aware empty-seqs)
   "Split a string by a delimiterp function character checking"
-  (if (not quotation-aware)
-      (loop for beg = (position-if-not delimiterp string)
-              then (position-if-not delimiterp string :start (1+ end))
-            for end = (and beg (position-if delimiterp string :start beg))
-            when beg
-              collect (subseq string beg end)
-            while end)
-      (split-quotation-aware string delimiterp)))
+  (cond
+    ((and quotation-aware empty-seqs)
+     (error "QUOTATION-AWARE and WITH-EMTPY-SEQS cannot be used together"))
+    (quotation-aware (split-quotation-aware string delimiterp))
+    (empty-seqs (split-with-empty-seqs string delimiterp))
+    (t (split-trivial string delimiterp))))
 
 (defun startswith (string substring)
   "Check if STRING starts with SUBSTRING."
@@ -166,7 +179,7 @@
                        (message-time-hour-format message)))
          (from-str (message-from message))
          (content-str (message-content message))
-         (lines (split content-str :delimiterp (lambda (c) (char= c #\Newline)))))
+         (lines (split content-str :empty-seqs t :delimiterp (lambda (c) (char= c #\Newline)))))
     (format nil "~{~a~^~%~}"
             (mapcar (lambda (line)
                       (format-message-line time-str from-str line))
