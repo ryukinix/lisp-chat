@@ -143,6 +143,27 @@ code {
     color: #55efc4;
 }
 
+#login-notification {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(40, 40, 40, 0.95);
+    padding: 20px 30px;
+    border-radius: 8px;
+    border: 1px solid #555;
+    text-align: center;
+    color: #eee;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+    z-index: 2000;
+    pointer-events: none;
+}
+
+#login-notification h2 {
+    margin-top: 0;
+    color: #55efc4;
+}
+
 @media (max-width: 600px) {
     body {
         flex-direction: column;

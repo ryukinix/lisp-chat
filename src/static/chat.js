@@ -156,6 +156,24 @@ function updateUsernamePrefix() {
     }
 }
 
+function showLoginNotification() {
+    if (document.getElementById("login-notification")) return;
+    const main = document.getElementById("main");
+    if (!main) return;
+    const notif = document.createElement("div");
+    notif.id = "login-notification";
+    notif.innerHTML = `
+        <h2>Login</h2>
+        <p>Set your username to start chatting</p>
+    `;
+    main.appendChild(notif);
+}
+
+function hideLoginNotification() {
+    const notif = document.getElementById("login-notification");
+    if (notif) notif.remove();
+}
+
 function showNotification(text) {
     const container = document.getElementById("notifications");
     if (!container) return;
@@ -213,6 +231,7 @@ function handleAuthHandshake(line) {
         } else {
             loggedIn = false;
             updateUsernamePrefix();
+            showLoginNotification();
         }
         return true;
     }
@@ -505,6 +524,7 @@ form.addEventListener("submit", (e) => {
             setCookie("username", username, 30);
             loggedIn = true;
             updateUsernamePrefix();
+            hideLoginNotification();
             ws.send(input.value); // sends username
             ws.send(`/log :depth ${LOG_HISTORY_SIZE} :date-format date`);
             input.value = "";
