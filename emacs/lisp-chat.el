@@ -2,7 +2,7 @@
 
 ;; Authors: Manoel V. Machado (manoel_vilela@engineer.com)
 ;; URL: https://github.com/ryukinix/lisp-chat
-;; Package-Requires: ((emacs "26.1") (websocket "1.12"))
+;; Package-Requires: ((emacs "27.1") (websocket "1.12"))
 ;; Keywords: comm, chat, lisp
 ;; SPDX-License-Identifier: MIT
 ;; Version: 0.8.0
