@@ -80,7 +80,7 @@ input.addEventListener("focus", () => {
     }, 300);
 });
 
-if (window.innerWidth > config.desktopMinWidth) {
+if (window.innerWidth > config.DESKTOP_MIN_WIDTH) {
     input.focus();
 }
 

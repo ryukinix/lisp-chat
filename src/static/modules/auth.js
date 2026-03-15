@@ -43,7 +43,7 @@ export function updateUsernamePrefix() {
         }
     }
 
-    if (!input.disabled && window.innerWidth > config.desktopMinWidth) {
+    if (!input.disabled && window.innerWidth > config.DESKTOP_MIN_WIDTH) {
         input.focus();
     }
 }

@@ -28,8 +28,8 @@ export function getUserColor(name) {
     for (let i = 0; i < name.length; i++) {
         hash = name.charCodeAt(i) + ((hash << hashShift) - hash);
     }
-    const index = Math.abs(hash) % config.availableColors.length;
-    return config.availableColors[index];
+    const index = Math.abs(hash) % config.AVAILABLE_COLORS.length;
+    return config.AVAILABLE_COLORS[index];
 }
 
 export function escapeHTML(text) {
