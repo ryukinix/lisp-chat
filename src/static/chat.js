@@ -525,6 +525,7 @@ function connect() {
 form.addEventListener("submit", (e) => {
     e.preventDefault();
     if (input.value && ws && ws.readyState === WebSocket.OPEN) {
+        closeAutocomplete();
         if (input.value == "/clear") {
             chat.innerHTML = "";
             messageCache.clear();
