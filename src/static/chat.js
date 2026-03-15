@@ -777,3 +777,9 @@ input.addEventListener("keydown", (e) => {
         closeAutocomplete();
     }
 });
+
+document.addEventListener("click", (e) => {
+    if (!autocompletePopup.contains(e.target) && e.target !== input) {
+        closeAutocomplete();
+    }
+});
