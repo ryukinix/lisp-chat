@@ -60,7 +60,8 @@
                "uuid"
                "ningle"
                "lack"
-               "lack-middleware-static")
+               "lack-middleware-static"
+               "cl-ppcre")
   :pathname "src"
   :components ((:file "config")
                (:module "server"
