@@ -74,14 +74,7 @@
                              (:file "web" :depends-on ("net" "base" "commands" "api"))
                              (:file "main" :depends-on ("tcp" "web" "net"))))
                (:module "static"
-                :components
-                        ((:static-file "index.html")
-                         (:static-file "chat.js")
-                         (:static-file "style.css")
-                         (:static-file "favicon.ico")
-                         (:static-file "logo.png")
-                         (:static-file "manifest.json")
-                         (:static-file "sw.js")))))
+                :pathname "static/")))
 
 (asdf:defsystem :lisp-chat/client
   :class lisp-chat/system:custom-system-class
