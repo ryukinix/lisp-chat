@@ -657,6 +657,9 @@ function renderAutocomplete(filteredItems) {
         const div = document.createElement("div");
         div.className = "autocomplete-item";
         div.textContent = currentAutocompleteTrigger + item;
+        if (currentAutocompleteTrigger === '@') {
+            div.style.color = getUserColor(item);
+        }
         if (index === autocompleteActiveIndex) {
             div.classList.add("selected");
         }
