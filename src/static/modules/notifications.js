@@ -1,4 +1,4 @@
-import { formatMessage } from './formatting.js';
+import * as formatting from './formatting.js';
 
 export function showNotification(text) {
     const container = document.getElementById("notifications");
@@ -6,7 +6,7 @@ export function showNotification(text) {
 
     const notification = document.createElement("div");
     notification.className = "notification";
-    notification.innerHTML = formatMessage(text);
+    notification.innerHTML = formatting.formatMessage(text);
     notification.onclick = () => notification.remove();
 
     container.prepend(notification);

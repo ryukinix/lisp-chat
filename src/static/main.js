@@ -1,14 +1,8 @@
-import { LOG_HISTORY_SIZE, desktopMinWidth } from './config.js';
-import {
-    username, loggedIn, setLoggedIn, setUsername,
-    updateUsernamePrefix, hideLoginPanel
-} from './auth.js';
-import {
-    ws, connect, requestUserList, keepAliveWorker, setFetchUsersInterval,
-    incrementUserRequestsPending
-} from './network.js';
-import { initAutocomplete, closeAutocomplete } from './autocomplete.js';
-import { addMessage, clearMessages, checkChatIsAtBottom, chat } from './messages.js';
+import * as config from './modules/config.js';
+import * as auth from './modules/auth.js';
+import * as network from './modules/network.js';
+import * as autocomplete from './modules/autocomplete.js';
+import * as messages from './modules/messages.js';
 
 const form = document.getElementById("input-area");
 const input = document.getElementById("message-input");
@@ -17,31 +11,31 @@ form.addEventListener("submit", (e) => {
     e.preventDefault();
     const value = input.value;
     const trimmed = value.trim();
-    if (value && ws && ws.readyState === WebSocket.OPEN) {
-        closeAutocomplete();
+    if (value && network.ws && network.ws.readyState === WebSocket.OPEN) {
+        autocomplete.closeAutocomplete();
         if (trimmed === "/clear") {
-            clearMessages();
+            messages.clearMessages();
             input.value = "";
             return;
         }
-        if (!loggedIn) {
-            setUsername(trimmed);
-            setLoggedIn(true);
-            updateUsernamePrefix();
-            hideLoginPanel();
-            ws.send(value);
-            ws.send(`/log :depth ${LOG_HISTORY_SIZE} :date-format date`);
+        if (!auth.loggedIn) {
+            auth.setUsername(trimmed);
+            auth.setLoggedIn(true);
+            auth.updateUsernamePrefix();
+            auth.hideLoginPanel();
+            network.ws.send(value);
+            network.ws.send(`/log :depth ${config.LOG_HISTORY_SIZE} :date-format date`);
             input.value = "";
-            keepAliveWorker.postMessage('start');
-            setFetchUsersInterval(true);
-            setTimeout(() => requestUserList(true), 500);
+            network.keepAliveWorker.postMessage('start');
+            network.setFetchUsersInterval(true);
+            setTimeout(() => network.requestUserList(true), 500);
             return;
         }
         const firstWord = trimmed.split(/\s+/)[0];
         if (firstWord === "/users") {
-            incrementUserRequestsPending();
+            network.incrementUserRequestsPending();
         }
-        ws.send(value);
+        network.ws.send(value);
         input.value = "";
         input.focus();
     }
@@ -61,7 +55,7 @@ let lastViewportHeight = window.visualViewport ? window.visualViewport.height : 
 
 if (window.visualViewport) {
     const updateViewport = () => {
-        const wasAtBottom = checkChatIsAtBottom();
+        const wasAtBottom = messages.checkChatIsAtBottom();
         const isShrinking = window.visualViewport.height < lastViewportHeight;
 
         document.body.style.height = `${window.visualViewport.height}px`;
@@ -70,7 +64,7 @@ if (window.visualViewport) {
         document.body.style.width = `${window.visualViewport.width}px`;
 
         if (wasAtBottom || (isShrinking && document.activeElement === input)) {
-            chat.scrollTop = chat.scrollHeight;
+            messages.chat.scrollTop = messages.chat.scrollHeight;
         }
 
         lastViewportHeight = window.visualViewport.height;
@@ -82,13 +76,13 @@ if (window.visualViewport) {
 
 input.addEventListener("focus", () => {
     setTimeout(() => {
-        chat.scrollTop = chat.scrollHeight;
+        messages.chat.scrollTop = messages.chat.scrollHeight;
     }, 300);
 });
 
-if (window.innerWidth > desktopMinWidth) {
+if (window.innerWidth > config.desktopMinWidth) {
     input.focus();
 }
 
-initAutocomplete(input);
-connect(addMessage);
+autocomplete.initAutocomplete(input);
+network.connect(messages.addMessage);

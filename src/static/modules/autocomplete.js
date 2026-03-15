@@ -1,4 +1,4 @@
-import { getUserColor } from './utils.js';
+import * as utils from './utils.js';
 
 let autocompleteCache = {
     '/': null,
@@ -73,7 +73,7 @@ export function renderAutocomplete(filteredItems, input) {
         div.className = "autocomplete-item";
         div.textContent = currentAutocompleteTrigger + item;
         if (currentAutocompleteTrigger === '@') {
-            div.style.color = getUserColor(item);
+            div.style.color = utils.getUserColor(item);
         }
         if (index === autocompleteActiveIndex) {
             div.classList.add("selected");

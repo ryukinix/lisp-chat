@@ -1,4 +1,4 @@
-import { getUserColor } from './utils.js';
+import * as utils from './utils.js';
 
 export function updateUserList(usersString) {
     const userList = document.getElementById("user-list");
@@ -10,7 +10,7 @@ export function updateUserList(usersString) {
         const li = document.createElement("li");
         li.className = "user-item";
         li.textContent = user;
-        li.style.color = getUserColor(user);
+        li.style.color = utils.getUserColor(user);
         userList.appendChild(li);
     });
 }

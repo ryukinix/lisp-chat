@@ -1,4 +1,4 @@
-import { availableColors } from './config.js';
+import * as config from './config.js';
 
 export function setCookie(name, value, days) {
     let expires = "";
@@ -28,8 +28,8 @@ export function getUserColor(name) {
     for (let i = 0; i < name.length; i++) {
         hash = name.charCodeAt(i) + ((hash << hashShift) - hash);
     }
-    const index = Math.abs(hash) % availableColors.length;
-    return availableColors[index];
+    const index = Math.abs(hash) % config.availableColors.length;
+    return config.availableColors[index];
 }
 
 export function escapeHTML(text) {

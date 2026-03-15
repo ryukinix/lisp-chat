@@ -1,5 +1,5 @@
-import { showNotification } from './notifications.js';
-import { updateUsernamePrefix, loggedIn, setLoggedIn } from './auth.js';
+import * as notifications from './notifications.js';
+import * as auth from './auth.js';
 
 export let ws;
 export let fetchUsersInterval;
@@ -30,7 +30,7 @@ export function resetUserRequestsPending() {
 }
 
 export function requestUserList(isBackground = false) {
-    if (ws && ws.readyState === WebSocket.OPEN && loggedIn) {
+    if (ws && ws.readyState === WebSocket.OPEN && auth.loggedIn) {
         ws.send("/users");
     }
 }
@@ -59,9 +59,9 @@ export function connect(onMessageCallback) {
     ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
-        showNotification("Connected to server.");
-        setLoggedIn(false);
-        updateUsernamePrefix();
+        notifications.showNotification("Connected to server.");
+        auth.setLoggedIn(false);
+        auth.updateUsernamePrefix();
     };
 
     ws.onmessage = (event) => {
@@ -71,13 +71,13 @@ export function connect(onMessageCallback) {
     ws.onclose = (event) => {
         if (ws && ws !== event.target) return;
 
-        setLoggedIn(false);
-        updateUsernamePrefix();
+        auth.setLoggedIn(false);
+        auth.updateUsernamePrefix();
         if (fetchUsersInterval) {
             keepAliveWorker.postMessage('stop');
             setFetchUsersInterval(null);
         }
-        showNotification("Disconnected. Reconnecting in 3s...");
+        notifications.showNotification("Disconnected. Reconnecting in 3s...");
         setTimeout(() => connect(onMessageCallback), 3000);
     };
 

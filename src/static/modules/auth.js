@@ -1,8 +1,8 @@
-import { getCookie, setCookie, getUserColor } from './utils.js';
-import { desktopMinWidth, LOG_HISTORY_SIZE } from './config.js';
-import { ws, keepAliveWorker, fetchUsersInterval, setFetchUsersInterval, requestUserList } from './network.js';
+import * as utils from './utils.js';
+import * as config from './config.js';
+import * as network from './network.js';
 
-export let username = getCookie("username") || "";
+export let username = utils.getCookie("username") || "";
 export let loggedIn = false;
 
 export function setLoggedIn(value) {
@@ -11,7 +11,7 @@ export function setLoggedIn(value) {
 
 export function setUsername(value) {
     username = value;
-    setCookie("username", username, 30);
+    utils.setCookie("username", username, 30);
 }
 
 export function updateUsernamePrefix() {
@@ -28,7 +28,7 @@ export function updateUsernamePrefix() {
 
     if (username && loggedIn) {
         prefix.textContent = `[${username}]:`;
-        prefix.style.color = getUserColor(username);
+        prefix.style.color = utils.getUserColor(username);
         prefix.style.fontWeight = "bold";
         input.placeholder = "";
         input.disabled = false;
@@ -43,7 +43,7 @@ export function updateUsernamePrefix() {
         }
     }
 
-    if (!input.disabled && window.innerWidth > desktopMinWidth) {
+    if (!input.disabled && window.innerWidth > config.desktopMinWidth) {
         input.focus();
     }
 }
@@ -70,14 +70,14 @@ export function handleAuthHandshake(line) {
     const input = document.getElementById("message-input");
     if (line === "> Type your username: ") {
         if (username) {
-            ws.send(username);
+            network.ws.send(username);
             setLoggedIn(true);
             updateUsernamePrefix();
-            ws.send(`/log :depth ${LOG_HISTORY_SIZE} :date-format date`);
-            if (!fetchUsersInterval) {
-                keepAliveWorker.postMessage('start');
-                setFetchUsersInterval(true);
-                setTimeout(() => requestUserList(true), 500);
+            network.ws.send(`/log :depth ${config.LOG_HISTORY_SIZE} :date-format date`);
+            if (!network.fetchUsersInterval) {
+                network.keepAliveWorker.postMessage('start');
+                network.setFetchUsersInterval(true);
+                setTimeout(() => network.requestUserList(true), 500);
             }
         } else {
             setLoggedIn(false);

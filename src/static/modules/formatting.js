@@ -1,4 +1,4 @@
-import { escapeHTML, getUserColor } from './utils.js';
+import * as utils from './utils.js';
 
 export function formatMessage(text) {
     if (!text) return "";
@@ -12,7 +12,7 @@ export function formatMessage(text) {
         return `URLPLACEHOLDER${id}URL`;
     });
 
-    processed = escapeHTML(processed);
+    processed = utils.escapeHTML(processed);
 
     processed = processed.replace(/`(.*?)`/g, '<code>$1</code>');
     processed = processed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
@@ -26,7 +26,7 @@ export function formatMessage(text) {
     });
 
     processed = processed.replace(/(^|\s)@([A-zÀ-ú0-9_\-]+)/g, (match, prefix, user) => {
-        const color = getUserColor(user);
+        const color = utils.getUserColor(user);
         return `${prefix}<span style="color: ${color}">@${user}</span>`;
     });
 
@@ -36,7 +36,7 @@ export function formatMessage(text) {
 
     return processed.replace(/URLPLACEHOLDER(\d+)URL/g, (match, id) => {
         const url = urls[parseInt(id)];
-        const escapedUrl = escapeHTML(url);
+        const escapedUrl = utils.escapeHTML(url);
         return `<a href="${escapedUrl}" target="_blank" rel="noopener noreferrer">${escapedUrl}</a>`;
     });
 }

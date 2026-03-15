@@ -1,10 +1,10 @@
-import { MAX_CACHE_SIZE } from './config.js';
-import { getTodayDate, calculateSeconds, getUserColor } from './utils.js';
-import { formatMessage } from './formatting.js';
-import { showNotification } from './notifications.js';
-import { updateUserList } from './users.js';
-import { setUsername, updateUsernamePrefix, handleAuthHandshake } from './auth.js';
-import { requestUserList, userRequestsPending, resetUserRequestsPending } from './network.js';
+import * as config from './config.js';
+import * as utils from './utils.js';
+import * as formatting from './formatting.js';
+import * as notifications from './notifications.js';
+import * as users from './users.js';
+import * as auth from './auth.js';
+import * as network from './network.js';
 
 export const chat = document.getElementById("chat");
 
@@ -32,21 +32,21 @@ function processServerMessage(content, isRealTime) {
     if (isNickChange) {
         const nickMatch = content.match(/Your new nick is: @(.*)/);
         if (nickMatch) {
-            setUsername(nickMatch[1].trim());
-            updateUsernamePrefix();
+            auth.setUsername(nickMatch[1].trim());
+            auth.updateUsernamePrefix();
         }
     }
 
     if (isSystemMessage) {
-        requestUserList(true);
+        network.requestUserList(true);
         if ((isJoin || isExit) && isRealTime) {
-            showNotification(content);
+            notifications.showNotification(content);
         }
         if (isJoin || isExit) return false;
     } else if (isUsersListResponse) {
-        updateUserList(content);
-        if (userRequestsPending > 0) {
-            resetUserRequestsPending();
+        users.updateUserList(content);
+        if (network.userRequestsPending > 0) {
+            network.resetUserRequestsPending();
             return true;
         }
         return false;
@@ -62,7 +62,7 @@ function isMessageCached(line, from) {
         messageHistory.push(line);
     }
 
-    if (messageHistory.length > MAX_CACHE_SIZE) {
+    if (messageHistory.length > config.MAX_CACHE_SIZE) {
         const old = messageHistory.shift();
         messageCache.delete(old);
     }
@@ -83,11 +83,11 @@ function createMessageElement(date, timeHM, timeS, from, content) {
 
     const fromSpan = document.createElement("span");
     fromSpan.textContent = `[${from}]: `;
-    fromSpan.style.color = getUserColor(from);
+    fromSpan.style.color = utils.getUserColor(from);
 
     const contentSpan = document.createElement("span");
     contentSpan.className = "msg-content";
-    contentSpan.innerHTML = formatMessage(content);
+    contentSpan.innerHTML = formatting.formatMessage(content);
 
     div.appendChild(timeSpan);
     div.appendChild(fromSpan);
@@ -152,7 +152,7 @@ function insertMessageNode(div, from, content, seconds, hasDate) {
 
 function processStructuredMessage(line, match) {
     const [_, date, timeHM, timeS, from, content] = match;
-    const effectiveDate = date || getTodayDate();
+    const effectiveDate = date || utils.getTodayDate();
     const normalizedLine = `|${effectiveDate} ${timeHM}:${timeS}| [${from}]: ${content}`;
 
     if (isMessageCached(normalizedLine, from)) return;
@@ -172,7 +172,7 @@ function processStructuredMessage(line, match) {
         const contentSpan = lastMsg.querySelector(".msg-content");
         contentSpan.appendChild(document.createElement("br"));
         const newContent = document.createElement("span");
-        newContent.innerHTML = formatMessage(content);
+        newContent.innerHTML = formatting.formatMessage(content);
         while(newContent.firstChild) {
             contentSpan.appendChild(newContent.firstChild);
         }
@@ -180,7 +180,7 @@ function processStructuredMessage(line, match) {
     }
 
     const div = createMessageElement(effectiveDate, timeHM, timeS, from, content);
-    const seconds = calculateSeconds(timeHM, timeS);
+    const seconds = utils.calculateSeconds(timeHM, timeS);
 
     insertMessageNode(div, from, content, seconds, !!date);
 }
@@ -188,8 +188,8 @@ function processStructuredMessage(line, match) {
 function addRawMessage(line) {
     const div = document.createElement("div");
     div.className = "message";
-    div.dataset.date = getTodayDate();
-    div.innerHTML = formatMessage(line);
+    div.dataset.date = utils.getTodayDate();
+    div.innerHTML = formatting.formatMessage(line);
     chat.appendChild(div);
     ensureDateDivider(div);
 }
@@ -198,7 +198,7 @@ export function addMessage(text) {
     const isAtBottom = checkChatIsAtBottom();
     const linesArray = text.split("\n");
     for (const line of linesArray) {
-        if (handleAuthHandshake(line)) continue;
+        if (auth.handleAuthHandshake(line)) continue;
 
         const match = line.match(/^\|(?:(\d{4}-\d{2}-\d{2}) )?(\d{2}:\d{2}):(\d{2})\| \[(.*?)\]: (.*)$/);
         if (match) {
