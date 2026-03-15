@@ -4,6 +4,7 @@ const input = document.getElementById("message-input");
 const userList = document.getElementById("user-list");
 const LOG_HISTORY_SIZE = 100;
 const MAX_CACHE_SIZE = 200;
+const desktopMinWidth = 768;
 const messageCache = new Set();
 const messageHistory = [];
 const availableColors = [
@@ -116,7 +117,12 @@ function formatMessage(text) {
         return `${prefix}<span style="color: ${color}">@${user}</span>`;
     });
 
-    // 6. Restore URLs
+    // 6. Commands
+    processed = processed.replace(/(^|\s)(\/[a-zA-Z0-9_\-]+)/g, (match, prefix, command) => {
+        return `${prefix}<span class="command">${command}</span>`;
+    });
+
+    // 7. Restore URLs
     return processed.replace(/URLPLACEHOLDER(\d+)URL/g, (match, id) => {
         const url = urls[parseInt(id)];
         const escapedUrl = escapeHTML(url);
@@ -147,6 +153,28 @@ function updateUsernamePrefix() {
             input.disabled = false;
         }
     }
+    
+    if (!input.disabled && window.innerWidth > desktopMinWidth) {
+        input.focus();
+    }
+}
+
+function showLoginPanel() {
+    if (document.getElementById("login-panel")) return;
+    const main = document.getElementById("main");
+    if (!main) return;
+    const panel = document.createElement("div");
+    panel.id = "login-panel";
+    panel.innerHTML = `
+        <h2>Login</h2>
+        <p>Set a username</p>
+    `;
+    main.appendChild(panel);
+}
+
+function hideLoginPanel() {
+    const panel = document.getElementById("login-panel");
+    if (panel) panel.remove();
 }
 
 function showNotification(text) {
@@ -206,6 +234,7 @@ function handleAuthHandshake(line) {
         } else {
             loggedIn = false;
             updateUsernamePrefix();
+            showLoginPanel();
         }
         return true;
     }
@@ -244,6 +273,23 @@ function processStructuredMessage(line, match) {
     if (from === "@server") {
         const shouldRender = processServerMessage(content, !date);
         if (!shouldRender) return;
+    }
+
+    const lastMsg = chat.lastElementChild;
+    if (lastMsg && lastMsg.classList.contains("message") &&
+        lastMsg.dataset.date === effectiveDate &&
+        lastMsg.dataset.timeHm === timeHM &&
+        lastMsg.dataset.timeS === timeS &&
+        lastMsg.dataset.from === from) {
+        
+        const contentSpan = lastMsg.querySelector(".msg-content");
+        contentSpan.appendChild(document.createElement("br"));
+        const newContent = document.createElement("span");
+        newContent.innerHTML = formatMessage(content);
+        while(newContent.firstChild) {
+            contentSpan.appendChild(newContent.firstChild);
+        }
+        return;
     }
 
     const div = createMessageElement(effectiveDate, timeHM, timeS, from, content);
@@ -304,6 +350,9 @@ function createMessageElement(date, timeHM, timeS, from, content) {
     const div = document.createElement("div");
     div.className = "message";
     div.dataset.date = date;
+    div.dataset.timeHm = timeHM;
+    div.dataset.timeS = timeS;
+    div.dataset.from = from;
 
     const timeSpan = document.createElement("span");
     timeSpan.className = "timestamp";
@@ -478,6 +527,7 @@ form.addEventListener("submit", (e) => {
             setCookie("username", username, 30);
             loggedIn = true;
             updateUsernamePrefix();
+            hideLoginPanel();
             ws.send(input.value); // sends username
             ws.send(`/log :depth ${LOG_HISTORY_SIZE} :date-format date`);
             input.value = "";
@@ -535,7 +585,7 @@ input.addEventListener("focus", () => {
 });
 
 // Autofocus on desktop, prevent virtual keyboard popping up on mobile
-if (window.innerWidth > 768) {
+if (window.innerWidth > desktopMinWidth) {
     input.focus();
 }
 
