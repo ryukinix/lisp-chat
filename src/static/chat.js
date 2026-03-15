@@ -524,9 +524,11 @@ function connect() {
 
 form.addEventListener("submit", (e) => {
     e.preventDefault();
-    if (input.value && ws && ws.readyState === WebSocket.OPEN) {
+    const value = input.value;
+    const trimmed = value.trim();
+    if (value && ws && ws.readyState === WebSocket.OPEN) {
         closeAutocomplete();
-        if (input.value == "/clear") {
+        if (trimmed === "/clear") {
             chat.innerHTML = "";
             messageCache.clear();
             messageHistory.length = 0;
@@ -534,23 +536,25 @@ form.addEventListener("submit", (e) => {
             return;
         }
         if (!loggedIn) {
-            username = input.value.trim();
+            username = trimmed;
             setCookie("username", username, 30);
             loggedIn = true;
             updateUsernamePrefix();
             hideLoginPanel();
-            ws.send(input.value); // sends username
+            ws.send(value); // sends username
             ws.send(`/log :depth ${LOG_HISTORY_SIZE} :date-format date`);
             input.value = "";
             // Start periodic user list updates after login
             keepAliveWorker.postMessage('start');
             fetchUsersInterval = true;
             setTimeout(() => requestUserList(true), 500); // Initial fetch
+            return;
         }
-        if (input.value === "/users") {
+        const firstWord = trimmed.split(/\s+/)[0];
+        if (firstWord === "/users") {
             userRequestsPending++;
         }
-        ws.send(input.value);
+        ws.send(value);
         input.value = "";
         input.focus();
     }
