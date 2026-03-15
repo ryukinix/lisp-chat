@@ -601,12 +601,20 @@ if (window.innerWidth > desktopMinWidth) {
 
 connect();
 async function fetchAutoCompleteData(trigger) {
+    if (trigger === '@') {
+        return Array.from(userList.querySelectorAll('.user-item')).map(li => li.textContent);
+    }
+
     if (autocompleteCache[trigger] !== null) return autocompleteCache[trigger];
 
     let command = "";
-    if (trigger === '/') command = "help";
-    else if (trigger === '@') command = "users";
-    else if (trigger === '#') command = "channels";
+    let body = {};
+    if (trigger === '/') {
+        command = "help";
+    } else if (trigger === '#') {
+        command = "channels";
+        body = { "kwargs": { "all": true } };
+    }
 
     try {
         const protocol = window.location.protocol;
@@ -616,7 +624,7 @@ async function fetchAutoCompleteData(trigger) {
         const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({})
+            body: JSON.stringify(body)
         });
 
         if (!response.ok) return [];
@@ -626,8 +634,6 @@ async function fetchAutoCompleteData(trigger) {
         let items = [];
         if (trigger === '/') {
             items = result.replace("Available commands: ", "").split(",").map(c => c.trim().substring(1)).filter(c => c.length > 0);
-        } else if (trigger === '@') {
-            items = result.replace("users: ", "").split(",").map(u => u.trim()).filter(u => u.length > 0);
         } else if (trigger === '#') {
             items = result.split('\n').slice(1).map(line => line.split(':')[0].trim().substring(1)).filter(c => c.length > 0);
         }
