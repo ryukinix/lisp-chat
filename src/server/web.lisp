@@ -89,41 +89,6 @@
         (declare (ignore params))
         (ws-app (lack.request:request-env ningle:*request*))))
 
-(defun compute-static-hash ()
-  "Compute a simple hash for static assets based on file modification times."
-  (let* ((static-dir (merge-pathnames "src/static/" (asdf:system-source-directory :lisp-chat)))
-         (modules-dir (merge-pathnames "modules/" static-dir))
-         (files (append (when (probe-file static-dir) (uiop:directory-files static-dir "*.js"))
-                        (when (probe-file static-dir) (uiop:directory-files static-dir "*.css"))
-                        (when (probe-file modules-dir) (uiop:directory-files modules-dir "*.js"))))
-         (hash-val 0))
-    (dolist (f files)
-      (when (probe-file f)
-        (setf hash-val (logxor hash-val (file-write-date f)))))
-    (write-to-string hash-val :base 36)))
-
-(defun generate-import-map-entries (hash)
-  (let* ((modules-dir (merge-pathnames "src/static/modules/" (asdf:system-source-directory :lisp-chat)))
-         (module-files (when (probe-file modules-dir)
-                         (mapcar #'pathname-name (uiop:directory-files modules-dir "*.js"))))
-         (entries ()))
-    (dolist (m module-files)
-      (push (format nil "\"./modules/~a.js\": \"./modules/~a.js?v=~a\"" m m hash) entries)
-      (push (format nil "\"./~a.js\": \"./~a.js?v=~a\"" m m hash) entries))
-    (format nil "~{~a~^,~%    ~}" (nreverse entries))))
-
-(defun render-index-html ()
-  (let* ((hash (compute-static-hash))
-         (index-file (merge-pathnames "src/static/index.html" (asdf:system-source-directory :lisp-chat)))
-         (content (uiop:read-file-string index-file))
-         (import-map (format nil "<script type=\"importmap\">~%  {~%   \"imports\": {~%    ~a~%   }~%  }~%  </script>"
-                             (generate-import-map-entries hash))))
-    (let* ((content-with-css (cl-ppcre:regex-replace-all "csshash" content hash))
-           (content-with-js (cl-ppcre:regex-replace-all "jshash" content-with-css hash))
-           (content-with-map (cl-ppcre:regex-replace "(?i)(</head>)" content-with-js
-                                                     (format nil "~a~%  \\1" import-map))))
-      (list content-with-map))))
-
 (setf (ningle:route *web-app* "/")
       (lambda (params)
         (declare (ignore params))
@@ -131,7 +96,7 @@
                :cache-control "no-store, no-cache, must-revalidate, max-age=0"
                :pragma "no-cache"
                :expires "0")
-              ,(render-index-html))))
+              ,(pathname (merge-pathnames "src/static/index.html" (asdf:system-source-directory :lisp-chat))))))
 
 (defparameter *app*
   (lack:builder
