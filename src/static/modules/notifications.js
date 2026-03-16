@@ -1,6 +1,6 @@
-import * as formatting from './formatting.js';
+import formatting from './formatting.js';
 
-export function showNotification(text) {
+function showNotification(text) {
     const container = document.getElementById("notifications");
     if (!container) return;
 
@@ -15,3 +15,5 @@ export function showNotification(text) {
         notification.remove();
     }, 8000);
 }
+
+export default { showNotification };

@@ -1,11 +1,16 @@
-import * as notifications from './notifications.js';
-import * as auth from './auth.js';
+import notifications from './notifications.js';
+import auth from './auth.js';
 
-export let ws;
-export let fetchUsersInterval;
-export let userRequestsPending = 0;
+let ws;
+let fetchUsersInterval;
+let userRequestsPending = 0;
 
-export const keepAliveWorker = new Worker(URL.createObjectURL(new Blob([`
+function getWs() { return ws; }
+function setWs(newWs) { ws = newWs; }
+function getFetchUsersInterval() { return fetchUsersInterval; }
+function getUserRequestsPending() { return userRequestsPending; }
+
+const keepAliveWorker = new Worker(URL.createObjectURL(new Blob([`
     let interval;
     self.onmessage = e => {
         if (e.data === 'start') {
@@ -17,27 +22,27 @@ export const keepAliveWorker = new Worker(URL.createObjectURL(new Blob([`
     };
 `], {type: 'application/javascript'})));
 
-export function setFetchUsersInterval(value) {
+function setFetchUsersInterval(value) {
     fetchUsersInterval = value;
 }
 
-export function incrementUserRequestsPending() {
+function incrementUserRequestsPending() {
     userRequestsPending++;
 }
 
-export function resetUserRequestsPending() {
+function resetUserRequestsPending() {
     userRequestsPending = 0;
 }
 
-export function requestUserList(isBackground = false) {
-    if (ws && ws.readyState === WebSocket.OPEN && auth.loggedIn) {
+function requestUserList(isBackground = false) {
+    if (ws && ws.readyState === WebSocket.OPEN && auth.getLoggedIn()) {
         ws.send("/users");
     }
 }
 
 keepAliveWorker.onmessage = () => requestUserList(true);
 
-export function connect(onMessageCallback) {
+function connect(onMessageCallback) {
     if (ws) {
         ws.onclose = null;
         ws.onmessage = null;
@@ -85,3 +90,9 @@ export function connect(onMessageCallback) {
         console.error("WS Error", err);
     };
 }
+
+export default {
+    getWs, setWs, getFetchUsersInterval, getUserRequestsPending,
+    keepAliveWorker, setFetchUsersInterval, incrementUserRequestsPending,
+    resetUserRequestsPending, requestUserList, connect
+};

@@ -1,6 +1,6 @@
-import * as utils from './utils.js';
+import utils from './utils.js';
 
-export function formatMessage(text) {
+function formatMessage(text) {
     if (!text) return "";
 
     const urls = [];
@@ -40,3 +40,5 @@ export function formatMessage(text) {
         return `<a href="${escapedUrl}" target="_blank" rel="noopener noreferrer">${escapedUrl}</a>`;
     });
 }
+
+export default { formatMessage };

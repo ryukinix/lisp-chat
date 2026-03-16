@@ -1,4 +1,4 @@
-import * as utils from './utils.js';
+import utils from './utils.js';
 
 let autocompleteCache = {
     '/': null,
@@ -9,11 +9,11 @@ let autocompleteActiveIndex = -1;
 let currentAutocompleteTrigger = null;
 let currentAutocompleteFragment = "";
 
-export function getAutocompletePopup() {
+function getAutocompletePopup() {
     return document.getElementById("autocomplete-popup");
 }
 
-export async function fetchAutoCompleteData(trigger) {
+async function fetchAutoCompleteData(trigger) {
     if (trigger === '@') {
         const userList = document.getElementById("user-list");
         return Array.from(userList.querySelectorAll('.user-item')).map(li => li.textContent);
@@ -60,7 +60,7 @@ export async function fetchAutoCompleteData(trigger) {
     }
 }
 
-export function renderAutocomplete(filteredItems, input) {
+function renderAutocomplete(filteredItems, input) {
     const autocompletePopup = getAutocompletePopup();
     if (filteredItems.length === 0) {
         closeAutocomplete();
@@ -88,7 +88,7 @@ export function renderAutocomplete(filteredItems, input) {
     autocompletePopup.classList.remove("hidden");
 }
 
-export function handleAutocompleteSelection(item, input) {
+function handleAutocompleteSelection(item, input) {
     const value = input.value;
     const selectionStart = input.selectionStart;
     const textBeforeCursor = value.substring(0, selectionStart);
@@ -109,7 +109,7 @@ export function handleAutocompleteSelection(item, input) {
     closeAutocomplete();
 }
 
-export function closeAutocomplete() {
+function closeAutocomplete() {
     const autocompletePopup = getAutocompletePopup();
     if (autocompletePopup) {
         autocompletePopup.classList.add("hidden");
@@ -120,7 +120,7 @@ export function closeAutocomplete() {
     currentAutocompleteFragment = "";
 }
 
-export function updateAutocompleteSelection(items) {
+function updateAutocompleteSelection(items) {
     items.forEach((item, index) => {
         if (index === autocompleteActiveIndex) {
             item.classList.add("selected");
@@ -131,7 +131,7 @@ export function updateAutocompleteSelection(items) {
     });
 }
 
-export function initAutocomplete(input) {
+function initAutocomplete(input) {
     input.addEventListener("input", async () => {
         const value = input.value;
         const selectionStart = input.selectionStart;
@@ -204,3 +204,9 @@ export function initAutocomplete(input) {
         }
     });
 }
+
+export default {
+    getAutocompletePopup, fetchAutoCompleteData, renderAutocomplete,
+    handleAutocompleteSelection, closeAutocomplete, updateAutocompleteSelection,
+    initAutocomplete
+};

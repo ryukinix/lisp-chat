@@ -1,6 +1,6 @@
-import * as config from './config.js';
+import config from './config.js';
 
-export function setCookie(name, value, days) {
+function setCookie(name, value, days) {
     let expires = "";
     if (days) {
         const date = new Date();
@@ -10,7 +10,7 @@ export function setCookie(name, value, days) {
     document.cookie = name + "=" + (value || "") + expires + "; path=/";
 }
 
-export function getCookie(name) {
+function getCookie(name) {
     const nameEQ = name + "=";
     const ca = document.cookie.split(';');
     for (let i = 0; i < ca.length; i++) {
@@ -21,7 +21,7 @@ export function getCookie(name) {
     return null;
 }
 
-export function getUserColor(name) {
+function getUserColor(name) {
     if (name === "@server") return "#bb2222";
     let hash = 0;
     const hashShift = 12;
@@ -32,7 +32,7 @@ export function getUserColor(name) {
     return config.AVAILABLE_COLORS[index];
 }
 
-export function escapeHTML(text) {
+function escapeHTML(text) {
     return text
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
@@ -41,7 +41,7 @@ export function escapeHTML(text) {
         .replace(/'/g, "&#039;");
 }
 
-export function getTodayDate() {
+function getTodayDate() {
     const options = {
         year: 'numeric',
         month: '2-digit',
@@ -53,8 +53,10 @@ export function getTodayDate() {
     return parts.join('-');
 }
 
-export function calculateSeconds(timeHM, timeS) {
+function calculateSeconds(timeHM, timeS) {
     const [h, m] = timeHM.split(':').map(Number);
     const s = Number(timeS);
     return h * 3600 + m * 60 + s;
 }
+
+export default { setCookie, getCookie, getUserColor, escapeHTML, getTodayDate, calculateSeconds };

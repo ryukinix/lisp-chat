@@ -1,6 +1,6 @@
-import * as utils from './utils.js';
+import utils from './utils.js';
 
-export function updateUserList(usersString) {
+function updateUserList(usersString) {
     const userList = document.getElementById("user-list");
     if (!userList) return;
 
@@ -14,3 +14,5 @@ export function updateUserList(usersString) {
         userList.appendChild(li);
     });
 }
+
+export default { updateUserList };

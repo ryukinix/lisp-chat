@@ -1,23 +1,23 @@
-import * as config from './config.js';
-import * as utils from './utils.js';
-import * as formatting from './formatting.js';
-import * as notifications from './notifications.js';
-import * as users from './users.js';
-import * as auth from './auth.js';
-import * as network from './network.js';
+import config from './config.js';
+import utils from './utils.js';
+import formatting from './formatting.js';
+import notifications from './notifications.js';
+import users from './users.js';
+import auth from './auth.js';
+import network from './network.js';
 
-export const chat = document.getElementById("chat");
+const chat = document.getElementById("chat");
 
 const messageCache = new Set();
 const messageHistory = [];
 
-export function clearMessages() {
+function clearMessages() {
     chat.innerHTML = "";
     messageCache.clear();
     messageHistory.length = 0;
 }
 
-export function checkChatIsAtBottom() {
+function checkChatIsAtBottom() {
     const scrollThreshold = 100;
     return (chat.scrollHeight - chat.scrollTop - chat.clientHeight) <= scrollThreshold;
 }
@@ -45,7 +45,7 @@ function processServerMessage(content, isRealTime) {
         if (isJoin || isExit) return false;
     } else if (isUsersListResponse) {
         users.updateUserList(content);
-        if (network.userRequestsPending > 0) {
+        if (network.getUserRequestsPending() > 0) {
             network.resetUserRequestsPending();
             return true;
         }
@@ -194,7 +194,7 @@ function addRawMessage(line) {
     ensureDateDivider(div);
 }
 
-export function addMessage(text) {
+function addMessage(text) {
     const isAtBottom = checkChatIsAtBottom();
     const linesArray = text.split("\n");
     for (const line of linesArray) {
@@ -212,3 +212,5 @@ export function addMessage(text) {
         chat.scrollTop = chat.scrollHeight;
     }
 }
+
+export default { chat, clearMessages, checkChatIsAtBottom, addMessage };

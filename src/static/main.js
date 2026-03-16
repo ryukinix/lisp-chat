@@ -1,8 +1,8 @@
-import * as config from './modules/config.js';
-import * as auth from './modules/auth.js';
-import * as network from './modules/network.js';
-import * as autocomplete from './modules/autocomplete.js';
-import * as messages from './modules/messages.js';
+import config from './modules/config.js';
+import auth from './modules/auth.js';
+import network from './modules/network.js';
+import autocomplete from './modules/autocomplete.js';
+import messages from './modules/messages.js';
 
 const form = document.getElementById("input-area");
 const input = document.getElementById("message-input");
@@ -11,20 +11,20 @@ form.addEventListener("submit", (e) => {
     e.preventDefault();
     const value = input.value;
     const trimmed = value.trim();
-    if (value && network.ws && network.ws.readyState === WebSocket.OPEN) {
+    if (value && network.getWs() && network.getWs().readyState === WebSocket.OPEN) {
         autocomplete.closeAutocomplete();
         if (trimmed === "/clear") {
             messages.clearMessages();
             input.value = "";
             return;
         }
-        if (!auth.loggedIn) {
+        if (!auth.getLoggedIn()) {
             auth.setUsername(trimmed);
             auth.setLoggedIn(true);
             auth.updateUsernamePrefix();
             auth.hideLoginPanel();
-            network.ws.send(value);
-            network.ws.send(`/log :depth ${config.LOG_HISTORY_SIZE} :date-format date`);
+            network.getWs().send(value);
+            network.getWs().send(`/log :depth ${config.LOG_HISTORY_SIZE} :date-format date`);
             input.value = "";
             network.keepAliveWorker.postMessage('start');
             network.setFetchUsersInterval(true);
@@ -35,7 +35,7 @@ form.addEventListener("submit", (e) => {
         if (firstWord === "/users") {
             network.incrementUserRequestsPending();
         }
-        network.ws.send(value);
+        network.getWs().send(value);
         input.value = "";
         input.focus();
     }

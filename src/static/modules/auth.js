@@ -1,20 +1,28 @@
-import * as utils from './utils.js';
-import * as config from './config.js';
-import * as network from './network.js';
+import utils from './utils.js';
+import config from './config.js';
+import network from './network.js';
 
-export let username = utils.getCookie("username") || "";
-export let loggedIn = false;
+let username = utils.getCookie("username") || "";
+let loggedIn = false;
 
-export function setLoggedIn(value) {
+function getUsername() {
+    return username;
+}
+
+function getLoggedIn() {
+    return loggedIn;
+}
+
+function setLoggedIn(value) {
     loggedIn = value;
 }
 
-export function setUsername(value) {
+function setUsername(value) {
     username = value;
     utils.setCookie("username", username, 30);
 }
 
-export function updateUsernamePrefix() {
+function updateUsernamePrefix() {
     const form = document.getElementById("input-area");
     const input = document.getElementById("message-input");
     if (!form || !input) return;
@@ -48,7 +56,7 @@ export function updateUsernamePrefix() {
     }
 }
 
-export function showLoginPanel() {
+function showLoginPanel() {
     if (document.getElementById("login-panel")) return;
     const main = document.getElementById("main");
     if (!main) return;
@@ -61,20 +69,20 @@ export function showLoginPanel() {
     main.appendChild(panel);
 }
 
-export function hideLoginPanel() {
+function hideLoginPanel() {
     const panel = document.getElementById("login-panel");
     if (panel) panel.remove();
 }
 
-export function handleAuthHandshake(line) {
+function handleAuthHandshake(line) {
     const input = document.getElementById("message-input");
     if (line === "> Type your username: ") {
         if (username) {
-            network.ws.send(username);
+            network.getWs().send(username);
             setLoggedIn(true);
             updateUsernamePrefix();
-            network.ws.send(`/log :depth ${config.LOG_HISTORY_SIZE} :date-format date`);
-            if (!network.fetchUsersInterval) {
+            network.getWs().send(`/log :depth ${config.LOG_HISTORY_SIZE} :date-format date`);
+            if (!network.getFetchUsersInterval()) {
                 network.keepAliveWorker.postMessage('start');
                 network.setFetchUsersInterval(true);
                 setTimeout(() => network.requestUserList(true), 500);
@@ -94,3 +102,8 @@ export function handleAuthHandshake(line) {
     }
     return false;
 }
+
+export default {
+    getUsername, getLoggedIn, setLoggedIn, setUsername, updateUsernamePrefix,
+    showLoginPanel, hideLoginPanel, handleAuthHandshake
+};
