@@ -7,3 +7,4 @@ lisp-chat
 /.appimage/
 *.sexp
 /.qlot/
+.esbuild/
