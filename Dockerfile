@@ -7,7 +7,7 @@ COPY ./src src
 COPY ./tests tests
 COPY ./roswell roswell
 COPY ./scripts scripts
-RUN bash ./scripts/bump_static.sh
+RUN bash ./scripts/bundle_minify.sh
 
 ARG APP_VERSION
 ENV APP_VERSION=$APP_VERSION
