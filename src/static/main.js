@@ -44,13 +44,7 @@ form.addEventListener("submit", (e) => {
             if (parts.length > 1) {
                 const newChannel = parts[1].replace(/^#/, '');
                 const url = new URL(window.location);
-                if (url.searchParams.has('channel')) {
-                    url.searchParams.set('channel', newChannel);
-                } else if (window.location.search && !window.location.search.includes('=')) {
-                    url.search = newChannel;
-                } else {
-                    url.searchParams.set('channel', newChannel);
-                }
+                url.search = newChannel;
                 window.history.pushState({}, '', url);
             }
 
