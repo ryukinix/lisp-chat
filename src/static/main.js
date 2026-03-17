@@ -35,6 +35,23 @@ form.addEventListener("submit", (e) => {
         if (firstWord === "/users") {
             network.incrementUserRequestsPending();
         }
+        if (firstWord === "/join") {
+            messages.clearMessages();
+            network.getWs().send(value);
+            network.getWs().send(`/log :depth ${config.LOG_HISTORY_SIZE} :date-format date`);
+
+            const parts = trimmed.split(/\s+/);
+            if (parts.length > 1) {
+                const newChannel = parts[1].replace(/^#/, '');
+                const url = new URL(window.location);
+                url.search = newChannel;
+                window.history.pushState({}, '', url);
+            }
+
+            input.value = "";
+            input.focus();
+            return;
+        }
         network.getWs().send(value);
         input.value = "";
         input.focus();
