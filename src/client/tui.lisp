@@ -119,6 +119,7 @@
    (socket :initform nil :accessor socket)
    (username :initform nil :accessor username)
    (pending-username :initform nil :accessor pending-username)
+   (pending-message :initform nil :accessor pending-message)
    (users :initform nil :accessor users)
    (connected :initform nil :accessor connected)
    (ping-thread :initform nil :accessor ping-thread)
@@ -132,6 +133,8 @@
 
 (tui:defmessage server-msg
   ((text :initarg :text :accessor server-msg-text)))
+
+(tui:defmessage clear-messages-msg ())
 
 ;;; Helper Functions
 
@@ -257,7 +260,10 @@
         (port config:*port*))
     (if (> attempt 10)
         (progn
-          (tui:send program (make-instance 'server-msg :text "Reconnection failed after 10 attempts."))
+          (tui:send program
+                    (make-instance 'server-msg
+                                   :text (format nil "Reconnection failed after 10 attempts. ~
+                                                      Sending a new message will try the reconnection again.")))
           (setf (reconnecting model) nil))
         (progn
           (when (> attempt 1) (sleep 3))
@@ -270,13 +276,17 @@
                     (connect-websocket program model host port)
                     (connect-tcp program model host port))
                 (setf (reconnecting model) nil)
+                (tui:send program (make-instance 'clear-messages-msg))
                 (unless (and (ping-thread model) (bt:thread-alive-p (ping-thread model)))
                   (start-ping-thread model))
                 (let ((user (or (username model) (pending-username model))))
                   (when user
                     (setf (username model) nil)
                     (setf (pending-username model) user)
-                    (net:connection-send (socket model) user))))
+                    (net:connection-send (socket model) user)))
+                (when (pending-message model)
+                  (net:connection-send (socket model) (pending-message model))
+                  (setf (pending-message model) nil)))
             (error (c)
               (declare (ignore c))
               (bt:make-thread (lambda ()
@@ -336,6 +346,7 @@
        (ti:textinput-reset (input model)))
       (t
        (unless (reconnecting model)
+         (setf (pending-message model) text)
          (let ((program tui:*current-program*))
            (bt:make-thread (lambda () (reconnect-to-server program model 1)) :name "reconnect-thread")))
        (ti:textinput-reset (input model))))))
@@ -448,6 +459,12 @@
                 (setf should-render t))))))
     (when should-render
       (render-messages model)))
+  model)
+
+(defmethod tui:update-message ((model chat-model) (msg clear-messages-msg))
+  (setf (messages model) nil)
+  (setf (last-date model) nil)
+  (render-messages model)
   model)
 
 (defmethod tui:view ((model chat-model))
