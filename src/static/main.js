@@ -39,6 +39,21 @@ form.addEventListener("submit", (e) => {
             messages.clearMessages();
             network.getWs().send(value);
             network.getWs().send(`/log :depth ${config.LOG_HISTORY_SIZE} :date-format date`);
+
+            const parts = trimmed.split(/\s+/);
+            if (parts.length > 1) {
+                const newChannel = parts[1].replace(/^#/, '');
+                const url = new URL(window.location);
+                if (url.searchParams.has('channel')) {
+                    url.searchParams.set('channel', newChannel);
+                } else if (window.location.search && !window.location.search.includes('=')) {
+                    url.search = newChannel;
+                } else {
+                    url.searchParams.set('channel', newChannel);
+                }
+                window.history.pushState({}, '', url);
+            }
+
             input.value = "";
             input.focus();
             return;
