@@ -150,7 +150,7 @@
            (tui:send program (make-instance 'server-msg :text "Disconnected from server."))
            (setf (connected model) nil)
            (unless (reconnecting model)
-             (bt:make-thread (lambda () (reconnect-to-server model 1)) :name "reconnect-thread"))
+             (bt:make-thread (lambda () (reconnect-to-server program model 1)) :name "reconnect-thread"))
            (return))
          (handle-incoming-message program msg))))
    :name "listener-thread"))
@@ -226,7 +226,7 @@
 
 ;;; TUI Implementation
 
-(defun connect-websocket (model host port)
+(defun connect-websocket (program model host port)
   (let* ((url (if (or (search "ws://" host) (search "wss://" host))
                  host
                  (format nil "ws://~a:~a/ws" host port)))
@@ -243,32 +243,32 @@
           (net:queue-push queue :eof)))
     (start-connection client)
     (setf (connected model) t)
-    (start-listener tui:*current-program* model connection)))
+    (start-listener program model connection)))
 
-(defun connect-tcp (model host port)
+(defun connect-tcp (program model host port)
   (let ((socket (usocket:socket-connect host port)))
     (setf (socket model) socket)
     (setf (connected model) t)
-    (start-listener tui:*current-program* model socket)))
+    (start-listener program model socket)))
 
-(defun reconnect-to-server (model &optional (attempt 1))
+(defun reconnect-to-server (program model &optional (attempt 1))
   (setf (reconnecting model) t)
   (let ((host config:*host*)
         (port config:*port*))
     (if (> attempt 10)
         (progn
-          (tui:send tui:*current-program* (make-instance 'server-msg :text "Reconnection failed after 10 attempts."))
+          (tui:send program (make-instance 'server-msg :text "Reconnection failed after 10 attempts."))
           (setf (reconnecting model) nil))
         (progn
           (when (> attempt 1) (sleep 3))
-          (tui:send tui:*current-program*
+          (tui:send program
                     (make-instance 'server-msg
                                    :text (format nil "Reconnecting... (attempt ~d/10)" attempt)))
           (handler-case
               (progn
                 (if (net:websocket-p host port)
-                    (connect-websocket model host port)
-                    (connect-tcp model host port))
+                    (connect-websocket program model host port)
+                    (connect-tcp program model host port))
                 (setf (reconnecting model) nil)
                 (unless (and (ping-thread model) (bt:thread-alive-p (ping-thread model)))
                   (start-ping-thread model))
@@ -279,7 +279,9 @@
                     (net:connection-send (socket model) user))))
             (error (c)
               (declare (ignore c))
-              (bt:make-thread (lambda () (reconnect-to-server model (1+ attempt))) :name "reconnect-thread")))))))
+              (bt:make-thread (lambda ()
+                                (reconnect-to-server program model (1+ attempt)))
+                              :name "reconnect-thread")))))))
 
 (defmethod tui:init ((model chat-model))
   (let ((host config:*host*)
@@ -293,8 +295,8 @@
     (handler-case
         (progn
           (if (net:websocket-p host port)
-              (connect-websocket model host port)
-              (connect-tcp model host port))
+              (connect-websocket tui:*current-program* model host port)
+              (connect-tcp tui:*current-program* model host port))
 
           (start-ping-thread model))
 
@@ -334,7 +336,8 @@
        (ti:textinput-reset (input model)))
       (t
        (unless (reconnecting model)
-         (bt:make-thread (lambda () (reconnect-to-server model 1)) :name "reconnect-thread"))
+         (let ((program tui:*current-program*))
+           (bt:make-thread (lambda () (reconnect-to-server program model 1)) :name "reconnect-thread")))
        (ti:textinput-reset (input model))))))
 
 (defun handle-viewport-navigation (model key)
