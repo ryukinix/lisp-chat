@@ -35,6 +35,14 @@ form.addEventListener("submit", (e) => {
         if (firstWord === "/users") {
             network.incrementUserRequestsPending();
         }
+        if (firstWord === "/join") {
+            messages.clearMessages();
+            network.getWs().send(value);
+            network.getWs().send(`/log :depth ${config.LOG_HISTORY_SIZE} :date-format date`);
+            input.value = "";
+            input.focus();
+            return;
+        }
         network.getWs().send(value);
         input.value = "";
         input.focus();
