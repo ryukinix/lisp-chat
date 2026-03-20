@@ -3,9 +3,12 @@ import auth from './modules/auth.js';
 import network from './modules/network.js';
 import autocomplete from './modules/autocomplete.js';
 import messages from './modules/messages.js';
+import inputHistory from './modules/input.js';
 
 const form = document.getElementById("input-area");
 const input = document.getElementById("message-input");
+
+inputHistory.initInputHistory(input);
 
 form.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -13,6 +16,9 @@ form.addEventListener("submit", (e) => {
     const trimmed = value.trim();
     if (value && network.getWs() && network.getWs().readyState === WebSocket.OPEN) {
         autocomplete.closeAutocomplete();
+        if (trimmed) {
+            inputHistory.addMessageToHistory(value);
+        }
         if (trimmed === "/clear") {
             messages.clearMessages();
             input.value = "";
