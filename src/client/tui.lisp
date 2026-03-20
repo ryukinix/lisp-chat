@@ -134,7 +134,7 @@
 (tui:defmessage server-msg
   ((text :initarg :text :accessor server-msg-text)))
 
-(tui:defmessage clear-messages-msg ())
+(tui:defmessage clear-chat-area-msg ())
 
 ;;; Helper Functions
 
@@ -276,7 +276,7 @@
                     (connect-websocket program model host port)
                     (connect-tcp program model host port))
                 (setf (reconnecting model) nil)
-                (tui:send program (make-instance 'clear-messages-msg))
+                (tui:send program (make-instance 'clear-chat-area-msg))
                 (unless (and (ping-thread model) (bt:thread-alive-p (ping-thread model)))
                   (start-ping-thread model))
                 (let ((user (or (username model) (pending-username model))))
@@ -329,9 +329,7 @@
        (setf (connected model) nil)
        (tui:quit tui:*current-program*))
       ((string= text "/clear")
-       (setf (messages model) nil)
-       (setf (last-date model) nil)
-       (render-messages model)
+       (tui:send tui:*current-program* (make-instance 'clear-chat-area-msg))
        (ti:textinput-reset (input model)))
       ((string= text "/users")
        (incf (users-request-count model))
@@ -461,7 +459,7 @@
       (render-messages model)))
   model)
 
-(defmethod tui:update-message ((model chat-model) (msg clear-messages-msg))
+(defmethod tui:update-message ((model chat-model) (msg clear-chat-area-msg))
   (setf (messages model) nil)
   (setf (last-date model) nil)
   (render-messages model)
