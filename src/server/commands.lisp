@@ -129,9 +129,8 @@
                                            server:*clients*))))
     (server:command-message (format nil "users: ~{~a~^, ~}" (mapcar #'server:client-name channel-users)))))
 
-(defun /join (client &optional (channel nil) &rest args)
+(defun /join (client &optional (channel nil))
   "/join changes the active channel for the user"
-  (declare (ignorable args))
   (if channel
       (let ((new-channel (server:normalize-channel channel))
             (old-channel (server:client-active-channel client)))

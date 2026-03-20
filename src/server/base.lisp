@@ -171,17 +171,38 @@
             for c2 across substring
             always (equal c1 c2)))))
 
+(defun clean-channel-char (c)
+  (let ((down (char-downcase c)))
+    (cond
+      ((or (char= down #\Space) (char= down #\_)) #\-)
+      ((member down '(#\à #\á #\â #\ã #\ä #\å)) #\a)
+      ((member down '(#\è #\é #\ê #\ë)) #\e)
+      ((member down '(#\ì #\í #\î #\ï)) #\i)
+      ((member down '(#\ò #\ó #\ô #\õ #\ö)) #\o)
+      ((member down '(#\ù #\ú #\û #\ü)) #\u)
+      ((char= down #\ç) #\c)
+      ((char= down #\ñ) #\n)
+      ((or (and (char>= down #\a) (char<= down #\z))
+           (and (char>= down #\0) (char<= down #\9))
+           (char= down #\-))
+       down)
+      (t nil))))
+
 (defun normalize-channel (channel)
   "Normalize channel name. Ensure it starts with #."
-  (when (and channel (> (length channel) 0))
+  (when channel
     (let ((c (string-trim '(#\Space #\Return #\Newline #\Tab) channel)))
       (when (uiop:string-prefix-p "%23" c)
         (setf c (subseq c 3)))
       (when (uiop:string-prefix-p "#" c)
         (setf c (subseq c 1)))
-      (if (zerop (length c))
-          nil
-          (concatenate 'string "#" c)))))
+      (let ((cleaned (make-array (length c) :element-type 'character :fill-pointer 0)))
+        (loop for char across c
+              for new-char = (clean-channel-char char)
+              when new-char do (vector-push new-char cleaned))
+        (if (zerop (length cleaned))
+            "#general"
+            (concatenate 'string "#" cleaned))))))
 
 (defun format-message-line (time from content)
   (format nil "|~a| [~a]: ~a" time from content))
