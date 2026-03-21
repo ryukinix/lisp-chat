@@ -236,18 +236,44 @@
          (note "Note: /clear and /quit are front-end commands, depending the implementation of the client."))
     (server:command-message (format nil "Manual of lisp-chat:~%~{~a~^~%~}~%~%~a" docs note))))
 
-(defun /log (client &key (depth "20") (date-format nil) (global nil) &allow-other-keys)
+(defun /log (client &key (depth "20") (date-format nil) (global nil) before after around &allow-other-keys)
   "/log shows the last messages sent to the server.
    DEPTH is optional number of messages frames from log
-   GLOBAL is optional boolean to search across all channels"
+   GLOBAL is optional boolean to search across all channels
+   BEFORE is optional ISO format datetime filter (e.g., 2026-02-22T14:30).
+   AFTER is optional ISO format datetime filter (e.g., 2026-02-22T14:30).
+   AROUND is optional ISO format datetime filter (e.g., 2026-02-22T14:30)."
   (declare (ignorable client))
-  (let* ((messages (server:user-messages :date-format date-format
-                                         :channel (server:client-active-channel client)
-                                         :global global))
-         (log-size (min (or (parse-integer depth :junk-allowed t) 20)
-                        (length messages))))
-    (format nil "~{~a~^~%~}" (reverse (subseq messages 0
-                                              log-size)))))
+  (let* ((parsed-depth (or (parse-integer (ensure-string depth) :junk-allowed t) 20))
+         (before-time (server:parse-iso8601 (ensure-string before)))
+         (after-time (server:parse-iso8601 (ensure-string after)))
+         (around-time (server:parse-iso8601 (ensure-string around)))
+         (channel (server:client-active-channel client))
+         (messages server:*messages-log*)
+         (filtered (remove-if-not
+                    (lambda (m)
+                      (and (not (equal (server:message-from m) "@server"))
+                           (or global
+                               (string-equal (server:message-channel m) channel))
+                           (or (not before-time)
+                               (<= (server:message-universal-time m) before-time))
+                           (or (not after-time)
+                               (>= (server:message-universal-time m) after-time))))
+                    messages))
+         (processed (if around-time
+                        (let* ((sorted (sort (copy-list filtered)
+                                             (lambda (m1 m2)
+                                               (< (abs (- (server:message-universal-time m1) around-time))
+                                                  (abs (- (server:message-universal-time m2) around-time))))))
+                               (limited (subseq sorted 0 (min parsed-depth (length sorted)))))
+                          (sort limited
+                                (lambda (m1 m2)
+                                  (> (server:message-universal-time m1)
+                                     (server:message-universal-time m2)))))
+                        (subseq filtered 0 (min parsed-depth (length filtered)))))
+         (formatted (mapcar (lambda (m) (server:formatted-message m :date-format date-format :global global))
+                            processed)))
+    (format nil "~{~a~^~%~}" (reverse formatted))))
 
 (defun /uptime (client &rest args)
   "/uptime returns a human-readable string to preset the uptime since the server started."
