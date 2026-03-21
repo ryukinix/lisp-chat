@@ -1,4 +1,5 @@
 import utils from './utils.js';
+import api from './api.js';
 
 let autocompleteCache = {
     '/': null,
@@ -22,27 +23,16 @@ async function fetchAutoCompleteData(trigger) {
     if (autocompleteCache[trigger] !== null) return autocompleteCache[trigger];
 
     let command = "";
-    let body = {};
+    let kwargs = {};
     if (trigger === '/') {
         command = "help";
     } else if (trigger === '#') {
         command = "channels";
-        body = { "kwargs": { "all": true } };
+        kwargs = { "all": true };
     }
 
     try {
-        const protocol = window.location.protocol;
-        const host = window.location.host;
-        const url = `${protocol}//${host}/api/commands/${command}`;
-
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-
-        if (!response.ok) return [];
-        const data = await response.json();
+        const data = await api.fetchCommand(command, kwargs);
         const result = data.result || "";
 
         let items = [];

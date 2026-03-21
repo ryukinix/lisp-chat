@@ -29,6 +29,12 @@ function processServerMessage(content, isRealTime) {
     const isSystemMessage = isJoin || isExit || isNickChange;
     const isUsersListResponse = content.startsWith("users: ");
 
+    const sessionIdMatch = content.match(/Your session ID is: (.*)/);
+    if (sessionIdMatch) {
+        network.setSessionId(sessionIdMatch[1].trim());
+        return false;
+    }
+
     if (isNickChange) {
         const nickMatch = content.match(/Your new nick is: @(.*)/);
         if (nickMatch) {
@@ -145,12 +151,12 @@ function ensureDateDivider(el) {
     }
 }
 
-function insertMessageNode(div, from, content, seconds, hasDate) {
-    chat.appendChild(div);
+function insertMessageNode(div, anchor) {
+    chat.insertBefore(div, anchor);
     ensureDateDivider(div);
 }
 
-function processStructuredMessage(line, match) {
+function processStructuredMessage(line, match, anchor) {
     const [_, date, timeHM, timeS, from, content] = match;
     const effectiveDate = date || utils.getTodayDate();
     const normalizedLine = `|${effectiveDate} ${timeHM}:${timeS}| [${from}]: ${content}`;
@@ -162,7 +168,7 @@ function processStructuredMessage(line, match) {
         if (!shouldRender) return;
     }
 
-    const lastMsg = chat.lastElementChild;
+    const lastMsg = anchor ? anchor.previousElementSibling : chat.lastElementChild;
     if (lastMsg && lastMsg.classList.contains("message") &&
         lastMsg.dataset.date === effectiveDate &&
         lastMsg.dataset.timeHm === timeHM &&
@@ -180,35 +186,45 @@ function processStructuredMessage(line, match) {
     }
 
     const div = createMessageElement(effectiveDate, timeHM, timeS, from, content);
-    const seconds = utils.calculateSeconds(timeHM, timeS);
 
-    insertMessageNode(div, from, content, seconds, !!date);
+    insertMessageNode(div, anchor);
 }
 
-function addRawMessage(line) {
+function addRawMessage(line, anchor) {
     const div = document.createElement("div");
     div.className = "message";
     div.dataset.date = utils.getTodayDate();
     div.innerHTML = formatting.formatMessage(line);
-    chat.appendChild(div);
-    ensureDateDivider(div);
+    insertMessageNode(div, anchor);
 }
 
-function addMessage(text) {
+function addMessage(text, prepend = false) {
     const isAtBottom = checkChatIsAtBottom();
-    const linesArray = text.split("\n");
+    const linesArray = text.split(/\r?\n/);
+    let anchor = null;
+    if (prepend) {
+        anchor = chat.firstElementChild;
+        while (anchor && !anchor.classList.contains("message")) {
+            anchor = anchor.nextElementSibling;
+        }
+    }
+    let previousScrollHeight = chat.scrollHeight;
+
     for (const line of linesArray) {
+        if (!line.trim()) continue;
         if (auth.handleAuthHandshake(line)) continue;
 
         const match = line.match(/^\|(?:(\d{4}-\d{2}-\d{2}) )?(\d{2}:\d{2}):(\d{2})\| \[(.*?)\]: (.*)$/);
         if (match) {
-            processStructuredMessage(line, match);
+            processStructuredMessage(line, match, anchor);
         } else {
-            addRawMessage(line);
+            addRawMessage(line, anchor);
         }
     }
 
-    if (isAtBottom) {
+    if (prepend && chat.scrollHeight > previousScrollHeight) {
+        chat.scrollTop += chat.scrollHeight - previousScrollHeight;
+    } else if (isAtBottom && !prepend) {
         chat.scrollTop = chat.scrollHeight;
     }
 }
