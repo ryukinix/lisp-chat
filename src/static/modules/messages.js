@@ -168,6 +168,14 @@ function processStructuredMessage(line, match, anchor) {
         if (!shouldRender) return;
     }
 
+    const existingMsgs = chat.querySelectorAll(`.message[data-date="${effectiveDate}"][data-time-hm="${timeHM}"][data-time-s="${timeS}"][data-from="${from}"]`);
+    for (const msg of existingMsgs) {
+        const contentSpan = msg.querySelector(".msg-content");
+        if (contentSpan && contentSpan.textContent.includes(content)) {
+            return;
+        }
+    }
+
     const lastMsg = anchor ? anchor.previousElementSibling : chat.lastElementChild;
     if (lastMsg && lastMsg.classList.contains("message") &&
         lastMsg.dataset.date === effectiveDate &&

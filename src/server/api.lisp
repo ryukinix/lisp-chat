@@ -35,13 +35,16 @@
         (yason:encode-plist plist s))))
 
 (defun json-response (code plist)
-  `(,code (:content-type "application/json")
+  `(,code (:content-type "application/json"
+           :access-control-allow-origin "*"
+           :access-control-allow-headers "client-session, Client-Session, Content-Type")
           (,(plist-to-json plist))))
 
 (defun api-app (env command-name)
   (let* ((command-sym (lisp-chat/commands:get-command command-name))
          (headers (getf env :headers))
-         (session-id (and headers (gethash "client-session" headers)))
+         (session-id (and headers (or (gethash "client-session" headers)
+                                      (gethash "Client-Session" headers))))
          (is-unauthenticated (member command-name *api-unauthenticated-commands* :test #'string-equal))
          (is-blocked (member command-name *api-blocked-commands* :test #'string-equal))
          (client (if session-id
@@ -57,7 +60,10 @@
       (t
        (let ((payload (parse-json-body env)))
          (if (eq payload :error)
-             `(400 (:content-type "application/json") ("{\"error\": \"Invalid JSON in request body\"}"))
+             `(400 (:content-type "application/json"
+                    :access-control-allow-origin "*"
+                    :access-control-allow-headers "client-session, Client-Session, Content-Type")
+                   ("{\"error\": \"Invalid JSON in request body\"}"))
              (let* ((args (gethash "args" payload nil))
                     (kwargs-hash (gethash "kwargs" payload nil))
                     (channel-override (normalize-channel (gethash "channel" payload nil)))
@@ -82,7 +88,17 @@
   (declare (ignore env))
   (let ((command-sym (lisp-chat/commands:get-command command-name)))
     (if (not command-sym)
-        `(404 (:content-type "text/plain") ("Command not found"))
+        `(404 (:content-type "text/plain"
+               :access-control-allow-origin "*"
+               :access-control-allow-methods "POST, OPTIONS"
+               :access-control-allow-headers "client-session, Client-Session, Content-Type"
+               :access-control-max-age "86400")
+              ("Command not found"))
         (let ((description (with-output-to-string (s)
                              (describe command-sym s))))
-          `(200 (:content-type "text/plain") (,description))))))
+          `(200 (:content-type "text/plain"
+                 :access-control-allow-origin "*"
+                 :access-control-allow-methods "POST, OPTIONS"
+                 :access-control-allow-headers "client-session, Client-Session, Content-Type"
+                 :access-control-max-age "86400")
+                (,description))))))

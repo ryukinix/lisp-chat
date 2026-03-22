@@ -8,7 +8,7 @@ async function fetchCommand(command, kwargs = {}) {
     const headers = { 'Content-Type': 'application/json' };
     const sessionId = network.getSessionId();
     if (sessionId) {
-        headers['Client-Session'] = sessionId;
+        headers['client-session'] = sessionId;
     }
 
     const response = await fetch(url, {

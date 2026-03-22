@@ -23,6 +23,7 @@ form.addEventListener("submit", (e) => {
         }
         if (trimmed === "/clear") {
             messages.clearMessages();
+            history.resetReachedEnd();
             input.value = "";
             return;
         }
@@ -46,6 +47,7 @@ form.addEventListener("submit", (e) => {
         }
         if (firstWord === "/join") {
             messages.clearMessages();
+            history.resetReachedEnd();
             network.getWs().send(value);
             network.getWs().send(`/log :depth ${config.LOG_HISTORY_SIZE} :date-format date`);
 
