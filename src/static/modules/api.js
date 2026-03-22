@@ -1,15 +1,19 @@
 import network from './network.js';
 
 async function fetchCommand(command, kwargs = {}) {
+    const sessionId = network.getSessionId();
+    if (!sessionId) {
+        throw new Error(`Session ID is not defined. Cannot call API command: ${command}`);
+    }
+
     const protocol = window.location.protocol;
     const host = window.location.host;
     const url = `${protocol}//${host}/api/commands/${command}`;
 
-    const headers = { 'Content-Type': 'application/json' };
-    const sessionId = network.getSessionId();
-    if (sessionId) {
-        headers['Client-Session'] = sessionId;
-    }
+    const headers = {
+        'Content-Type': 'application/json',
+        'Client-Session': sessionId
+    };
 
     const response = await fetch(url, {
         method: 'POST',

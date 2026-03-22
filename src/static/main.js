@@ -28,17 +28,8 @@ form.addEventListener("submit", (e) => {
             return;
         }
         if (!auth.getLoggedIn()) {
-            auth.setUsername(trimmed);
-            auth.setLoggedIn(true);
-            auth.updateUsernamePrefix();
-            auth.hideLoginPanel();
-            network.getWs().send(value);
-            network.getWs().send(`/log :depth ${config.LOG_HISTORY_SIZE} :date-format date`);
-            network.getWs().send(`/session`);
+            auth.performLogin(trimmed);
             input.value = "";
-            network.keepAliveWorker.postMessage('start');
-            network.setFetchUsersInterval(true);
-            setTimeout(() => network.requestUserList(true), 500);
             return;
         }
         const firstWord = trimmed.split(/\s+/)[0];
