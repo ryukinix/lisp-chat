@@ -21,15 +21,10 @@ function initHistoryLoading() {
 
     let isLoadingHistory = false;
     loadMoreBtn.addEventListener('click', async () => {
-        console.log("CLICKED LOAD MORE!");
-        if (isLoadingHistory || hasReachedEnd) {
-            console.log("ALREADY LOADING OR REACHED END", isLoadingHistory, hasReachedEnd);
-            return;
-        }
+        if (isLoadingHistory || hasReachedEnd) return;
         isLoadingHistory = true;
         const oldestMsg = messages.chat.querySelector('.message');
         if (!oldestMsg) {
-            console.log("NO OLDEST MSG");
             isLoadingHistory = false;
             loadMoreBtn.textContent = textButton;
             return;
@@ -40,7 +35,6 @@ function initHistoryLoading() {
         const timeS = oldestMsg.dataset.timeS;
 
         if (!date || !timeHm || !timeS) {
-            console.log("MISSING DATASETS", date, timeHm, timeS);
             isLoadingHistory = false;
             loadMoreBtn.textContent = textButton;
             return;
@@ -52,14 +46,11 @@ function initHistoryLoading() {
             const result = data.result || "";
             const numMessagesBefore = messages.chat.querySelectorAll('.message').length;
             
-            console.log("HISTORY LOAD:", result, "BEFORE:", numMessagesBefore);
-            
             if (result.trim()) {
                 messages.addMessage(result, true);
             }
             
             const numMessagesAfter = messages.chat.querySelectorAll('.message').length;
-            console.log("HISTORY LOAD AFTER:", numMessagesAfter);
             if (numMessagesBefore === numMessagesAfter) {
                 hasReachedEnd = true;
                 notifications.showNotification("You reached the chat history end!");
