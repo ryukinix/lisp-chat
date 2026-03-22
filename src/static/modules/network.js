@@ -4,14 +4,11 @@ import auth from './auth.js';
 let ws;
 let fetchUsersInterval;
 let userRequestsPending = 0;
-let sessionId = null;
 
 function getWs() { return ws; }
 function setWs(newWs) { ws = newWs; }
 function getFetchUsersInterval() { return fetchUsersInterval; }
 function getUserRequestsPending() { return userRequestsPending; }
-function getSessionId() { return sessionId; }
-function setSessionId(id) { sessionId = id; }
 
 const keepAliveWorker = new Worker(URL.createObjectURL(new Blob([`
     let interval;
@@ -97,6 +94,5 @@ function connect(onMessageCallback) {
 export default {
     getWs, setWs, getFetchUsersInterval, getUserRequestsPending,
     keepAliveWorker, setFetchUsersInterval, incrementUserRequestsPending,
-    resetUserRequestsPending, requestUserList, connect,
-    getSessionId, setSessionId
+    resetUserRequestsPending, requestUserList, connect
 };

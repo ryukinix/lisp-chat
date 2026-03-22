@@ -75,8 +75,25 @@
       s
       (write-to-string s)))
 
+(defun filter-messages (client &key query user global before-time after-time)
+  (let ((channel (server:client-active-channel client)))
+    (remove-if-not
+     (lambda (m)
+       (and (not (equal (server:message-from m) "@server"))
+            (or global
+                (string-equal (server:message-channel m) channel))
+            (or (not query)
+                (search query (server:message-content m) :test #'char-equal))
+            (or (not user)
+                (string-equal (server:message-from m) user))
+            (or (not before-time)
+                (<= (server:message-universal-time m) before-time))
+            (or (not after-time)
+                (>= (server:message-universal-time m) after-time))))
+     server:*messages-log*)))
+
 ;; user commands prefixed with /
-(defun /search (client query &rest args &key user (limit "10") before after (global nil) &allow-other-keys)
+(defun /search (client query &rest args &key user (limit "10") before after global &allow-other-keys)
   "/search QUERY searches for messages containing QUERY as substring.
    QUERY is an mandatory parameter.
    KEY PARAMETERS:
@@ -91,23 +108,8 @@
       (let* ((parsed-limit (parse-integer (ensure-string limit) :junk-allowed t))
              (before-time (server:parse-iso8601 (ensure-string before)))
              (after-time (server:parse-iso8601 (ensure-string after)))
-             (messages server:*messages-log*) ;; newest first
-             (filtered (remove-if-not
-                        (lambda (m)
-                          (and (not (equal (server:message-from m) "@server"))
-                               (or global
-                                   (string-equal (server:message-channel m) (server:client-active-channel client)))
-                               (search query
-                                       (server:message-content m)
-                                       :test #'char-equal)
-                               (or (not user)
-                                   (string-equal (server:message-from m)
-                                          user))
-                               (or (not before-time)
-                                   (<= (server:message-universal-time m) before-time))
-                               (or (not after-time)
-                                   (>= (server:message-universal-time m) after-time))))
-                        messages))
+             (filtered (filter-messages client :query query :user user :global global 
+                                        :before-time before-time :after-time after-time))
              (limited (subseq filtered 0 (min (length filtered) parsed-limit))))
         (if (not limited)
             (server:command-message "the search returned a empty result")
@@ -236,7 +238,18 @@
          (note "Note: /clear and /quit are front-end commands, depending the implementation of the client."))
     (server:command-message (format nil "Manual of lisp-chat:~%~{~a~^~%~}~%~%~a" docs note))))
 
-(defun /log (client &key (depth "20") (date-format nil) (global nil) before after around &allow-other-keys)
+(defun get-messages-around (messages around-time limit)
+  (let* ((sorted (sort (copy-list messages)
+                       (lambda (m1 m2)
+                         (< (abs (- (server:message-universal-time m1) around-time))
+                            (abs (- (server:message-universal-time m2) around-time))))))
+         (limited (subseq sorted 0 (min limit (length sorted)))))
+    (sort limited
+          (lambda (m1 m2)
+            (> (server:message-universal-time m1)
+               (server:message-universal-time m2))))))
+
+(defun /log (client &key (depth "20") date-format global before after around &allow-other-keys)
   "/log shows the last messages sent to the server.
    DEPTH is optional number of messages frames from log
    GLOBAL is optional boolean to search across all channels
@@ -248,28 +261,9 @@
          (before-time (server:parse-iso8601 (ensure-string before)))
          (after-time (server:parse-iso8601 (ensure-string after)))
          (around-time (server:parse-iso8601 (ensure-string around)))
-         (channel (server:client-active-channel client))
-         (messages server:*messages-log*)
-         (filtered (remove-if-not
-                    (lambda (m)
-                      (and (not (equal (server:message-from m) "@server"))
-                           (or global
-                               (string-equal (server:message-channel m) channel))
-                           (or (not before-time)
-                               (<= (server:message-universal-time m) before-time))
-                           (or (not after-time)
-                               (>= (server:message-universal-time m) after-time))))
-                    messages))
+         (filtered (filter-messages client :global global :before-time before-time :after-time after-time))
          (processed (if around-time
-                        (let* ((sorted (sort (copy-list filtered)
-                                             (lambda (m1 m2)
-                                               (< (abs (- (server:message-universal-time m1) around-time))
-                                                  (abs (- (server:message-universal-time m2) around-time))))))
-                               (limited (subseq sorted 0 (min parsed-depth (length sorted)))))
-                          (sort limited
-                                (lambda (m1 m2)
-                                  (> (server:message-universal-time m1)
-                                     (server:message-universal-time m2)))))
+                        (get-messages-around filtered around-time parsed-depth)
                         (subseq filtered 0 (min parsed-depth (length filtered)))))
          (formatted (mapcar (lambda (m) (server:formatted-message m :date-format date-format :global global))
                             processed)))

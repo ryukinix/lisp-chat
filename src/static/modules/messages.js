@@ -26,13 +26,16 @@ function processServerMessage(content, isRealTime) {
     const isJoin = content.includes("joined to the party");
     const isExit = content.includes("exited from the party");
     const isNickChange = content.includes("Your new nick is");
-    const isSystemMessage = isJoin || isExit || isNickChange;
+    const isSessionId = content.includes("Your session ID is:");
+    const isSystemMessage = isJoin || isExit || isNickChange || isSessionId;
     const isUsersListResponse = content.startsWith("users: ");
 
-    const sessionIdMatch = content.match(/Your session ID is: (.*)/);
-    if (sessionIdMatch) {
-        network.setSessionId(sessionIdMatch[1].trim());
-        return false;
+    if (isSessionId) {
+        const sessionIdMatch = content.match(/Your session ID is: (.*)/);
+        if (sessionIdMatch) {
+            auth.setSessionId(sessionIdMatch[1].trim());
+            return false;
+        }
     }
 
     if (isNickChange) {

@@ -16,6 +16,7 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
+  // Clear old caches when a new service worker is activated to ensure users get the latest version
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(

@@ -4,6 +4,10 @@ import network from './network.js';
 
 let username = utils.getCookie("username") || "";
 let loggedIn = false;
+let sessionId = null;
+
+function getSessionId() { return sessionId; }
+function setSessionId(id) { sessionId = id; }
 
 function getUsername() {
     return username;
@@ -114,5 +118,6 @@ function handleAuthHandshake(line) {
 
 export default {
     getUsername, getLoggedIn, setLoggedIn, setUsername, updateUsernamePrefix,
-    showLoginPanel, hideLoginPanel, handleAuthHandshake, performLogin
+    showLoginPanel, hideLoginPanel, handleAuthHandshake, performLogin,
+    getSessionId, setSessionId
 };
