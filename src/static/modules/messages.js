@@ -26,8 +26,17 @@ function processServerMessage(content, isRealTime) {
     const isJoin = content.includes("joined to the party");
     const isExit = content.includes("exited from the party");
     const isNickChange = content.includes("Your new nick is");
-    const isSystemMessage = isJoin || isExit || isNickChange;
+    const isSessionId = content.includes("Your session ID is:");
+    const isSystemMessage = isJoin || isExit || isNickChange || isSessionId;
     const isUsersListResponse = content.startsWith("users: ");
+
+    if (isSessionId) {
+        const sessionIdMatch = content.match(/Your session ID is: (.*)/);
+        if (sessionIdMatch) {
+            auth.setSessionId(sessionIdMatch[1].trim());
+            return false;
+        }
+    }
 
     if (isNickChange) {
         const nickMatch = content.match(/Your new nick is: @(.*)/);
@@ -54,17 +63,17 @@ function processServerMessage(content, isRealTime) {
     return true;
 }
 
-function isMessageCached(line, from) {
+function isMessageCached(line, from, doNotCache = false) {
     if (messageCache.has(line)) return true;
 
-    if (from != "@server") {
+    if (!doNotCache && from != "@server") {
         messageCache.add(line);
         messageHistory.push(line);
-    }
 
-    if (messageHistory.length > config.MAX_CACHE_SIZE) {
-        const old = messageHistory.shift();
-        messageCache.delete(old);
+        if (messageHistory.length > config.MAX_CACHE_SIZE) {
+            const old = messageHistory.shift();
+            messageCache.delete(old);
+        }
     }
     return false;
 }
@@ -87,6 +96,7 @@ function createMessageElement(date, timeHM, timeS, from, content) {
 
     const contentSpan = document.createElement("span");
     contentSpan.className = "msg-content";
+    contentSpan.dataset.rawContent = content;
     contentSpan.innerHTML = formatting.formatMessage(content);
 
     div.appendChild(timeSpan);
@@ -145,24 +155,34 @@ function ensureDateDivider(el) {
     }
 }
 
-function insertMessageNode(div, from, content, seconds, hasDate) {
-    chat.appendChild(div);
+function insertMessageNode(div, anchor) {
+    chat.insertBefore(div, anchor);
     ensureDateDivider(div);
 }
 
-function processStructuredMessage(line, match) {
+function processStructuredMessage(line, match, anchor, prepend) {
     const [_, date, timeHM, timeS, from, content] = match;
     const effectiveDate = date || utils.getTodayDate();
     const normalizedLine = `|${effectiveDate} ${timeHM}:${timeS}| [${from}]: ${content}`;
 
-    if (isMessageCached(normalizedLine, from)) return;
+    if (isMessageCached(normalizedLine, from, prepend)) return;
 
     if (from === "@server") {
         const shouldRender = processServerMessage(content, !date);
         if (!shouldRender) return;
     }
 
-    const lastMsg = chat.lastElementChild;
+    const existingMsgs = chat.querySelectorAll(`.message[data-date="${effectiveDate}"][data-time-hm="${timeHM}"][data-time-s="${timeS}"][data-from="${from}"]`);
+    for (const msg of existingMsgs) {
+        const contentSpan = msg.querySelector(".msg-content");
+        if (contentSpan) {
+            const rawContent = contentSpan.dataset.rawContent;
+            if (rawContent && rawContent.includes(content)) return;
+            if (contentSpan.textContent.includes(content)) return;
+        }
+    }
+
+    const lastMsg = anchor ? anchor.previousElementSibling : chat.lastElementChild;
     if (lastMsg && lastMsg.classList.contains("message") &&
         lastMsg.dataset.date === effectiveDate &&
         lastMsg.dataset.timeHm === timeHM &&
@@ -170,6 +190,9 @@ function processStructuredMessage(line, match) {
         lastMsg.dataset.from === from) {
 
         const contentSpan = lastMsg.querySelector(".msg-content");
+        if (contentSpan.dataset.rawContent !== undefined) {
+            contentSpan.dataset.rawContent += "\\n" + content;
+        }
         contentSpan.appendChild(document.createElement("br"));
         const newContent = document.createElement("span");
         newContent.innerHTML = formatting.formatMessage(content);
@@ -180,35 +203,51 @@ function processStructuredMessage(line, match) {
     }
 
     const div = createMessageElement(effectiveDate, timeHM, timeS, from, content);
-    const seconds = utils.calculateSeconds(timeHM, timeS);
 
-    insertMessageNode(div, from, content, seconds, !!date);
+    insertMessageNode(div, anchor);
 }
 
-function addRawMessage(line) {
+function addRawMessage(line, anchor) {
     const div = document.createElement("div");
     div.className = "message";
     div.dataset.date = utils.getTodayDate();
-    div.innerHTML = formatting.formatMessage(line);
-    chat.appendChild(div);
-    ensureDateDivider(div);
+    
+    const contentSpan = document.createElement("span");
+    contentSpan.className = "msg-content";
+    contentSpan.dataset.rawContent = line;
+    contentSpan.innerHTML = formatting.formatMessage(line);
+    
+    div.appendChild(contentSpan);
+    insertMessageNode(div, anchor);
 }
 
-function addMessage(text) {
+function addMessage(text, prepend = false) {
     const isAtBottom = checkChatIsAtBottom();
-    const linesArray = text.split("\n");
+    const linesArray = text.split(/\r?\n/);
+    let anchor = null;
+    if (prepend) {
+        anchor = chat.firstElementChild;
+        while (anchor && !anchor.classList.contains("message")) {
+            anchor = anchor.nextElementSibling;
+        }
+    }
+    let previousScrollHeight = chat.scrollHeight;
+
     for (const line of linesArray) {
+        if (!line.trim()) continue;
         if (auth.handleAuthHandshake(line)) continue;
 
         const match = line.match(/^\|(?:(\d{4}-\d{2}-\d{2}) )?(\d{2}:\d{2}):(\d{2})\| \[(.*?)\]: (.*)$/);
         if (match) {
-            processStructuredMessage(line, match);
+            processStructuredMessage(line, match, anchor, prepend);
         } else {
-            addRawMessage(line);
+            addRawMessage(line, anchor);
         }
     }
 
-    if (isAtBottom) {
+    if (prepend && chat.scrollHeight > previousScrollHeight) {
+        chat.scrollTop += chat.scrollHeight - previousScrollHeight;
+    } else if (isAtBottom && !prepend) {
         chat.scrollTop = chat.scrollHeight;
     }
 }

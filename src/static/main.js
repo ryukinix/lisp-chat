@@ -4,6 +4,8 @@ import network from './modules/network.js';
 import autocomplete from './modules/autocomplete.js';
 import messages from './modules/messages.js';
 import inputHistory from './modules/input.js';
+import notifications from './modules/notifications.js';
+import history from './modules/history.js';
 
 const form = document.getElementById("input-area");
 const input = document.getElementById("message-input");
@@ -21,20 +23,13 @@ form.addEventListener("submit", (e) => {
         }
         if (trimmed === "/clear") {
             messages.clearMessages();
+            history.resetReachedEnd();
             input.value = "";
             return;
         }
         if (!auth.getLoggedIn()) {
-            auth.setUsername(trimmed);
-            auth.setLoggedIn(true);
-            auth.updateUsernamePrefix();
-            auth.hideLoginPanel();
-            network.getWs().send(value);
-            network.getWs().send(`/log :depth ${config.LOG_HISTORY_SIZE} :date-format date`);
+            auth.performLogin(trimmed);
             input.value = "";
-            network.keepAliveWorker.postMessage('start');
-            network.setFetchUsersInterval(true);
-            setTimeout(() => network.requestUserList(true), 500);
             return;
         }
         const firstWord = trimmed.split(/\s+/)[0];
@@ -43,6 +38,7 @@ form.addEventListener("submit", (e) => {
         }
         if (firstWord === "/join") {
             messages.clearMessages();
+            history.resetReachedEnd();
             network.getWs().send(value);
             network.getWs().send(`/log :depth ${config.LOG_HISTORY_SIZE} :date-format date`);
 
@@ -107,5 +103,6 @@ if (window.innerWidth > config.DESKTOP_MIN_WIDTH) {
     input.focus();
 }
 
+history.initHistoryLoading();
 autocomplete.initAutocomplete(input);
 network.connect(messages.addMessage);

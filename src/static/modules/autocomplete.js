@@ -1,4 +1,5 @@
 import utils from './utils.js';
+import api from './api.js';
 
 let autocompleteCache = {
     '/': null,
@@ -21,34 +22,18 @@ async function fetchAutoCompleteData(trigger) {
 
     if (autocompleteCache[trigger] !== null) return autocompleteCache[trigger];
 
-    let command = "";
-    let body = {};
-    if (trigger === '/') {
-        command = "help";
-    } else if (trigger === '#') {
-        command = "channels";
-        body = { "kwargs": { "all": true } };
-    }
-
     try {
-        const protocol = window.location.protocol;
-        const host = window.location.host;
-        const url = `${protocol}//${host}/api/commands/${command}`;
-
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-
-        if (!response.ok) return [];
-        const data = await response.json();
-        const result = data.result || "";
-
+        let data;
+        let result = "";
         let items = [];
+
         if (trigger === '/') {
+            data = await api.fetchCommand("help");
+            result = data.result || "";
             items = result.replace("Available commands: ", "").split(",").map(c => c.trim().substring(1)).filter(c => c.length > 0);
         } else if (trigger === '#') {
+            data = await api.channels(true);
+            result = data.result || "";
             items = result.split('\n').slice(1).map(line => line.split(':')[0].trim().substring(1)).filter(c => c.length > 0);
         }
 

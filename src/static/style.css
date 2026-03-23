@@ -31,6 +31,32 @@ body {
     min-height: 0;
 }
 
+#load-more-btn {
+    position: absolute;
+    top: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    border-radius: 20px;
+    padding: 3px 10px;
+    background: rgba(40, 40, 40, 0.95);
+    color: #eee;
+    border: 1px solid #555;
+    cursor: pointer;
+    font-size: 11px;
+    opacity: 0.9;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+    transition: background 0.2s, opacity 0.2s;
+}
+
+#load-more-btn:hover {
+    background: rgba(60, 60, 60, 0.95);
+}
+
+#load-more-btn.hidden {
+    display: none;
+}
+
 #autocomplete-popup {
     position: absolute;
     bottom: 100%; /* Position relative to input-area */

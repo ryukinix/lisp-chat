@@ -57,7 +57,8 @@
       (t
        (let ((payload (parse-json-body env)))
          (if (eq payload :error)
-             `(400 (:content-type "application/json") ("{\"error\": \"Invalid JSON in request body\"}"))
+             `(400 (:content-type "application/json")
+                   ("{\"error\": \"Invalid JSON in request body\"}"))
              (let* ((args (gethash "args" payload nil))
                     (kwargs-hash (gethash "kwargs" payload nil))
                     (channel-override (normalize-channel (gethash "channel" payload nil)))

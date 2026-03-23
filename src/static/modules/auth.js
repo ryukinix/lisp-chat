@@ -4,6 +4,10 @@ import network from './network.js';
 
 let username = utils.getCookie("username") || "";
 let loggedIn = false;
+let sessionId = null;
+
+function getSessionId() { return sessionId; }
+function setSessionId(id) { sessionId = id; }
 
 function getUsername() {
     return username;
@@ -74,19 +78,28 @@ function hideLoginPanel() {
     if (panel) panel.remove();
 }
 
+function performLogin(loginUsername) {
+    if (loginUsername) {
+        setUsername(loginUsername);
+    }
+    network.getWs().send(username);
+    setLoggedIn(true);
+    updateUsernamePrefix();
+    hideLoginPanel();
+    network.getWs().send(`/session`);
+    network.getWs().send(`/log :depth ${config.LOG_HISTORY_SIZE} :date-format date`);
+    if (!network.getFetchUsersInterval()) {
+        network.keepAliveWorker.postMessage('start');
+        network.setFetchUsersInterval(true);
+        setTimeout(() => network.requestUserList(true), 500);
+    }
+}
+
 function handleAuthHandshake(line) {
     const input = document.getElementById("message-input");
     if (line === "> Type your username: ") {
         if (username) {
-            network.getWs().send(username);
-            setLoggedIn(true);
-            updateUsernamePrefix();
-            network.getWs().send(`/log :depth ${config.LOG_HISTORY_SIZE} :date-format date`);
-            if (!network.getFetchUsersInterval()) {
-                network.keepAliveWorker.postMessage('start');
-                network.setFetchUsersInterval(true);
-                setTimeout(() => network.requestUserList(true), 500);
-            }
+            performLogin();
         } else {
             setLoggedIn(false);
             updateUsernamePrefix();
@@ -105,5 +118,6 @@ function handleAuthHandshake(line) {
 
 export default {
     getUsername, getLoggedIn, setLoggedIn, setUsername, updateUsernamePrefix,
-    showLoginPanel, hideLoginPanel, handleAuthHandshake
+    showLoginPanel, hideLoginPanel, handleAuthHandshake, performLogin,
+    getSessionId, setSessionId
 };

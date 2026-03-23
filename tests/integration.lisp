@@ -177,6 +177,23 @@ Returns the line as a string, or NIL if it timed out."
       "/log :date-format date"
       `(:expect ,(get-current-date)))))
 
+(define-test log-commands-with-date-filters
+  :parent integration-tests
+  (let ((today (get-current-date)))
+    (with-tcp-client (stream)
+      (tcp-interaction stream
+        '(:expect "> Type your username: ")
+        "tester-log-date"
+        '(:wait-for "tester-log-date joined")
+        "dated log message"
+        '(:wait-for "dated log message")
+        (format nil "/log :after ~a" today)
+        '(:expect "dated log message")
+        "/log :before 2000-01-01"
+        '(:expect "")
+        (format nil "/log :around ~a" today)
+        '(:expect "dated log message")))))
+
 (define-test lisp-command-with-timeout
   :parent integration-tests
   (with-tcp-client (stream)
