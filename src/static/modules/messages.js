@@ -211,7 +211,13 @@ function addRawMessage(line, anchor) {
     const div = document.createElement("div");
     div.className = "message";
     div.dataset.date = utils.getTodayDate();
-    div.innerHTML = formatting.formatMessage(line);
+    
+    const contentSpan = document.createElement("span");
+    contentSpan.className = "msg-content";
+    contentSpan.dataset.rawContent = line;
+    contentSpan.innerHTML = formatting.formatMessage(line);
+    
+    div.appendChild(contentSpan);
     insertMessageNode(div, anchor);
 }
 
