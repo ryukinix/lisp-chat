@@ -63,17 +63,17 @@ function processServerMessage(content, isRealTime) {
     return true;
 }
 
-function isMessageCached(line, from) {
+function isMessageCached(line, from, doNotCache = false) {
     if (messageCache.has(line)) return true;
 
-    if (from != "@server") {
+    if (!doNotCache && from != "@server") {
         messageCache.add(line);
         messageHistory.push(line);
-    }
 
-    if (messageHistory.length > config.MAX_CACHE_SIZE) {
-        const old = messageHistory.shift();
-        messageCache.delete(old);
+        if (messageHistory.length > config.MAX_CACHE_SIZE) {
+            const old = messageHistory.shift();
+            messageCache.delete(old);
+        }
     }
     return false;
 }
@@ -96,6 +96,7 @@ function createMessageElement(date, timeHM, timeS, from, content) {
 
     const contentSpan = document.createElement("span");
     contentSpan.className = "msg-content";
+    contentSpan.dataset.rawContent = content;
     contentSpan.innerHTML = formatting.formatMessage(content);
 
     div.appendChild(timeSpan);
@@ -159,12 +160,12 @@ function insertMessageNode(div, anchor) {
     ensureDateDivider(div);
 }
 
-function processStructuredMessage(line, match, anchor) {
+function processStructuredMessage(line, match, anchor, prepend) {
     const [_, date, timeHM, timeS, from, content] = match;
     const effectiveDate = date || utils.getTodayDate();
     const normalizedLine = `|${effectiveDate} ${timeHM}:${timeS}| [${from}]: ${content}`;
 
-    if (isMessageCached(normalizedLine, from)) return;
+    if (isMessageCached(normalizedLine, from, prepend)) return;
 
     if (from === "@server") {
         const shouldRender = processServerMessage(content, !date);
@@ -174,8 +175,10 @@ function processStructuredMessage(line, match, anchor) {
     const existingMsgs = chat.querySelectorAll(`.message[data-date="${effectiveDate}"][data-time-hm="${timeHM}"][data-time-s="${timeS}"][data-from="${from}"]`);
     for (const msg of existingMsgs) {
         const contentSpan = msg.querySelector(".msg-content");
-        if (contentSpan && contentSpan.textContent.includes(content)) {
-            return;
+        if (contentSpan) {
+            const rawContent = contentSpan.dataset.rawContent;
+            if (rawContent && rawContent.includes(content)) return;
+            if (contentSpan.textContent.includes(content)) return;
         }
     }
 
@@ -187,6 +190,9 @@ function processStructuredMessage(line, match, anchor) {
         lastMsg.dataset.from === from) {
 
         const contentSpan = lastMsg.querySelector(".msg-content");
+        if (contentSpan.dataset.rawContent !== undefined) {
+            contentSpan.dataset.rawContent += "\\n" + content;
+        }
         contentSpan.appendChild(document.createElement("br"));
         const newContent = document.createElement("span");
         newContent.innerHTML = formatting.formatMessage(content);
@@ -227,7 +233,7 @@ function addMessage(text, prepend = false) {
 
         const match = line.match(/^\|(?:(\d{4}-\d{2}-\d{2}) )?(\d{2}:\d{2}):(\d{2})\| \[(.*?)\]: (.*)$/);
         if (match) {
-            processStructuredMessage(line, match, anchor);
+            processStructuredMessage(line, match, anchor, prepend);
         } else {
             addRawMessage(line, anchor);
         }
