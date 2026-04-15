@@ -293,15 +293,3 @@
   (setf *user-channels* (make-hash-table :test 'equal))
   (setf *private-channels* (make-hash-table :test 'equal))
   (setf *messages-log* nil))
-
-(defun load-persistent-messages ()
-  "Load messages from config:*persistence-file* into *messages-log*"
-  (when (probe-file config:*persistence-file*)
-    (with-open-file (in config:*persistence-file* :direction :input)
-      (handler-case
-          (let ((msgs (loop for msg = (read in nil :eof)
-                            until (eq msg :eof)
-                            collect msg)))
-            (debug-format t "[info] messages loaded: ~a~%" (length msgs))
-            (setq *messages-log* (reverse msgs)))
-        (error (e) (debug-format t "Error loading persistence: ~a~%" e))))))
