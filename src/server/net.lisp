@@ -177,7 +177,7 @@
       (/ latency 1000.0))))
 
 (defun persistence-worker ()
-  "Thread dedicada a salvar mensagens no disco sem bloquear o broadcast."
+  "Dedicated worker thread to save messages to disk asynchronously, preventing broadcast loop blocking."
   (loop when (bt:wait-on-semaphore *persistence-semaphore*)
         do (let ((message-to-save 
                    (bt:with-lock-held (*persistence-lock*)
