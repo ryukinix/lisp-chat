@@ -5,6 +5,10 @@
 (defparameter *messages-log* nil  "Messages log")
 (defparameter *user-channels* (make-hash-table :test 'equal) "Mapping of usernames to their last active channel")
 (defparameter *private-channels* (make-hash-table :test 'equal) "Set of channels where messages are not saved")
+
+(defvar *persistence-queue* '())
+(defvar *persistence-lock* (bt:make-lock))
+(defvar *persistence-semaphore* (bt:make-semaphore :name "persistence-semaphore"))
 (defparameter *server-nickname* "@server" "The server nickname")
 (defvar *raw-command-message* nil "If true, return raw strings instead of formatted-messages")
 
