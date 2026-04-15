@@ -108,7 +108,7 @@
       (let* ((parsed-limit (parse-integer (ensure-string limit) :junk-allowed t))
              (before-time (server:parse-iso8601 (ensure-string before)))
              (after-time (server:parse-iso8601 (ensure-string after)))
-             (filtered (filter-messages client :query query :user user :global global 
+             (filtered (filter-messages client :query query :user user :global global
                                         :before-time before-time :after-time after-time))
              (limited (subseq filtered 0 (min (length filtered) parsed-limit))))
         (if (not limited)
