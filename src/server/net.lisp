@@ -83,7 +83,9 @@
                  (let ((message (formatted-message message-raw)))
                    (unless (message-should-not-be-saved-p message-raw)
                      (push message-raw *messages-log*)
-                     (save-message-to-disk message-raw))
+                     (bt:with-lock-held (*persistence-lock*)
+                       (setf *persistence-queue* (append *persistence-queue* (list message-raw))))
+                     (bt:signal-semaphore *persistence-semaphore*))
                    (let ((clients *clients*))
                      (loop for client in clients
                            when (string-equal (message-channel message-raw)

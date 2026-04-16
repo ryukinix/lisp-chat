@@ -21,6 +21,7 @@
                                                 :name "Connection handler"))
            (setf broadcast-thread (bt:make-thread #'message-broadcast
                                                :name "Message broadcast"))
+           (bt:make-thread #'persistence-worker :name "Persistence worker")
            (setf web-handler (clackup *app*
                                       :debug nil
                                       :address config:*host*
