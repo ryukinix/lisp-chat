@@ -66,14 +66,6 @@
   "Return a encoded string as HH:MM:SS based on the current timestamp."
   (multiple-value-list (get-decoded-time)))
 
-(defun command-message (content)
-  "This function prepare the CONTENT as a message by the @server"
-  (if *raw-command-message*
-      content
-      (let* ((from *server-nickname*)
-             (time (get-time))
-             (message (make-message :from from :content content :time time)))
-        (formatted-message message))))
 
 (defun private-message (client-name content)
   "This function prepare the CONTENT as a message by the @server"
