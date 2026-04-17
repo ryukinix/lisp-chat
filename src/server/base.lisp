@@ -29,32 +29,6 @@
   (bt:interrupt-thread thread
                        (lambda () (error (system-interrupt)))))
 
-(defun client-socket-type (client)
-  "Return the socket type for the given client."
-  (typecase (client-socket client)
-    (usocket:stream-usocket "TCP")
-    (t "WebSocket")))
-
-(defun get-client (client-name)
-  "Get client by name"
-  (find client-name
-        *clients*
-        :test (lambda (name client) (equal name (client-name client)))))
-
-(defun get-client-by-session (session-id)
-  (find session-id
-        *clients*
-        :test (lambda (sid client) (string-equal sid (client-session-id client)))))
-
-(defun socket-peer-address (socket)
-  "Given a USOCKET:SOCKET instance return a ipv4 encoded IP string"
-  (format nil "~{~a~^.~}\:~a"
-          (map 'list #'identity (usocket:get-peer-address socket))
-          (usocket:get-peer-port socket)))
-
-(defun client-stream (c)
-  "Select the stream IO from the client"
-  (usocket:socket-stream (client-socket c)))
 
 (defun debug-format (&rest args)
   "If config:*debug* from lisp-chat-config is true, print debug info on
