@@ -1,5 +1,4 @@
 (in-package :lisp-chat/server)
-(defparameter *clients* nil "List of clients")
 (defparameter *messages-stack* nil "Messages pending to be send by broadcasting")
 (defparameter *messages-log* nil  "Messages log")
 (defparameter *user-channels* (make-hash-table :test 'equal) "Mapping of usernames to their last active channel")

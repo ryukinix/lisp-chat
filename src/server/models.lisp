@@ -9,7 +9,7 @@
   (active-channel "#general")
   (session-id (princ-to-string (uuid:make-v4-uuid))))
 
-(declaim (special *clients*))
+(defparameter *clients* nil "List of clients")
 
 (defun client-socket-type (client)
   "Return the socket type for the given client."
