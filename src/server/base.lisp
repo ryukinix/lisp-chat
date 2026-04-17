@@ -41,14 +41,6 @@
   (multiple-value-list (get-decoded-time)))
 
 
-(defun private-message (client-name content)
-  "This function prepare the CONTENT as a message by the @server"
-  (let* ((from (format nil "dm:~a" client-name))
-         (time (get-time))
-         (message (make-message :from from
-                                :content content
-                                :time time)))
-    (formatted-message message)))
 
 (defun reset-server ()
   "Reset the server state."
