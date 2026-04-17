@@ -1,5 +1,5 @@
 (in-package :lisp-chat/server)
-(export '(message client make-message message-from message-content message-time message-channel 
+(export '(message client make-message message-from message-content message-time message-channel
           make-client client-name client-socket client-address client-time client-active-channel client-session-id))
 
 (defstruct message

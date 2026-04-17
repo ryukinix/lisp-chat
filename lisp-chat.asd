@@ -66,7 +66,9 @@
                (:module "server"
                 :depends-on ("config")
                 :components ((:file "package")
-                             (:file "base" :depends-on ("package"))
+                             (:file "models" :depends-on ("package"))
+                             (:file "formatter" :depends-on ("package" "models"))
+                             (:file "base" :depends-on ("package" "models" "formatter"))
                              (:file "storage" :depends-on ("package" "base"))
                              (:file "commands" :depends-on ("package" "base"))
                              (:file "net" :depends-on ("base" "storage"))
