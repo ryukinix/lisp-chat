@@ -81,3 +81,13 @@ exceptions."
                          :name "create client"))
     (#.(system-interrupt) ()
       (interrupt-client-reader-threads))))
+
+(defun socket-peer-address (socket)
+  "Given a USOCKET:SOCKET instance return a ipv4 encoded IP string"
+  (format nil "~{~a~^.~}\:~a"
+          (map 'list #'identity (usocket:get-peer-address socket))
+          (usocket:get-peer-port socket)))
+
+(defun client-stream (c)
+  "Select the stream IO from the client"
+  (usocket:socket-stream (client-socket c)))
