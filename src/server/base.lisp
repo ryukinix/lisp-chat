@@ -1,12 +1,11 @@
 (in-package :lisp-chat/server)
-
 (defparameter *clients* nil "List of clients")
 (defparameter *messages-stack* nil "Messages pending to be send by broadcasting")
 (defparameter *messages-log* nil  "Messages log")
 (defparameter *user-channels* (make-hash-table :test 'equal) "Mapping of usernames to their last active channel")
 (defparameter *private-channels* (make-hash-table :test 'equal) "Set of channels where messages are not saved")
 
-(defparameter *server-nickname* "@server" "The server nickname")
+(defvar *server-nickname* "@server" "The server nickname")
 (defvar *raw-command-message* nil "If true, return raw strings instead of formatted-messages")
 
 ;; thread control
@@ -18,29 +17,6 @@
                       "Thursday" "Friday" "Saturday" "Sunday")
   "Day names")
 (defvar *uptime* nil "Uptime of server variable, initialized at server start")
-
-
-(defstruct message
-  "This structure abstract the type message with is saved
-   into *messages-log* and until consumed, temporally pushed
-   to *messages-stack*. FROM and CONTENT has type string, TIME is a list of decoded time parts."
-  from
-  content
-  time
-  (channel "#general"))
-
-(defstruct client
-  "This structure handle the creation/control of the clients of the server.
-   NAME is a string. Socket is a USOCKET:SOCKET and address is a ipv4 encoded
-   string. TIME is a list of decoded time parts since the users is online."
-  name
-  socket
-  address
-  time
-  (connection-latency nil)
-  (user-agent nil)
-  (active-channel "#general")
-  (session-id (princ-to-string (uuid:make-v4-uuid))))
 
 (defun system-interrupt ()
   #+sbcl 'sb-sys:interactive-interrupt
