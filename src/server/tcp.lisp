@@ -72,3 +72,12 @@ exceptions."
           (interrupt-thread-portable thread)
           (bt:join-thread thread)))))))
 
+(defun connection-handler (socket-server)
+  "This is a special thread just for accepting connections from SOCKET-SERVER
+   and creating new clients from it."
+  (handler-case
+       (loop for connection = (usocket:socket-accept socket-server)
+         do (bt:make-thread (lambda () (safe-client-thread connection))
+                         :name "create client"))
+    (#.(system-interrupt) ()
+      (interrupt-client-reader-threads))))
