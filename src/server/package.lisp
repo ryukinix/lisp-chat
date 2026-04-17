@@ -39,6 +39,8 @@
            #:make-message
            #:message-time-hour-format
            #:message-time-date-format
+           #:format-message-line
+           #:clean-channel-char
            #:get-client
            #:get-time
            #:format-time
@@ -56,6 +58,10 @@
            #:client-latency
            #:client-latency-ms
            #:reset-server
+           #:separator-p
+           #:split-quotation-aware
+           #:split-with-empty-seqs
+           #:split-trivial
            #:split
            #:startswith
            #:normalize-channel))
