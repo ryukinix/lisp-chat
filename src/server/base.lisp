@@ -4,9 +4,6 @@
 (defparameter *user-channels* (make-hash-table :test 'equal) "Mapping of usernames to their last active channel")
 (defparameter *private-channels* (make-hash-table :test 'equal) "Set of channels where messages are not saved")
 
-(defvar *server-nickname* "@server" "The server nickname")
-(defvar *raw-command-message* nil "If true, return raw strings instead of formatted-messages")
-
 ;; thread control
 (defvar *message-semaphore* (bt:make-semaphore :name "message semaphore"
                                             :count 0))

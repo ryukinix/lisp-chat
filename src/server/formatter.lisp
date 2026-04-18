@@ -1,5 +1,8 @@
 (in-package :lisp-chat/server)
 
+(defvar *server-nickname* "@server" "The server nickname")
+(defvar *raw-command-message* nil "If true, return raw strings instead of formatted-messages")
+
 (defun format-time (time)
   "Format a time list into a string."
   (multiple-value-bind
