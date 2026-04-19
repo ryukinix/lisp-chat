@@ -13,19 +13,29 @@
                              cl:macroexpand
                              cl:macroexpand-1)))
 
+(defvar *command-registry* (make-hash-table :test 'equal))
+
+(defmacro define-command (name args docstring &body body)
+  "Register a command in the *command-registry* hash table"
+  (let ((command-name-str (string-downcase (symbol-name name))))
+    `(progn
+       (defun ,name ,args ,docstring ,@body)
+       (setf (gethash ,command-name-str *command-registry*) ',name))))
+
 (defun get-commands ()
   "Returns a list of all available command strings."
   (let ((commands '()))
-    (do-symbols (s (find-package :lisp-chat/commands))
-      (when (and (eq (symbol-package s) (find-package :lisp-chat/commands))
-                 (fboundp s)
-                 (char= (char (symbol-name s) 0) #\/))
-        (push (string-downcase (symbol-name s)) commands)))
+    (maphash (lambda (k v)
+               (declare (ignore v))
+               (when (char= (char k 0) #\/)
+                 (push k commands)))
+             *command-registry*)
     (sort commands #'string<)))
 
 (defun get-command (command-string)
   "Returns the function symbol for a given command string."
-  (find-symbol (string-upcase command-string) :lisp-chat/commands))
+  (gethash (string-downcase command-string) *command-registry*))
+
 
 (defun parse-keywords (args)
   (mapcar (lambda (arg) (if (server:startswith arg ":")
@@ -93,7 +103,7 @@
      server:*messages-log*)))
 
 ;; user commands prefixed with /
-(defun /search (client query &rest args &key user (limit "10") before after global &allow-other-keys)
+(define-command /search (client query &rest args &key user (limit "10") before after global &allow-other-keys)
   "/search QUERY searches for messages containing QUERY as substring.
    QUERY is an mandatory parameter.
    KEY PARAMETERS:
@@ -117,7 +127,7 @@
                     (mapcar (lambda (m) (server:search-message m :global global))
                             (reverse limited)))))))
 
-(defun /users (client &key (channel nil) (global nil) &allow-other-keys)
+(define-command /users (client &key (channel nil) (global nil) &allow-other-keys)
   "/users returns a list separated by commas of the currently logged users.
    If CHANNEL is provided, show users in that channel.
    If GLOBAL is provided, show users in all channels."
@@ -131,7 +141,7 @@
                                            server:*clients*))))
     (server:command-message (format nil "users: ~{~a~^, ~}" (mapcar #'server:client-name channel-users)))))
 
-(defun /join (client &optional (channel nil))
+(define-command /join (client &optional (channel nil))
   "/join changes the active channel for the user"
   (if channel
       (let ((new-channel (server:normalize-channel channel))
@@ -145,7 +155,7 @@
               (server:user-joined-message client))))
       (server:command-message "/join #CHANNEL-NAME")))
 
-(defun /channels (client &rest args &key (usernames nil) (all nil) &allow-other-keys)
+(define-command /channels (client &rest args &key (usernames nil) (all nil) &allow-other-keys)
   "/channels lists active channels and their user counts.
    If :usernames t is provided, lists usernames separated by commas instead.
    If :all t is provided, includes channels with no active users but have message history."
@@ -170,7 +180,7 @@
                chan-users)
       (server:command-message (format nil "channels:~%~{~a~^~%~}" (sort lines #'string<))))))
 
-(defun /private (client &optional (action nil) &rest args)
+(define-command /private (client &optional (action nil) &rest args)
   "/private toggles or sets the private mode for the current channel.
    When active, messages are not saved to disk or history.
    Usage: /private [on|off|status]"
@@ -198,7 +208,7 @@
             (t
              (server:command-message "Usage: /private [on|off|status]")))))))
 
-(defun /ping (client &rest args)
+(define-command /ping (client &rest args)
   "/ping responds with a 'pong' message, echoing the provided arguments or the user's nickname."
   (declare (ignorable client args))
   (let* ((latency (server:client-latency-ms client))
@@ -208,7 +218,7 @@
     (server:command-message (format nil "pong ~a~a" (or args (server:client-name client)) latency-msg))))
 
 
-(defun /help (client &optional command-name &rest args)
+(define-command /help (client &optional command-name &rest args)
   "/help shows a list of the available commands of lisp-chat.
    If COMMAND-NAME is provided, show its documentation."
   (declare (ignorable client args))
@@ -223,7 +233,7 @@
             (server:command-message (format nil "Command ~a not found." cmd))))
       (server:command-message (format nil "Available commands: ~{~a~^, ~}" (get-commands)))))
 
-(defun /man (client &rest args)
+(define-command /man (client &rest args)
   "/man shows the docstrings of all available commands"
   (declare (ignorable client args))
   (let* ((commands (get-commands))
@@ -249,7 +259,7 @@
             (> (server:message-universal-time m1)
                (server:message-universal-time m2))))))
 
-(defun /log (client &key (depth "20") date-format global before after around &allow-other-keys)
+(define-command /log (client &key (depth "20") date-format global before after around &allow-other-keys)
   "/log shows the last messages sent to the server.
    DEPTH is optional number of messages frames from log
    GLOBAL is optional boolean to search across all channels
@@ -269,18 +279,18 @@
                             processed)))
     (format nil "~{~a~^~%~}" (reverse formatted))))
 
-(defun /uptime (client &rest args)
+(define-command /uptime (client &rest args)
   "/uptime returns a human-readable string to preset the uptime since the server started."
   (declare (ignorable client args))
   (server:command-message
    (format nil "Server online since ~a" (server:format-time server:*uptime*))))
 
-(defun /session (client &rest args)
+(define-command /session (client &rest args)
   "/session returns the unique session UUID for the current client."
   (declare (ignorable args))
   (server:command-message (format nil "Your session ID is: ~A" (server:client-session-id client))))
 
-(defun /nick (client &optional (new-nick nil) &rest args)
+(define-command /nick (client &optional (new-nick nil) &rest args)
   "/nick changes the server:client-name given a NEW-NICK which should be a string"
   (declare (ignorable args))
   (if new-nick
@@ -294,7 +304,7 @@
         (server:command-message (format nil "Your new nick is: @~a" new-nick)))
       (server:command-message (format nil "/nick NEW-NICKNAME"))))
 
-(defun /dm (client &optional (username nil) msg-content)
+(define-command /dm (client &optional (username nil) msg-content)
   "/dm sends a direct message to a USERNAME"
   (let ((user (server:get-client username))
         (from (server:client-name client)))
@@ -308,7 +318,7 @@
            (server:send-message client msg)
            (server:send-message user msg)))))))
 
-(defun /whois (client &optional (username nil))
+(define-command /whois (client &optional (username nil))
   "/whois get basic information of a online USERNAME"
   (declare (ignorable client))
   (let ((user (server:get-client username)))
@@ -333,24 +343,24 @@
                   (if user-agent
                       (format nil " | user-agent: ~a" user-agent)
                       ""))))))))
-(defun /version (client &rest args)
+(define-command /version (client &rest args)
   "/version returns the current version of lisp-chat"
   (declare (ignorable client args))
   (server:command-message (format nil "lisp-chat v~a | src: ~a"
                            (lisp-chat/config:get-version)
                            lisp-chat/config:*source-code*)))
 
-(defun /whoami (client &rest args)
+(define-command /whoami (client &rest args)
   "/whoami returns information about the current client session"
   (declare (ignorable args))
   (/whois client (server:client-name client)))
 
-(defun /clear (client &rest args)
+(define-command /clear (client &rest args)
   "/clear clears the terminal screen"
   (declare (ignorable client args))
   'ignore)
 
-(defun /quit (client &rest args)
+(define-command /quit (client &rest args)
   "/quit terminates the connection"
   (declare (ignorable client args))
   'ignore)
@@ -369,7 +379,7 @@
     (bt:timeout ()
       (format nil "TIMEOUT: Timeout occurred after ~a seconds" config:*lisp-command-timeout*))))
 
-(defun /lisp (client &optional (program nil))
+(define-command /lisp (client &optional (program nil))
   "/lisp evaluates a common lisp program"
   (let ((result (execute-lisp-capture-result program)))
     (prog1 'ignore
