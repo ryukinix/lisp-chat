@@ -61,7 +61,7 @@ docker-publish: docker-build
 	docker push $(PUBLIC_IMG)
 
 deploy: docker-publish
-	ssh starfox bash /home/lerax/Deploy/lisp-chat.sh
+	ssh starfox -t deploy apply lisp-chat
 
 dep-tree:
 	ros -s asdf-dependency-graph -e '(asdf-dependency-graph:generate "tree.png" "lisp-chat/server")'
