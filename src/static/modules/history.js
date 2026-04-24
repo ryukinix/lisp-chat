@@ -30,9 +30,9 @@ function initHistoryLoading() {
             return;
         }
 
-        const date = oldestMsg.dataset.date;
-        const timeHm = oldestMsg.dataset.timeHm;
-        const timeS = oldestMsg.dataset.timeS;
+        const date = oldestMsg.dataset.serverDate || oldestMsg.dataset.date;
+        const timeHm = oldestMsg.dataset.serverTimeHm || oldestMsg.dataset.timeHm;
+        const timeS = oldestMsg.dataset.serverTimeS || oldestMsg.dataset.timeS;
 
         if (!date || !timeHm || !timeS) {
             isLoadingHistory = false;
