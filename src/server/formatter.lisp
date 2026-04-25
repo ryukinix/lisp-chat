@@ -16,16 +16,20 @@
             year month date
             (- tz))))
 
-(defun message-time-hour-format (message)
+(defun message-time-hour-format (message &optional tz)
   "Format message time to hour format"
-  (destructuring-bind (second minute hour &rest rest-of-list) (message-time message)
-    (declare (ignore rest-of-list))
+  (multiple-value-bind (second minute hour)
+      (if tz
+          (decode-universal-time (message-universal-time message) tz)
+          (values-list (message-time message)))
     (format nil "~2,'0d:~2,'0d:~2,'0d" hour minute second)))
 
-(defun message-time-date-format (message)
+(defun message-time-date-format (message &optional tz)
   "Format message time to date format"
-  (destructuring-bind (second minute hour day month year &rest rest-of-list) (message-time message)
-    (declare (ignore rest-of-list))
+  (multiple-value-bind (second minute hour day month year)
+      (if tz
+          (decode-universal-time (message-universal-time message) tz)
+          (values-list (message-time message)))
     (format nil "~4d-~2,'0d-~2,'0d ~2,'0d:~2,'0d:~2,'0d" year month day hour minute second)))
 
 (defun clean-channel-char (c)
@@ -64,11 +68,11 @@
 (defun format-message-line (time from content)
   (format nil "|~a| [~a]: ~a" time from content))
 
-(defun formatted-message (message &key (date-format nil) (global nil))
+(defun formatted-message (message &key (date-format nil) (global nil) (timezone nil))
   "The default message format of this server. MESSAGE is a struct message"
   (let* ((time-str (if (string= date-format "date")
-                       (message-time-date-format message)
-                       (message-time-hour-format message)))
+                       (message-time-date-format message timezone)
+                       (message-time-hour-format message timezone)))
          (from-str (if global
                        (format nil "~a:~a" (message-channel message) (message-from message))
                        (message-from message)))
@@ -79,9 +83,9 @@
                       (format-message-line time-str from-str line))
                     lines))))
 
-(defun user-messages (&key (date-format nil) (channel "#general") (global nil))
+(defun user-messages (&key (date-format nil) (channel "#general") (global nil) (timezone nil))
   "Return only user messages, discard all messsages from @server"
-  (mapcar (lambda (m) (formatted-message m :date-format date-format :global global))
+  (mapcar (lambda (m) (formatted-message m :date-format date-format :global global :timezone timezone))
           (remove-if-not #'(lambda (m) (or global (string-equal (message-channel m) channel)))
                      *messages-log*)))
 
@@ -122,20 +126,20 @@
             user-part
             (message-content message))))
 
-(defun command-message (content)
+(defun command-message (content &optional timezone)
   "This function prepare the CONTENT as a message by the @server"
   (if *raw-command-message*
       content
       (let* ((from *server-nickname*)
              (time (get-time))
              (message (make-message :from from :content content :time time)))
-        (formatted-message message))))
+        (formatted-message message :timezone timezone))))
 
-(defun private-message (client-name content)
+(defun private-message (client-name content &optional timezone)
   "This function prepare the CONTENT as a message by the @server"
   (let* ((from (format nil "dm:~a" client-name))
          (time (get-time))
          (message (make-message :from from
                                 :content content
                                 :time time)))
-    (formatted-message message)))
+    (formatted-message message :timezone timezone)))

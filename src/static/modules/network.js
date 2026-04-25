@@ -54,12 +54,18 @@ function connect(onMessageCallback) {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const search = window.location.search.substring(1);
     let wsUrl = `${protocol}//${window.location.host}/ws`;
+    
+    // Calculate the timezone offset in hours (e.g. UTC-3 is -3)
+    const tzOffset = -(new Date().getTimezoneOffset() / 60);
+    
     if (search) {
         if (search.includes("=")) {
-            wsUrl += `?${search}`;
+            wsUrl += `?${search}&tz=${tzOffset}`;
         } else {
-            wsUrl += `?channel=${search}`;
+            wsUrl += `?channel=${search}&tz=${tzOffset}`;
         }
+    } else {
+        wsUrl += `?tz=${tzOffset}`;
     }
     ws = new WebSocket(wsUrl);
 

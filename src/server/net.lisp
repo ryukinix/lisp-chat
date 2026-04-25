@@ -80,20 +80,21 @@
           do (let ((message-raw (bt:with-lock-held (*messages-lock*)
                                  (pop *messages-stack*))))
                (when message-raw
-                 (let ((message (formatted-message message-raw)))
-                   (unless (message-should-not-be-saved-p message-raw)
-                     (push message-raw *messages-log*)
-                     (bt:with-lock-held (*persistence-lock*)
-                       (setf *persistence-queue* (append *persistence-queue* (list message-raw))))
-                     (bt:signal-semaphore *persistence-semaphore*))
-                   (let ((clients *clients*))
-                     (loop for client in clients
-                           when (string-equal (message-channel message-raw)
-                                              (client-active-channel client))
-                             do (handler-case (send-message client message)
-                                  (error (e)
-                                    (debug-format t "Error broadcasting to ~a: ~a~%" (client-name client) e)
-                                    (client-delete client))))))))))
+                 (unless (message-should-not-be-saved-p message-raw)
+                   (push message-raw *messages-log*)
+                   (bt:with-lock-held (*persistence-lock*)
+                     (setf *persistence-queue* (append *persistence-queue* (list message-raw))))
+                   (bt:signal-semaphore *persistence-semaphore*))
+                 (let ((clients *clients*))
+                   (loop for client in clients
+                         when (string-equal (message-channel message-raw)
+                                            (client-active-channel client))
+                           do (handler-case
+                                  (let ((message (formatted-message message-raw :timezone (client-timezone client))))
+                                    (send-message client message))
+                                (error (e)
+                                  (debug-format t "Error broadcasting to ~a: ~a~%" (client-name client) e)
+                                  (client-delete client)))))))))
 #+sbcl
 (sb-alien:define-alien-type tcp-info
   (sb-alien:struct tcp-info

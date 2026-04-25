@@ -24,10 +24,10 @@
             (progn ,@body)
          (usocket:socket-close ,socket)))))
 
-(defmacro with-websocket-client ((client messages-var &key additional-headers) &body body)
+(defmacro with-websocket-client ((client messages-var &key additional-headers query-params) &body body)
   (let ((url (gensym))
         (connected (gensym)))
-    `(let* ((,url (format nil "ws://127.0.0.1:~a/ws" config:*websocket-port*))
+    `(let* ((,url (format nil "ws://127.0.0.1:~a/ws~a" config:*websocket-port* (if ,query-params (concatenate 'string "?" ,query-params) "")))
             (,client (make-client ,url :additional-headers ,additional-headers))
             (,connected nil)
             (,messages-var '()))
@@ -323,3 +323,34 @@ Returns the line as a string, or NIL if it timed out."
       "/channels :all t"
       '(:expect "channels:")
       '(:expect "#general: 0 users"))))
+
+(defun extract-hour (message-string)
+  (let* ((start (position #\| message-string))
+         (colon (position #\: message-string :start (1+ start))))
+    (when (and start colon)
+      (parse-integer (subseq message-string (1+ start) colon)))))
+
+(define-test websocket-timezone-support
+  :parent integration-tests
+  (with-websocket-client (client1 messages1 :query-params "tz=0")
+    (ws-interaction client1 (lambda () messages1)
+      '(:expect "Type your username")
+      "tester-tz1"
+      '(:expect "The user @tester-tz1 joined"))
+    (with-websocket-client (client2 messages2 :query-params "tz=3")
+      (ws-interaction client2 (lambda () messages2)
+        '(:expect "Type your username")
+        "tester-tz2"
+        '(:expect "The user @tester-tz2 joined")
+        "hello timezone"
+        '(:expect "]: hello timezone"))
+      ;; Now check what client1 received
+      (ws-interaction client1 (lambda () messages1)
+        '(:expect "]: hello timezone"))
+      ;; Get the messages
+      (let* ((msg1 (find-if (lambda (m) (search "hello timezone" m)) (reverse messages1)))
+             (msg2 (find-if (lambda (m) (search "hello timezone" m)) (reverse messages2)))
+             (hour1 (extract-hour msg1))
+             (hour2 (extract-hour msg2)))
+        (true (and hour1 hour2))
+        (is = hour2 (mod (+ hour1 3) 24))))))

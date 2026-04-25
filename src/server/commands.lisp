@@ -275,7 +275,7 @@
          (processed (if around-time
                         (get-messages-around filtered around-time parsed-depth)
                         (subseq filtered 0 (min parsed-depth (length filtered)))))
-         (formatted (mapcar (lambda (m) (server:formatted-message m :date-format date-format :global global))
+         (formatted (mapcar (lambda (m) (server:formatted-message m :date-format date-format :global global :timezone (server:client-timezone client)))
                             processed)))
     (format nil "~{~a~^~%~}" (reverse formatted))))
 
@@ -301,30 +301,29 @@
                               new-nick)
                       :channel (server:client-active-channel client))
         (setf (server:client-name client) new-nick)
-        (server:command-message (format nil "Your new nick is: @~a" new-nick)))
-      (server:command-message (format nil "/nick NEW-NICKNAME"))))
+        (server:command-message (format nil "Your new nick is: @~a" new-nick) (server:client-timezone client)))
+      (server:command-message (format nil "/nick NEW-NICKNAME") (server:client-timezone client))))
 
 (define-command /dm (client &optional (username nil) msg-content)
   "/dm sends a direct message to a USERNAME"
   (let ((user (server:get-client username))
         (from (server:client-name client)))
     (cond
-      ((not username) (server:command-message "/dm USERNAME your message"))
-      ((not user) (server:command-message (format nil "error: ~s user not found" username)))
-      ((string= from username) (server:command-message "you can't dm to yourself"))
+      ((not username) (server:command-message "/dm USERNAME your message" (server:client-timezone client)))
+      ((not user) (server:command-message (format nil "error: ~s user not found" username) (server:client-timezone client)))
+      ((string= from username) (server:command-message "you can't dm to yourself" (server:client-timezone client)))
       (t
        (prog1 'ignore
-         (let ((msg (server:private-message from msg-content)))
-           (server:send-message client msg)
-           (server:send-message user msg)))))))
+         (server:send-message client (server:private-message from msg-content (server:client-timezone client)))
+         (server:send-message user (server:private-message from msg-content (server:client-timezone user))))))))
 
 (define-command /whois (client &optional (username nil))
   "/whois get basic information of a online USERNAME"
   (declare (ignorable client))
   (let ((user (server:get-client username)))
     (cond
-      ((not username) (server:command-message "/whois USERNAME"))
-      ((not user) (server:command-message (format nil "error: ~s user not found" username)))
+      ((not username) (server:command-message "/whois USERNAME" (server:client-timezone client)))
+      ((not user) (server:command-message (format nil "error: ~s user not found" username) (server:client-timezone client)))
       (t
        (let ((formatted-time (server:format-time (server:client-time user)))
              (latency (server:client-latency-ms user))
