@@ -78,15 +78,12 @@ function isMessageCached(line, from, doNotCache = false) {
     return false;
 }
 
-function createMessageElement(date, timeHM, timeS, from, content, serverDate = null, serverTimeHM = null, serverTimeS = null) {
+function createMessageElement(date, timeHM, timeS, from, content) {
     const div = document.createElement("div");
     div.className = "message";
     div.dataset.date = date;
     div.dataset.timeHm = timeHM;
     div.dataset.timeS = timeS;
-    if (serverDate) div.dataset.serverDate = serverDate;
-    if (serverTimeHM) div.dataset.serverTimeHm = serverTimeHM;
-    if (serverTimeS) div.dataset.serverTimeS = serverTimeS;
     div.dataset.from = from;
 
     const timeSpan = document.createElement("span");
@@ -164,21 +161,16 @@ function insertMessageNode(div, anchor) {
 }
 
 function processStructuredMessage(line, match, anchor, prepend) {
-    const [_, serverDate, serverTimeHM, serverTimeS, from, content] = match;
-    const effectiveServerDate = serverDate || utils.getServerTodayDate();
-    const normalizedLine = `|${effectiveServerDate} ${serverTimeHM}:${serverTimeS}| [${from}]: ${content}`;
+    const [_, date, timeHM, timeS, from, content] = match;
+    const effectiveDate = date || utils.getTodayDate();
+    const normalizedLine = `|${effectiveDate} ${timeHM}:${timeS}| [${from}]: ${content}`;
 
     if (isMessageCached(normalizedLine, from, prepend)) return;
 
     if (from === "@server") {
-        const shouldRender = processServerMessage(content, !serverDate);
+        const shouldRender = processServerMessage(content, !date);
         if (!shouldRender) return;
     }
-
-    const { localDate, localTimeHM, localTimeS } = utils.convertToLocalTime(effectiveServerDate, serverTimeHM, serverTimeS);
-    const effectiveDate = localDate;
-    const timeHM = localTimeHM;
-    const timeS = localTimeS;
 
     const existingMsgs = chat.querySelectorAll(`.message[data-date="${effectiveDate}"][data-time-hm="${timeHM}"][data-time-s="${timeS}"][data-from="${from}"]`);
     for (const msg of existingMsgs) {
@@ -210,7 +202,7 @@ function processStructuredMessage(line, match, anchor, prepend) {
         return;
     }
 
-    const div = createMessageElement(effectiveDate, timeHM, timeS, from, content, effectiveServerDate, serverTimeHM, serverTimeS);
+    const div = createMessageElement(effectiveDate, timeHM, timeS, from, content);
 
     insertMessageNode(div, anchor);
 }
