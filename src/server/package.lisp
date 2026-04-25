@@ -31,6 +31,7 @@
            #:client-socket-type
            #:client-active-channel
            #:client-session-id
+           #:client-timezone
            #:message
            #:message-from
            #:message-time

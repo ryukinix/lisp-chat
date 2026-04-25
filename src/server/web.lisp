@@ -27,10 +27,20 @@
         (normalize-channel (subseq channel-param 8))
         nil)))
 
+(defun parse-tz (query-string)
+  (let* ((params (uiop:split-string (or query-string "") :separator "&"))
+         (tz-param (find-if (lambda (p) (uiop:string-prefix-p "tz=" p)) params)))
+    (if tz-param
+        (handler-case (- (parse-integer (subseq tz-param 3)))
+          (error () nil))
+        nil)))
+
 (defun ws-app (env)
-  (let ((ws (make-server env))
-        (client nil)
-        (channel (parse-channel (getf env :query-string))))
+  (let* ((ws (make-server env))
+         (client nil)
+         (query-string (getf env :query-string))
+         (channel (parse-channel query-string))
+         (tz (parse-tz query-string)))
     (on :message ws
         (lambda (message)
           ;; (debug-format t "Received WS message: ~s~%" message)
@@ -45,7 +55,8 @@
                                                 :address (get-remote-address env)
                                                 :time (get-time)
                                                 :user-agent (gethash "user-agent" (getf env :headers))
-                                                :active-channel active-channel))
+                                                :active-channel active-channel
+                                                :timezone tz))
                       (setf (gethash name *user-channels*) active-channel)
                       (bt:with-lock-held (*client-lock*)
                         (push client *clients*))
