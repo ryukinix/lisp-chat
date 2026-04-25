@@ -355,7 +355,7 @@ Optional argument ATTEMPT define the current attempt."
               (if (eq lisp-chat-connection-type 'websocket)
                   (setq lisp-chat-connection
                         (websocket-open
-                         address
+                         (lisp-chat--websocket-url-with-tz address)
                          :custom-header-alist `(("User-Agent" . ,(lisp-chat--user-agent)))
                          :on-message (lambda (_ws frame) (lisp-chat--handle-server-message (websocket-frame-text frame)))
                          :on-close (lambda (_ws) (message "Lisp Chat: Connection closed."))
@@ -497,6 +497,13 @@ Optional argument ATTEMPT define the current attempt."
                              (lisp-chat-send "/users")))))
                      (current-buffer))))
 
+(defun lisp-chat--websocket-url-with-tz (url)
+  "Append timezone offset to the websocket URL."
+  (let* ((offset-seconds (car (current-time-zone)))
+         (tz-offset (round (/ offset-seconds 3600.0)))
+         (sep (if (string-match-p "?" url) "&" "?")))
+    (format "%s%stz=%d" url sep tz-offset)))
+
 (defun lisp-chat-connect-websocket (url)
   "Connect to Lisp Chat server via WebSocket URL."
   (let ((buf (get-buffer-create "*lisp-chat*")))
@@ -506,7 +513,7 @@ Optional argument ATTEMPT define the current attempt."
       (setq lisp-chat-connection-type 'websocket
             lisp-chat-connection
             (websocket-open
-             url
+             (lisp-chat--websocket-url-with-tz url)
              :custom-header-alist `(("User-Agent" . ,(lisp-chat--user-agent)))
              :on-message (lambda (_ws frame) (lisp-chat--handle-server-message (websocket-frame-text frame)))
              :on-close (lambda (_ws) (message "Lisp Chat: Connection closed."))
