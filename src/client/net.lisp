@@ -43,13 +43,17 @@
 
 (defun make-client (url &rest args)
   "Make client for url"
-  (let ((user-agent (user-agent-string)))
+  (let* ((user-agent (user-agent-string))
+         (tz-offset (- (nth-value 8 (get-decoded-time))))
+         (url-with-tz (if (find #\? url)
+                          (format nil "~a&tz=~a" url tz-offset)
+                          (format nil "~a?tz=~a" url tz-offset))))
     (if (getf args :additional-headers)
         (setf (getf args :additional-headers)
               (acons "User-Agent" user-agent (getf args :additional-headers)))
         (setf (getf args :additional-headers)
               `(("User-Agent" . ,user-agent))))
-    (apply #'websocket-driver-client:make-client url args)))
+    (apply #'websocket-driver-client:make-client url-with-tz args)))
 
 (defstruct safe-queue
   (items '())
