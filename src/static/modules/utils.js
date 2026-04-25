@@ -42,15 +42,11 @@ function escapeHTML(text) {
 }
 
 function getTodayDate() {
-    const options = {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        timeZone: 'America/Sao_Paulo'
-    };
     const today = new Date();
-    const parts = today.toLocaleDateString('en-CA', options).split('/');
-    return parts.join('-');
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
 function calculateSeconds(timeHM, timeS) {
