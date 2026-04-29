@@ -28,18 +28,25 @@ export function setupContextModal() {
             try {
                 // Fetch context via POST to /api/commands/search
                 // We use global search around the specific datetime
-                const searchCmd = `/search ${e.target.dataset.user} :around ${datetime} :global t`;
+                const payload = {
+                    args: [e.target.dataset.user],
+                    kwargs: {
+                        around: datetime,
+                        global: "t"
+                    }
+                };
                 
                 const response = await fetch('/api/commands/search', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'text/plain'
+                        'Content-Type': 'application/json'
                     },
-                    body: searchCmd
+                    body: JSON.stringify(payload)
                 });
                 
                 if (response.ok) {
-                    const text = await response.text();
+                    const data = await response.json();
+                    const text = data.result || "";
                     
                     if (text.includes("error:") || text.includes("empty result")) {
                         contextContainer.innerHTML = 'Could not load context.';
