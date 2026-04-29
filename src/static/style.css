@@ -376,3 +376,13 @@ a:active {
                          var(--sb-track-color);
     }
 }
+
+/* Focused message highlight */
+.message.focused {
+    animation: highlightFade 3s forwards;
+}
+
+@keyframes highlightFade {
+    0% { background-color: rgba(255, 255, 255, 0.2); }
+    100% { background-color: transparent; }
+}

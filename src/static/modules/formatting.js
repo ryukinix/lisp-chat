@@ -33,6 +33,11 @@ function formatMessage(text) {
     processed = processed.replace(/(^|\s)(\/[a-zA-Z0-9_\-]+)/g, (match, prefix, command) => {
         return `${prefix}<span class="command">${command}</span>`;
     });
+    
+    // Parse references <channel: date timeHM:timeS [user]>
+    processed = processed.replace(/&lt;(#?[A-zÀ-ú0-9_\-]+):\s*(\d{4}-\d{2}-\d{2})\s*(\d{2}:\d{2}):(\d{2})\s*\[(.*?)\]&gt;/g, (match, channel, date, timeHM, timeS, user) => {
+        return `<span class="message-reference" data-date="${date}" data-time-hm="${timeHM}" data-time-s="${timeS}" data-from="${user}" style="cursor: pointer; text-decoration: underline; color: #aaa;" title="Click to focus message">«reply to [${user}]»</span>`;
+    });
 
     return processed.replace(/URLPLACEHOLDER(\d+)URL/g, (match, id) => {
         const url = urls[parseInt(id)];
