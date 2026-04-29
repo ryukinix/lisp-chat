@@ -1,10 +1,12 @@
-function setupReplyFocus() {
+export function setupReplyFocus() {
     document.getElementById('chat').addEventListener('click', (e) => {
-        if (e.target && e.target.classList.contains('message-reference')) {
-            const date = e.target.dataset.date;
-            const timeHM = e.target.dataset.timeHm;
-            const timeS = e.target.dataset.timeS;
-            const from = e.target.dataset.from;
+        // If we click inside the reference but not exactly on the element (like clicking the span inside)
+        const target = e.target.closest('.message-reference');
+        if (target) {
+            const date = target.dataset.date;
+            const timeHM = target.dataset.timeHm;
+            const timeS = target.dataset.timeS;
+            const from = target.dataset.from;
 
             // Find the message in the DOM
             const chat = document.getElementById('chat');
@@ -44,5 +46,3 @@ function setupReplyFocus() {
         }
     });
 }
-
-export default { setupReplyFocus };
