@@ -6,13 +6,13 @@ import messages from './modules/messages.js';
 import inputHistory from './modules/input.js';
 import notifications from './modules/notifications.js';
 import history from './modules/history.js';
-import referenceFocus from './modules/referenceFocus.js';
+import { setupReplyFocus } from "./modules/reply.js";
 
 const form = document.getElementById("input-area");
 const input = document.getElementById("message-input");
 
 inputHistory.initInputHistory(input);
-referenceFocus.setupReferenceFocus();
+setupReplyFocus();
 
 form.addEventListener("submit", (e) => {
     e.preventDefault();

@@ -1,4 +1,4 @@
-export function setupReferenceFocus() {
+export function setupReplyFocus() {
     document.getElementById('chat').addEventListener('click', (e) => {
         if (e.target && e.target.classList.contains('message-reference')) {
             const date = e.target.dataset.date;
