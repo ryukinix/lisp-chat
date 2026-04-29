@@ -6,11 +6,13 @@ import messages from './modules/messages.js';
 import inputHistory from './modules/input.js';
 import notifications from './modules/notifications.js';
 import history from './modules/history.js';
+import context from './modules/context.js';
 
 const form = document.getElementById("input-area");
 const input = document.getElementById("message-input");
 
 inputHistory.initInputHistory(input);
+context.setupContextModal();
 
 form.addEventListener("submit", (e) => {
     e.preventDefault();
