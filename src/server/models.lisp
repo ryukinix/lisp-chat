@@ -23,6 +23,7 @@
   (user-agent nil)
   (active-channel "#general")
   (timezone nil)
+  (expand-reply t)
   (session-id (princ-to-string (uuid:make-v4-uuid))))
 
 (defun client-socket-type (client)

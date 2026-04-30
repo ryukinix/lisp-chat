@@ -275,7 +275,7 @@
          (processed (if around-time
                         (get-messages-around filtered around-time parsed-depth)
                         (subseq filtered 0 (min parsed-depth (length filtered)))))
-         (formatted (mapcar (lambda (m) (server:formatted-message m :date-format date-format :global global :timezone (server:client-timezone client)))
+         (formatted (mapcar (lambda (m) (server:formatted-message m :date-format date-format :global global :timezone (server:client-timezone client) :expand-reply (server:client-expand-reply client)))
                             processed)))
     (format nil "~{~a~^~%~}" (reverse formatted))))
 
@@ -301,21 +301,21 @@
                               new-nick)
                       :channel (server:client-active-channel client))
         (setf (server:client-name client) new-nick)
-        (server:command-message (format nil "Your new nick is: @~a" new-nick) (server:client-timezone client)))
-      (server:command-message (format nil "/nick NEW-NICKNAME") (server:client-timezone client))))
+        (server:command-message (format nil "Your new nick is: @~a" new-nick) (server:client-timezone client) (server:client-expand-reply client)))
+      (server:command-message (format nil "/nick NEW-NICKNAME") (server:client-timezone client) (server:client-expand-reply client))))
 
 (define-command /dm (client &optional (username nil) msg-content)
   "/dm sends a direct message to a USERNAME"
-  (let ((user (server:get-client username))
-        (from (server:client-name client)))
+  (let ((from (server:client-name client))
+        (user (server:get-client username)))
     (cond
-      ((not username) (server:command-message "/dm USERNAME your message" (server:client-timezone client)))
-      ((not user) (server:command-message (format nil "error: ~s user not found" username) (server:client-timezone client)))
-      ((string= from username) (server:command-message "you can't dm to yourself" (server:client-timezone client)))
+      ((not username) (server:command-message "/dm USERNAME your message" (server:client-timezone client) (server:client-expand-reply client)))
+      ((not user) (server:command-message (format nil "error: ~s user not found" username) (server:client-timezone client) (server:client-expand-reply client)))
+      ((string= from username) (server:command-message "you can't dm to yourself" (server:client-timezone client) (server:client-expand-reply client)))
       (t
        (prog1 'ignore
-         (server:send-message client (server:private-message from msg-content (server:client-timezone client)))
-         (server:send-message user (server:private-message from msg-content (server:client-timezone user))))))))
+          (server:send-message client (server:private-message from msg-content (server:client-timezone client) (server:client-expand-reply client)))
+         (server:send-message user (server:private-message from msg-content (server:client-timezone user) (server:client-expand-reply user))))))))
 
 (define-command /whois (client &optional (username nil))
   "/whois get basic information of a online USERNAME"

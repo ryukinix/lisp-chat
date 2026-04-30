@@ -60,12 +60,12 @@ function connect(onMessageCallback) {
     
     if (search) {
         if (search.includes("=")) {
-            wsUrl += `?${search}&tz=${tzOffset}`;
+            wsUrl += `?${search}&tz=${tzOffset}&expand_reply=false`;
         } else {
-            wsUrl += `?channel=${search}&tz=${tzOffset}`;
+            wsUrl += `?channel=${search}&tz=${tzOffset}&expand_reply=false`;
         }
     } else {
-        wsUrl += `?tz=${tzOffset}`;
+        wsUrl += `?tz=${tzOffset}&expand_reply=false`;
     }
     ws = new WebSocket(wsUrl);
 

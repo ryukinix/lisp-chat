@@ -85,12 +85,14 @@
                    (bt:with-lock-held (*persistence-lock*)
                      (setf *persistence-queue* (append *persistence-queue* (list message-raw))))
                    (bt:signal-semaphore *persistence-semaphore*))
-                 (let ((clients *clients*))
+                  (let ((clients *clients*))
                    (loop for client in clients
                          when (string-equal (message-channel message-raw)
                                             (client-active-channel client))
                            do (handler-case
-                                  (let ((message (formatted-message message-raw :timezone (client-timezone client))))
+                                  (let ((message (formatted-message message-raw 
+                                                                    :timezone (client-timezone client)
+                                                                    :expand-reply (client-expand-reply client))))
                                     (send-message client message))
                                 (error (e)
                                   (debug-format t "Error broadcasting to ~a: ~a~%" (client-name client) e)

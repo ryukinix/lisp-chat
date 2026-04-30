@@ -35,12 +35,21 @@
           (error () nil))
         nil)))
 
+(defun parse-expand-reply (query-string)
+  (let* ((params (uiop:split-string (or query-string "") :separator "&"))
+         (expand-param (find-if (lambda (p) (uiop:string-prefix-p "expand_reply=" p)) params)))
+    (if expand-param
+        (let ((val (subseq expand-param 13)))
+          (not (string-equal val "false")))
+        t)))
+
 (defun ws-app (env)
   (let* ((ws (make-server env))
          (client nil)
          (query-string (getf env :query-string))
          (channel (parse-channel query-string))
-         (tz (parse-tz query-string)))
+         (tz (parse-tz query-string))
+         (expand-reply (parse-expand-reply query-string)))
     (on :message ws
         (lambda (message)
           ;; (debug-format t "Received WS message: ~s~%" message)
@@ -56,7 +65,8 @@
                                                 :time (get-time)
                                                 :user-agent (gethash "user-agent" (getf env :headers))
                                                 :active-channel active-channel
-                                                :timezone tz))
+                                                :timezone tz
+                                                :expand-reply expand-reply))
                       (setf (gethash name *user-channels*) active-channel)
                       (bt:with-lock-held (*client-lock*)
                         (push client *clients*))
