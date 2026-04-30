@@ -35,7 +35,12 @@ function updateUsernamePrefix() {
     if (!prefix) {
         prefix = document.createElement("span");
         prefix.id = "username-prefix";
-        form.insertBefore(prefix, input);
+        const wrapper = document.querySelector(".input-wrapper");
+        if (wrapper && wrapper.contains(input)) {
+            form.insertBefore(prefix, wrapper);
+        } else {
+            form.insertBefore(prefix, input);
+        }
     }
 
     if (username && loggedIn) {

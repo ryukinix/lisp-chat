@@ -93,12 +93,18 @@ function createMessageElement(date, timeHM, timeS, from, content) {
     timeSpan.title = "Click to reply";
     timeSpan.addEventListener("click", () => {
         const msgInput = document.getElementById("message-input");
-        const channel = auth.getChannel ? auth.getChannel() : "#general";
+        let channel = window.location.search.substring(1);
+        if (!channel) {
+            channel = "#general";
+        } else if (!channel.startsWith("#")) {
+            channel = "#" + channel;
+        }
+
         const reference = `<${channel}: ${date} ${timeHM}:${timeS} [${from}]>`;
         
-        if (!msgInput.value.includes(reference)) {
-           msgInput.value = `${reference} ` + msgInput.value;
-        }
+        // Remove existing reference if any
+        let currentText = msgInput.value.replace(/<[^>]+>\s*/g, '');
+        msgInput.value = `${reference} ${currentText}`;
         msgInput.focus();
     });
 
