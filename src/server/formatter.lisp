@@ -107,7 +107,7 @@
                                                            (format nil "> ~a" line)))))
                    (replacement (format nil "~a~%~a" quoted-lines (subseq raw-content end))))
               (setf content-str (concatenate 'string (subseq raw-content 0 start) replacement)))))))
-              
+
     (let ((lines (split content-str :empty-seqs t :delimiterp (lambda (c) (char= c #\Newline)))))
       (format nil "~{~a~^~%~}"
               (mapcar (lambda (line)

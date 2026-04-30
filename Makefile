@@ -7,6 +7,10 @@ ROS_TEST_FLAGS = -e "(sb-ext:disable-debugger)" -s lisp-chat/tests
 lint:
 	mallet --format line src tests
 
+lint-fix:
+	mallet --fix src tests
+
+
 docker-lint:
 	docker run --rm -t -v $(PWD):/src fukamachi/mallet:latest --format line src tests
 

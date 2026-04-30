@@ -90,7 +90,7 @@
                          when (string-equal (message-channel message-raw)
                                             (client-active-channel client))
                            do (handler-case
-                                  (let ((message (formatted-message message-raw 
+                                  (let ((message (formatted-message message-raw
                                                                     :timezone (client-timezone client)
                                                                     :expand-reply (client-expand-reply client))))
                                     (send-message client message))
