@@ -77,7 +77,7 @@
     (when limit
       (setf messages (last messages limit)))
     (dolist (m messages)
-      (format t "~a~%" (server:formatted-message m :date-format "date")))))
+      (format t "~a~%" (server:formatted-message m :client nil :date-format "date")))))
 
 (defun stats (&key (days 7))
   (let ((messages (load-messages))

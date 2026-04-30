@@ -37,7 +37,6 @@
   (multiple-value-list (get-decoded-time)))
 
 
-
 (defun reset-server ()
   "Reset the server state."
   (bt:with-lock-held (*client-lock*)

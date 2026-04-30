@@ -1,4 +1,4 @@
-export function setupReplyFocus() {
+function setupReplyFocus() {
     document.getElementById('chat').addEventListener('click', (e) => {
         // If we click inside the reference but not exactly on the element (like clicking the span inside)
         const target = e.target.closest('.message-reference');
@@ -46,3 +46,5 @@ export function setupReplyFocus() {
         }
     });
 }
+
+export default { setupReplyFocus };

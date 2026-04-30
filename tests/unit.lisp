@@ -41,7 +41,7 @@
   (let* ((message (server:make-message :from "@server"
                                        :content (format nil "line1~%~%xline2")
                                        :time (server:get-time)))
-         (message-string (server:formatted-message message)))
+         (message-string (server:formatted-message message :client nil)))
    (is equal
        3
        (count #\@ message-string :test #'char-equal))))
