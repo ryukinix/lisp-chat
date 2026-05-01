@@ -20,7 +20,7 @@ function formatMessage(text, preserveRaw = false) {
             return `<span style="color: #aaa; text-decoration: underline;">${match}</span>`;
         }
         const userColor = utils.getUserColor(user);
-        return `<span class="message-reference" data-date="${date}" data-time-hm="${timeHM}" data-time-s="${timeS}" data-from="${user}" style="cursor: pointer; text-decoration: underline; color: #aaa;" title="Click to focus message">«reply to <span style="color: ${userColor}">@${user}</span>»</span>`;
+        return `<span class="message-reference" data-channel="${channel}" data-date="${date}" data-time-hm="${timeHM}" data-time-s="${timeS}" data-from="${user}" style="cursor: pointer; text-decoration: underline; color: #aaa;" title="Click to focus message">«reply to <span style="color: ${userColor}">@${user}</span>»</span>`;
     });
 
     // 2. Channels

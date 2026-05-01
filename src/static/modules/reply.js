@@ -42,6 +42,21 @@ function setupReplyFocus() {
                 setTimeout(() => {
                     matchedMessage.classList.remove('focused');
                 }, 3000);
+            } else {
+                let channel = target.dataset.channel;
+                if (!channel) {
+                    channel = window.location.search.substring(1).split('&')[0];
+                    if (!channel || channel.includes('=')) {
+                        channel = "general";
+                    }
+                }
+                const refChannel = channel.replace('#', '');
+                const reference = `<#${refChannel}: ${date} ${timeHM}:${timeS} [${from}]>`;
+                
+                const url = new URL(window.location.origin + window.location.pathname);
+                url.searchParams.set('channel', refChannel);
+                url.searchParams.set('message_ref', reference);
+                window.location.href = url.toString();
             }
         }
     });
