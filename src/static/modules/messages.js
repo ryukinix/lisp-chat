@@ -112,8 +112,7 @@ function createMessageElement(date, timeHM, timeS, from, content) {
 
     const reference = `<#${refChannel}: ${date} ${timeHM}:${timeS} [${refFrom}]>`;
     const url = new URL(window.location.origin + window.location.pathname);
-    url.searchParams.set('channel', refChannel);
-    url.searchParams.set('message_ref', reference);
+    url.search = `?${refChannel}&message_ref=${encodeURIComponent(reference)}`;
     timeLink.href = url.toString();
 
     timeLink.addEventListener("click", (e) => {
