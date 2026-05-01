@@ -284,9 +284,16 @@
          (around-time (or (when ref-msg (server:message-universal-time ref-msg))
                           (server:parse-iso8601 (ensure-string around))))
          (filtered (filter-messages client :global global :before-time before-time :after-time after-time))
-         (processed (if around-time
-                        (get-messages-around filtered around-time parsed-depth)
-                        (subseq filtered 0 (min parsed-depth (length filtered)))))
+         (processed (cond
+                      (around-time
+                       (get-messages-around filtered around-time parsed-depth))
+                      ((and after-time (not before-time))
+                       ;; Paginating forward: 'filtered' is newest-first,
+                       ;; so the messages immediately following 'after' are at the end.
+                       (let ((len (length filtered)))
+                         (subseq filtered (max 0 (- len parsed-depth)) len)))
+                      (t
+                       (subseq filtered 0 (min parsed-depth (length filtered))))))
          (formatted (mapcar (lambda (m)
                               (server:formatted-message m :client client
                                                         :date-format date-format
