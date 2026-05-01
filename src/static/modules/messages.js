@@ -238,9 +238,32 @@ function processStructuredMessage(line, match, anchor, prepend) {
         if (refMatch) {
             const [_, refChannel, refDate, refTimeHM, refTimeS, refFrom] = refMatch;
             if (effectiveDate === refDate && timeHM === refTimeHM && timeS === refTimeS && from === refFrom) {
-                div.classList.add('focused');
+                div.classList.add('shared-focus');
                 setTimeout(() => div.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
-                setTimeout(() => div.classList.remove('focused'), 3000);
+                
+                // Remove focus on interaction
+                const removeFocus = () => {
+                    div.classList.remove('shared-focus');
+                    chat.removeEventListener('scroll', removeFocus);
+                    chat.removeEventListener('click', removeFocus);
+                    const msgInput = document.getElementById('message-input');
+                    if (msgInput) {
+                        msgInput.removeEventListener('input', removeFocus);
+                        msgInput.removeEventListener('keydown', removeFocus);
+                    }
+                };
+
+                // Add listeners after a short delay so the initial scroll doesn't trigger it
+                setTimeout(() => {
+                    chat.addEventListener('scroll', removeFocus, { once: true });
+                    chat.addEventListener('click', removeFocus, { once: true });
+                    const msgInput = document.getElementById('message-input');
+                    if (msgInput) {
+                        msgInput.addEventListener('input', removeFocus, { once: true });
+                        msgInput.addEventListener('keydown', removeFocus, { once: true });
+                    }
+                }, 1000);
+
                 // Clear message_ref from URL after first match to avoid re-triggering if new messages arrive
                 const newUrl = new URL(window.location);
                 newUrl.searchParams.delete('message_ref');
