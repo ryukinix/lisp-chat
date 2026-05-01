@@ -98,9 +98,21 @@ function createMessageElement(date, timeHM, timeS, from, content) {
     if (!channel || channel.includes('=')) {
         channel = "general";
     }
-    const reference = `<#${channel.replace('#', '')}: ${date} ${timeHM}:${timeS} [${from}]>`;
+
+    let refChannel = channel.replace('#', '');
+    let refFrom = from;
+
+    if (refFrom.startsWith("search:")) {
+        refFrom = refFrom.substring(7);
+    } else if (refFrom.startsWith("#") && refFrom.includes(":")) {
+        const colonIndex = refFrom.indexOf(":");
+        refChannel = refFrom.substring(1, colonIndex);
+        refFrom = refFrom.substring(colonIndex + 1);
+    }
+
+    const reference = `<#${refChannel}: ${date} ${timeHM}:${timeS} [${refFrom}]>`;
     const url = new URL(window.location.origin + window.location.pathname);
-    url.searchParams.set('channel', channel.replace('#', ''));
+    url.searchParams.set('channel', refChannel);
     url.searchParams.set('message_ref', reference);
     timeLink.href = url.toString();
 
