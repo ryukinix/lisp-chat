@@ -277,7 +277,11 @@ function processStructuredMessage(line, match, anchor, prepend) {
 
                 // Clear message_ref from URL after first match to avoid re-triggering if new messages arrive
                 const newUrl = new URL(window.location);
-                newUrl.searchParams.delete('message_ref');
+                let urlChannel = window.location.search.substring(1).split('&')[0];
+                if (!urlChannel || urlChannel.includes('=')) {
+                    urlChannel = refChannel.replace('#', '');
+                }
+                newUrl.search = `?${urlChannel}`;
                 window.history.replaceState({}, '', newUrl);
             }
         }
