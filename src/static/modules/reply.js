@@ -53,7 +53,8 @@ function setupReplyFocus() {
                 const refChannel = channel.replace('#', '');
                 const reference = `<#${refChannel}: ${date} ${timeHM}:${timeS} [${from}]>`;
                 
-                const url = new URL(window.location.origin + window.location.pathname);
+                const cleanPath = window.location.pathname.replace(/\/index\.html$/, '/');
+                const url = new URL(window.location.origin + cleanPath);
                 url.search = `?${refChannel}&message_ref=${encodeURIComponent(reference)}`;
                 window.location.href = url.toString();
             }

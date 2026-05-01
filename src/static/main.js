@@ -57,7 +57,8 @@ form.addEventListener("submit", (e) => {
             const parts = trimmed.split(/\s+/);
             if (parts.length > 1) {
                 const newChannel = parts[1].replace(/^#/, '');
-                const url = new URL(window.location);
+                const cleanPath = window.location.pathname.replace(/\/index\.html$/, '/');
+                const url = new URL(window.location.origin + cleanPath);
                 url.search = newChannel;
                 window.history.pushState({}, '', url);
                 updatePageTitle();

@@ -111,7 +111,8 @@ function createMessageElement(date, timeHM, timeS, from, content) {
     }
 
     const reference = `<#${refChannel}: ${date} ${timeHM}:${timeS} [${refFrom}]>`;
-    const url = new URL(window.location.origin + window.location.pathname);
+    const cleanPath = window.location.pathname.replace(/\/index\.html$/, '/');
+    const url = new URL(window.location.origin + cleanPath);
     url.search = `?${refChannel}&message_ref=${encodeURIComponent(reference)}`;
     timeLink.href = url.toString();
 
@@ -276,7 +277,8 @@ function processStructuredMessage(line, match, anchor, prepend) {
                 }, 1000);
 
                 // Clear message_ref from URL after first match to avoid re-triggering if new messages arrive
-                const newUrl = new URL(window.location);
+                const cleanPath = window.location.pathname.replace(/\/index\.html$/, '/');
+                const newUrl = new URL(window.location.origin + cleanPath);
                 let urlChannel = window.location.search.substring(1).split('&')[0];
                 if (!urlChannel || urlChannel.includes('=')) {
                     urlChannel = refChannel.replace('#', '');
