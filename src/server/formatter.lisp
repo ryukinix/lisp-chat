@@ -75,6 +75,13 @@
                   (string-equal (message-time-date-format m) (format nil "~a ~a" date time))))
            *messages-log*))
 
+(defun get-message-by-reference-string (ref-string)
+  "Find a message by its reference string <#channel: YYYY-MM-DD HH:MM:SS [user]>."
+  (cl-ppcre:register-groups-bind (channel date time user)
+      ("<(#?[A-zÀ-ú0-9_\\-]+):\\s*(\\d{4}-\\d{2}-\\d{2})\\s*(\\d{2}:\\d{2}:\\d{2})\\s*\\[(.*?)\\]>" ref-string)
+    (when (and channel date time user)
+      (get-message-by-reference channel date time user))))
+
 (defun expand-message-reply (raw-content)
   "Expand message references in the content."
   (let ((content-str raw-content))

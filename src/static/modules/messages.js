@@ -86,21 +86,27 @@ function createMessageElement(date, timeHM, timeS, from, content) {
     div.dataset.timeS = timeS;
     div.dataset.from = from;
 
-    const timeSpan = document.createElement("span");
-    timeSpan.className = "timestamp";
-    timeSpan.innerHTML = `${timeHM}<span class="timestamp-seconds">:${timeS}</span>`;
-    timeSpan.style.cursor = "pointer";
-    timeSpan.title = "Click to reply";
-    timeSpan.addEventListener("click", () => {
-        const msgInput = document.getElementById("message-input");
-        let channel = window.location.search.substring(1);
-        if (!channel) {
-            channel = "#general";
-        } else if (!channel.startsWith("#")) {
-            channel = "#" + channel;
-        }
+    const timeLink = document.createElement("a");
+    timeLink.className = "timestamp";
+    timeLink.innerHTML = `${timeHM}<span class="timestamp-seconds">:${timeS}</span>`;
+    timeLink.style.cursor = "pointer";
+    timeLink.style.textDecoration = "none";
+    timeLink.style.color = "inherit";
+    timeLink.title = "Click to reply / Right click to copy link";
+    
+    let channel = window.location.search.substring(1).split('&')[0];
+    if (!channel || channel.includes('=')) {
+        channel = "general";
+    }
+    const reference = `<#${channel.replace('#', '')}: ${date} ${timeHM}:${timeS} [${from}]>`;
+    const url = new URL(window.location.origin + window.location.pathname);
+    url.searchParams.set('channel', channel.replace('#', ''));
+    url.searchParams.set('message_ref', reference);
+    timeLink.href = url.toString();
 
-        const reference = `<${channel}: ${date} ${timeHM}:${timeS} [${from}]>`;
+    timeLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        const msgInput = document.getElementById("message-input");
         
         // Remove existing reference if any
         let currentText = msgInput.value.replace(/<[^>]+>\s*/g, '');
@@ -117,7 +123,7 @@ function createMessageElement(date, timeHM, timeS, from, content) {
     contentSpan.dataset.rawContent = content;
     contentSpan.innerHTML = formatting.formatMessage(content);
 
-    div.appendChild(timeSpan);
+    div.appendChild(timeLink);
     div.appendChild(fromSpan);
     div.appendChild(contentSpan);
 
@@ -223,6 +229,25 @@ function processStructuredMessage(line, match, anchor, prepend) {
     const div = createMessageElement(effectiveDate, timeHM, timeS, from, content);
 
     insertMessageNode(div, anchor);
+
+    // Check if this message is the one referenced in the URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const messageRef = urlParams.get('message_ref');
+    if (messageRef) {
+        const refMatch = messageRef.match(/<(#?[A-zÀ-ú0-9_\-]+):\s*(\d{4}-\d{2}-\d{2})\s*(\d{2}:\d{2}):(\d{2})\s*\[(.*?)\]>/);
+        if (refMatch) {
+            const [_, refChannel, refDate, refTimeHM, refTimeS, refFrom] = refMatch;
+            if (effectiveDate === refDate && timeHM === refTimeHM && timeS === refTimeS && from === refFrom) {
+                div.classList.add('focused');
+                setTimeout(() => div.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+                setTimeout(() => div.classList.remove('focused'), 3000);
+                // Clear message_ref from URL after first match to avoid re-triggering if new messages arrive
+                const newUrl = new URL(window.location);
+                newUrl.searchParams.delete('message_ref');
+                window.history.replaceState({}, '', newUrl);
+            }
+        }
+    }
 }
 
 function addRawMessage(line, anchor) {
