@@ -123,8 +123,8 @@ function initHistoryLoading() {
                 const numMessagesBefore = messages.chat.querySelectorAll('.message').length;
                 
                 if (result.trim()) {
-                    // addMessage adds to bottom if prepend is false
-                    messages.addMessage(result, false); 
+                    // addMessage adds to bottom if prepend is false. Use forceNoScroll to prevent jumping to the end.
+                    messages.addMessage(result, false, true); 
                 }
                 
                 const numMessagesAfter = messages.chat.querySelectorAll('.message').length;

@@ -304,7 +304,7 @@ function addRawMessage(line, anchor) {
     insertMessageNode(div, anchor);
 }
 
-function addMessage(text, prepend = false) {
+function addMessage(text, prepend = false, forceNoScroll = false) {
     const isAtBottom = checkChatIsAtBottom();
     const linesArray = text.split(/\r?\n/);
     let anchor = null;
@@ -330,7 +330,7 @@ function addMessage(text, prepend = false) {
 
     if (prepend && chat.scrollHeight > previousScrollHeight) {
         chat.scrollTop += chat.scrollHeight - previousScrollHeight;
-    } else if (isAtBottom && !prepend) {
+    } else if (isAtBottom && !prepend && !forceNoScroll) {
         chat.scrollTop = chat.scrollHeight;
     }
 }
