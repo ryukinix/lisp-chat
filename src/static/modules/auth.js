@@ -99,7 +99,7 @@ function performLogin(loginUsername) {
 
     if (messageRef) {
         history.setHistoricalContext(true);
-        network.getWs().send(`/log :reference "${messageRef}" :depth 30 :date-format date`);
+        network.getWs().send(`/log :reference "${messageRef}" :depth 20 :date-format date`);
     } else {
         history.setHistoricalContext(false);
         network.getWs().send(`/log :depth ${config.LOG_HISTORY_SIZE} :date-format date`);
