@@ -198,7 +198,7 @@ button:hover {
 }
 
 code {
-    background: #333;
+    background: #444;
     padding: 2px 4px;
     border-radius: 4px;
     font-family: monospace;
@@ -375,4 +375,14 @@ a:active {
         scrollbar-color: var(--sb-thumb-color)
                          var(--sb-track-color);
     }
+}
+
+/* Focused message highlight */
+.message.focused {
+    animation: highlightFade 3s forwards;
+}
+
+@keyframes highlightFade {
+    0% { background-color: rgba(255, 255, 255, 0.2); }
+    100% { background-color: transparent; }
 }

@@ -68,26 +68,67 @@
 (defun format-message-line (time from content)
   (format nil "|~a| [~a]: ~a" time from content))
 
-(defun formatted-message (message &key (date-format nil) (global nil) (timezone nil))
+(defun get-message-by-reference (channel date time user)
+  (find-if (lambda (m)
+             (and (string-equal (message-channel m) channel)
+                  (string-equal (message-from m) user)
+                  (string-equal (message-time-date-format m) (format nil "~a ~a" date time))))
+           *messages-log*))
+
+(defun expand-message-reply (raw-content)
+  "Expand message references in the content."
+  (let ((content-str raw-content))
+    (cl-ppcre:do-scans (start end reg-starts reg-ends
+                        "<(#?[A-zÀ-ú0-9_\\-]+):\\s*(\\d{4}-\\d{2}-\\d{2})\\s*(\\d{2}:\\d{2}:\\d{2})\\s*\\[(.*?)\\]>"
+                        raw-content)
+      (let* ((channel (subseq raw-content (aref reg-starts 0) (aref reg-ends 0)))
+             (date (subseq raw-content (aref reg-starts 1) (aref reg-ends 1)))
+             (time (subseq raw-content (aref reg-starts 2) (aref reg-ends 2)))
+             (user (subseq raw-content (aref reg-starts 3) (aref reg-ends 3)))
+             (ref-msg (get-message-by-reference channel date time user)))
+        (when ref-msg
+          (let* ((original-content (message-content ref-msg))
+                 (lines (split original-content :empty-seqs t :delimiterp (lambda (c) (char= c #\Newline))))
+                 (quoted-lines (format nil "~{~a~^~%~}"
+                                       (loop for line in lines
+                                             for i from 0
+                                             collect (if (= i 0)
+                                                         (format nil "> @~a: ~a" user line)
+                                                         (format nil "> ~a" line)))))
+                 (replacement (format nil "~a~%~a" quoted-lines (subseq raw-content end))))
+            (setf content-str (concatenate 'string (subseq raw-content 0 start) replacement))))))
+    content-str))
+
+(defun formatted-message (message &key (client nil) (date-format nil) (global nil))
   "The default message format of this server. MESSAGE is a struct message"
-  (let* ((time-str (if (string= date-format "date")
+  (let* ((timezone (when client (client-timezone client)))
+         (expand-reply (if client (client-expand-reply client) t))
+         (time-str (if (string= date-format "date")
                        (message-time-date-format message timezone)
                        (message-time-hour-format message timezone)))
          (from-str (if global
                        (format nil "~a:~a" (message-channel message) (message-from message))
                        (message-from message)))
-         (content-str (message-content message))
+         (content-str (if expand-reply
+                          (expand-message-reply (message-content message))
+                          (message-content message)))
          (lines (split content-str :empty-seqs t :delimiterp (lambda (c) (char= c #\Newline)))))
     (format nil "~{~a~^~%~}"
             (mapcar (lambda (line)
                       (format-message-line time-str from-str line))
                     lines))))
 
-(defun user-messages (&key (date-format nil) (channel "#general") (global nil) (timezone nil))
-  "Return only user messages, discard all messsages from @server"
-  (mapcar (lambda (m) (formatted-message m :date-format date-format :global global :timezone timezone))
-          (remove-if-not #'(lambda (m) (or global (string-equal (message-channel m) channel)))
-                     *messages-log*)))
+(defun user-messages (&key (client nil) (date-format nil) (channel "#general") (global nil))
+  "Return only user messages, discard all messages from @server"
+  (let* ((messages (remove-if (lambda (m)
+                                (string-equal (message-from m) *server-nickname*))
+                              *messages-log*))
+         (filtered (remove-if-not (lambda (m)
+                                    (or global (string-equal (message-channel m) channel)))
+                                  messages)))
+    (mapcar (lambda (m)
+              (formatted-message m :client client :date-format date-format :global global))
+            filtered)))
 
 (defun message-universal-time (message)
   "Return the universal time of a message."
@@ -115,31 +156,32 @@
                                (nth 0 date-fields)))      ;; year
     (error () nil)))
 
-(defun search-message (message &key (global nil))
+(defun search-message (message &key (client nil) (global nil))
   "Format a message for the /search command.
    The user part is prefixed with search:username or channel:username if global."
   (let ((user-part (if global
                        (format nil "~a:~a" (message-channel message) (message-from message))
-                       (format nil "search:~a" (message-from message)))))
+                       (format nil "search:~a" (message-from message))))
+        (timezone (when client (client-timezone client))))
     (format nil "|~a| [~a]: ~a"
-            (message-time-date-format message)
+            (message-time-date-format message timezone)
             user-part
             (message-content message))))
 
-(defun command-message (content &optional timezone)
+(defun command-message (content &key (client nil))
   "This function prepare the CONTENT as a message by the @server"
   (if *raw-command-message*
       content
       (let* ((from *server-nickname*)
              (time (get-time))
              (message (make-message :from from :content content :time time)))
-        (formatted-message message :timezone timezone))))
+        (formatted-message message :client client))))
 
-(defun private-message (client-name content &optional timezone)
+(defun private-message (client-name content &key (client nil))
   "This function prepare the CONTENT as a message by the @server"
   (let* ((from (format nil "dm:~a" client-name))
          (time (get-time))
          (message (make-message :from from
                                 :content content
                                 :time time)))
-    (formatted-message message :timezone timezone)))
+    (formatted-message message :client client)))

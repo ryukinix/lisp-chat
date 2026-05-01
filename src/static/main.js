@@ -3,14 +3,17 @@ import auth from './modules/auth.js';
 import network from './modules/network.js';
 import autocomplete from './modules/autocomplete.js';
 import messages from './modules/messages.js';
-import inputHistory from './modules/input.js';
+import inputModule from './modules/input.js';
 import notifications from './modules/notifications.js';
 import history from './modules/history.js';
+import reply from "./modules/reply.js";
 
 const form = document.getElementById("input-area");
 const input = document.getElementById("message-input");
 
-inputHistory.initInputHistory(input);
+inputModule.initInputHistory(input);
+inputModule.setupInputOverlay(input);
+reply.setupReplyFocus();
 
 form.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -19,7 +22,7 @@ form.addEventListener("submit", (e) => {
     if (value && network.getWs() && network.getWs().readyState === WebSocket.OPEN) {
         autocomplete.closeAutocomplete();
         if (trimmed) {
-            inputHistory.addMessageToHistory(value);
+            inputModule.addMessageToHistory(value);
         }
         if (trimmed === "/clear") {
             messages.clearMessages();

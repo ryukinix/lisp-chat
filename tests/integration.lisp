@@ -27,7 +27,11 @@
 (defmacro with-websocket-client ((client messages-var &key additional-headers query-params) &body body)
   (let ((url (gensym))
         (connected (gensym)))
-    `(let* ((,url (format nil "ws://127.0.0.1:~a/ws~a" config:*websocket-port* (if ,query-params (concatenate 'string "?" ,query-params) "")))
+    `(let* ((,url (format nil "ws://127.0.0.1:~a/ws~a"
+                                 config:*websocket-port*
+                                 (if ,query-params
+                                     (concatenate 'string "?" ,query-params)
+                                     "")))
             (,client (make-client ,url :additional-headers ,additional-headers))
             (,connected nil)
             (,messages-var '()))

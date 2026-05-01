@@ -48,7 +48,7 @@
         (push client *clients*))
       (user-joined-message client)
       (when history-channel
-        (send-message client (command-message (format nil "You were restored to channel ~a" active-channel))))
+        (send-message client (command-message (format nil "You were restored to channel ~a" active-channel) :client client)))
       (bt:make-thread
          (lambda () (client-reader client))
          :name (format nil "reader-thread: ~a" (client-name client))))))

@@ -32,6 +32,7 @@
            #:client-active-channel
            #:client-session-id
            #:client-timezone
+           #:client-expand-reply
            #:message
            #:message-from
            #:message-time

@@ -57,15 +57,16 @@ function connect(onMessageCallback) {
     
     // Calculate the timezone offset in hours (e.g. UTC-3 is -3)
     const tzOffset = -(new Date().getTimezoneOffset() / 60);
+    const default_query_params = `tz=${tzOffset}&expand_reply=false`;
     
     if (search) {
         if (search.includes("=")) {
-            wsUrl += `?${search}&tz=${tzOffset}`;
+            wsUrl += `?${search}&${default_query_params}`;
         } else {
-            wsUrl += `?channel=${search}&tz=${tzOffset}`;
+            wsUrl += `?channel=${search}&${default_query_params}`;
         }
     } else {
-        wsUrl += `?tz=${tzOffset}`;
+        wsUrl += `?${default_query_params}`;
     }
     ws = new WebSocket(wsUrl);
 
