@@ -268,22 +268,32 @@
             (> (server:message-universal-time m1)
                (server:message-universal-time m2))))))
 
-(define-command /log (client &key (depth "20") date-format global before after around &allow-other-keys)
+(define-command /log (client &key (depth "20") date-format global before after around reference &allow-other-keys)
   "/log shows the last messages sent to the server.
    DEPTH is optional number of messages frames from log
    GLOBAL is optional boolean to search across all channels
    BEFORE is optional ISO format datetime filter (e.g., 2026-02-22T14:30).
    AFTER is optional ISO format datetime filter (e.g., 2026-02-22T14:30).
-   AROUND is optional ISO format datetime filter (e.g., 2026-02-22T14:30)."
+   AROUND is optional ISO format datetime filter (e.g., 2026-02-22T14:30).
+   REFERENCE is optional message reference string."
   (declare (ignorable client))
   (let* ((parsed-depth (or (parse-integer (ensure-string depth) :junk-allowed t) 20))
          (before-time (server:parse-iso8601 (ensure-string before)))
          (after-time (server:parse-iso8601 (ensure-string after)))
-         (around-time (server:parse-iso8601 (ensure-string around)))
+         (ref-msg (when reference (server:get-message-by-reference-string (ensure-string reference))))
+         (around-time (or (when ref-msg (server:message-universal-time ref-msg))
+                          (server:parse-iso8601 (ensure-string around))))
          (filtered (filter-messages client :global global :before-time before-time :after-time after-time))
-         (processed (if around-time
-                        (get-messages-around filtered around-time parsed-depth)
-                        (subseq filtered 0 (min parsed-depth (length filtered)))))
+         (processed (cond
+                      (around-time
+                       (get-messages-around filtered around-time parsed-depth))
+                      ((and after-time (not before-time))
+                       ;; Paginating forward: 'filtered' is newest-first,
+                       ;; so the messages immediately following 'after' are at the end.
+                       (let ((len (length filtered)))
+                         (subseq filtered (max 0 (- len parsed-depth)) len)))
+                      (t
+                       (subseq filtered 0 (min parsed-depth (length filtered))))))
          (formatted (mapcar (lambda (m)
                               (server:formatted-message m :client client
                                                         :date-format date-format

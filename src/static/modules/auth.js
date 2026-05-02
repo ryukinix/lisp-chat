@@ -1,6 +1,7 @@
 import utils from './utils.js';
 import config from './config.js';
 import network from './network.js';
+import history from './history.js';
 
 let username = utils.getCookie("username") || "";
 let loggedIn = false;
@@ -92,7 +93,18 @@ function performLogin(loginUsername) {
     updateUsernamePrefix();
     hideLoginPanel();
     network.getWs().send(`/session`);
-    network.getWs().send(`/log :depth ${config.LOG_HISTORY_SIZE} :date-format date`);
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const messageRef = urlParams.get('message_ref');
+
+    if (messageRef) {
+        history.setHistoricalContext(true);
+        network.getWs().send(`/log :reference "${messageRef}" :depth 20 :date-format date`);
+    } else {
+        history.setHistoricalContext(false);
+        network.getWs().send(`/log :depth ${config.LOG_HISTORY_SIZE} :date-format date`);
+    }
+
     if (!network.getFetchUsersInterval()) {
         network.keepAliveWorker.postMessage('start');
         network.setFetchUsersInterval(true);

@@ -24,6 +24,7 @@
            #:*server-nickname*
            #:*raw-command-message*
            #:*uptime*
+           #:client
            #:client-name
            #:client-address
            #:client-time
@@ -45,6 +46,7 @@
            #:get-time
            #:format-time
            #:formatted-message
+           #:get-message-by-reference-string
            #:parse-iso8601
            #:message-universal-time
            #:search-message

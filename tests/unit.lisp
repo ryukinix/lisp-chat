@@ -62,3 +62,36 @@
   (is string= "#general" (server:normalize-channel "#"))
   (is string= "#general" (server:normalize-channel "%23"))
   (is eq nil (server:normalize-channel nil)))
+
+(define-test message-references
+  :parent unit-tests
+  (server:reset-server)
+  (let* ((time (server:get-time))
+         (msg (server:make-message :from "user1" :content "hello" :channel "#general" :time time))
+         (date-str (server:message-time-date-format msg))
+         (ref-string (format nil "<#general: ~a [user1]>" date-str)))
+    (push msg server:*messages-log*)
+    (let ((found (server:get-message-by-reference-string ref-string)))
+      (true found)
+      (is string= "user1" (server:message-from found))
+      (is string= "hello" (server:message-content found)))))
+
+(define-test log-command-with-reference
+  :parent unit-tests
+  (server:reset-server)
+  (let ((client (server::make-client :active-channel "#general")))
+    (dotimes (i 50)
+      (push (server:make-message :from (format nil "user~a" i)
+                                 :content (format nil "msg ~a" i)
+                                 :channel "#general"
+                                 :time (server:get-time))
+            server:*messages-log*))
+    (let* ((mid-msg (nth 25 (reverse server:*messages-log*)))
+           (date-str (server:message-time-date-format mid-msg))
+           (ref-string (format nil "<#general: ~a [~a]>" date-str (server:message-from mid-msg)))
+           (result (lisp-chat/commands:call-command client (format nil "/log :reference \"~a\" :depth 10" ref-string))))
+      (true result)
+      ;; Result should contains about 10 messages around msg 25
+      (is equal 10 (length (server:split result :delimiterp (lambda (c) (char= c #\Newline)) :empty-seqs t))))))
+
+

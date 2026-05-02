@@ -52,22 +52,25 @@ function connect(onMessageCallback) {
     }
 
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const search = window.location.search.substring(1);
     let wsUrl = `${protocol}//${window.location.host}/ws`;
     
     // Calculate the timezone offset in hours (e.g. UTC-3 is -3)
     const tzOffset = -(new Date().getTimezoneOffset() / 60);
-    const default_query_params = `tz=${tzOffset}&expand_reply=false`;
     
-    if (search) {
-        if (search.includes("=")) {
-            wsUrl += `?${search}&${default_query_params}`;
-        } else {
-            wsUrl += `?channel=${search}&${default_query_params}`;
-        }
-    } else {
-        wsUrl += `?${default_query_params}`;
+    let channel = window.location.search.substring(1).split('&')[0];
+    if (!channel || channel.includes('=')) {
+        channel = '';
     }
+
+    const wsParams = new URLSearchParams();
+    if (channel) {
+        wsParams.set('channel', channel);
+    }
+    wsParams.set('tz', tzOffset);
+    wsParams.set('expand_reply', 'false');
+    
+    wsUrl += `?${wsParams.toString()}`;
+    
     ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {

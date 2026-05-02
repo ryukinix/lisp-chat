@@ -53,7 +53,30 @@ body {
     background: rgba(60, 60, 60, 0.95);
 }
 
-#load-more-btn.hidden {
+#load-newer-btn {
+    position: absolute;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    border-radius: 20px;
+    padding: 3px 10px;
+    background: rgba(40, 40, 40, 0.95);
+    color: #eee;
+    border: 1px solid #555;
+    cursor: pointer;
+    font-size: 11px;
+    opacity: 0.9;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+    transition: background 0.2s, opacity 0.2s;
+}
+
+#load-newer-btn:hover {
+    background: rgba(60, 60, 60, 0.95);
+}
+
+#load-more-btn.hidden,
+#load-newer-btn.hidden {
     display: none;
 }
 
@@ -159,8 +182,13 @@ button:hover {
 }
 
 .timestamp {
-    color: #666;
+    color: #666 !important;
     margin-right: 4px;
+    text-decoration: none !important;
+}
+
+.timestamp:hover {
+    text-decoration: underline !important;
 }
 
 .date-divider {
@@ -380,6 +408,23 @@ a:active {
 /* Focused message highlight */
 .message.focused {
     animation: highlightFade 3s forwards;
+}
+
+.message-reference {
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.message-reference.local {
+    color: #aaa;
+}
+
+.message-reference.external {
+    color: lightblue; /* same as a:link */
+}
+
+.message-reference.external:hover {
+    color: deepskyblue; /* same as a:hover */
 }
 
 @keyframes highlightFade {

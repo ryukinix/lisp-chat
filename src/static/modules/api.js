@@ -30,12 +30,15 @@ async function fetchCommand(command, kwargs = {}, provideSession = false) {
     return await response.json();
 }
 
-async function log(depth, before) {
-    return fetchCommand('log', {
+async function log(depth, before, after) {
+    const kwargs = {
         "depth": depth.toString(),
-        "before": before,
         "date-format": "date"
-    }, true);
+    };
+    if (before) kwargs.before = before;
+    if (after) kwargs.after = after;
+    
+    return fetchCommand('log', kwargs, true);
 }
 
 async function channels(all = true) {

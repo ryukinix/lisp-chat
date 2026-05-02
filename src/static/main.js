@@ -8,6 +8,15 @@ import notifications from './modules/notifications.js';
 import history from './modules/history.js';
 import reply from "./modules/reply.js";
 
+function updatePageTitle() {
+    let channel = window.location.search.substring(1).split('&')[0];
+    if (!channel || channel.includes('=')) {
+        channel = "general";
+    }
+    const channelName = channel.replace(/^#/, '');
+    document.title = `Lisp Chat Web: #${channelName}`;
+}
+
 const form = document.getElementById("input-area");
 const input = document.getElementById("message-input");
 
@@ -48,9 +57,11 @@ form.addEventListener("submit", (e) => {
             const parts = trimmed.split(/\s+/);
             if (parts.length > 1) {
                 const newChannel = parts[1].replace(/^#/, '');
-                const url = new URL(window.location);
+                const cleanPath = window.location.pathname.replace(/\/index\.html$/, '/');
+                const url = new URL(window.location.origin + cleanPath);
                 url.search = newChannel;
                 window.history.pushState({}, '', url);
+                updatePageTitle();
             }
 
             input.value = "";
@@ -106,6 +117,7 @@ if (window.innerWidth > config.DESKTOP_MIN_WIDTH) {
     input.focus();
 }
 
+updatePageTitle();
 history.initHistoryLoading();
 autocomplete.initAutocomplete(input);
 network.connect(messages.addMessage);

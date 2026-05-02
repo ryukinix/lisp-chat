@@ -5,6 +5,7 @@ import notifications from './notifications.js';
 import users from './users.js';
 import auth from './auth.js';
 import network from './network.js';
+import reply from './reply.js';
 
 const chat = document.getElementById("chat");
 
@@ -86,21 +87,39 @@ function createMessageElement(date, timeHM, timeS, from, content) {
     div.dataset.timeS = timeS;
     div.dataset.from = from;
 
-    const timeSpan = document.createElement("span");
-    timeSpan.className = "timestamp";
-    timeSpan.innerHTML = `${timeHM}<span class="timestamp-seconds">:${timeS}</span>`;
-    timeSpan.style.cursor = "pointer";
-    timeSpan.title = "Click to reply";
-    timeSpan.addEventListener("click", () => {
-        const msgInput = document.getElementById("message-input");
-        let channel = window.location.search.substring(1);
-        if (!channel) {
-            channel = "#general";
-        } else if (!channel.startsWith("#")) {
-            channel = "#" + channel;
-        }
+    const timeLink = document.createElement("a");
+    timeLink.className = "timestamp";
+    timeLink.innerHTML = `${timeHM}<span class="timestamp-seconds">:${timeS}</span>`;
+    timeLink.style.cursor = "pointer";
+    timeLink.style.textDecoration = "none";
+    timeLink.style.color = "inherit";
+    timeLink.title = "Click to reply / Right click to copy link";
+    
+    let channel = window.location.search.substring(1).split('&')[0];
+    if (!channel || channel.includes('=')) {
+        channel = "general";
+    }
 
-        const reference = `<${channel}: ${date} ${timeHM}:${timeS} [${from}]>`;
+    let refChannel = channel.replace('#', '');
+    let refFrom = from;
+
+    if (refFrom.startsWith("search:")) {
+        refFrom = refFrom.substring(7);
+    } else if (refFrom.startsWith("#") && refFrom.includes(":")) {
+        const colonIndex = refFrom.indexOf(":");
+        refChannel = refFrom.substring(1, colonIndex);
+        refFrom = refFrom.substring(colonIndex + 1);
+    }
+
+    const reference = `<#${refChannel}: ${date} ${timeHM}:${timeS} [${refFrom}]>`;
+    const cleanPath = window.location.pathname.replace(/\/index\.html$/, '/');
+    const url = new URL(window.location.origin + cleanPath);
+    url.search = `?${refChannel}&message_ref=${encodeURIComponent(reference)}`;
+    timeLink.href = url.toString();
+
+    timeLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        const msgInput = document.getElementById("message-input");
         
         // Remove existing reference if any
         let currentText = msgInput.value.replace(/<[^>]+>\s*/g, '');
@@ -117,7 +136,7 @@ function createMessageElement(date, timeHM, timeS, from, content) {
     contentSpan.dataset.rawContent = content;
     contentSpan.innerHTML = formatting.formatMessage(content);
 
-    div.appendChild(timeSpan);
+    div.appendChild(timeLink);
     div.appendChild(fromSpan);
     div.appendChild(contentSpan);
 
@@ -223,6 +242,53 @@ function processStructuredMessage(line, match, anchor, prepend) {
     const div = createMessageElement(effectiveDate, timeHM, timeS, from, content);
 
     insertMessageNode(div, anchor);
+
+    // Check if this message is the one referenced in the URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const messageRef = urlParams.get('message_ref');
+    if (messageRef) {
+        const refMatch = messageRef.match(/<(#?[A-zÀ-ú0-9_\-]+):\s*(\d{4}-\d{2}-\d{2})\s*(\d{2}:\d{2}):(\d{2})\s*\[(.*?)\]>/);
+        if (refMatch) {
+            const [_, refChannel, refDate, refTimeHM, refTimeS, refFrom] = refMatch;
+            if (effectiveDate === refDate && timeHM === refTimeHM && timeS === refTimeS && from === refFrom) {
+                div.classList.add('shared-focus');
+                setTimeout(() => div.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+                
+                // Remove focus on interaction
+                const removeFocus = () => {
+                    div.classList.remove('shared-focus');
+                    chat.removeEventListener('scroll', removeFocus);
+                    chat.removeEventListener('click', removeFocus);
+                    const msgInput = document.getElementById('message-input');
+                    if (msgInput) {
+                        msgInput.removeEventListener('input', removeFocus);
+                        msgInput.removeEventListener('keydown', removeFocus);
+                    }
+                };
+
+                // Add listeners after a short delay so the initial scroll doesn't trigger it
+                setTimeout(() => {
+                    chat.addEventListener('scroll', removeFocus, { once: true });
+                    chat.addEventListener('click', removeFocus, { once: true });
+                    const msgInput = document.getElementById('message-input');
+                    if (msgInput) {
+                        msgInput.addEventListener('input', removeFocus, { once: true });
+                        msgInput.addEventListener('keydown', removeFocus, { once: true });
+                    }
+                }, 1000);
+
+                // Clear message_ref from URL after first match to avoid re-triggering if new messages arrive
+                const cleanPath = window.location.pathname.replace(/\/index\.html$/, '/');
+                const newUrl = new URL(window.location.origin + cleanPath);
+                let urlChannel = window.location.search.substring(1).split('&')[0];
+                if (!urlChannel || urlChannel.includes('=')) {
+                    urlChannel = refChannel.replace('#', '');
+                }
+                newUrl.search = `?${urlChannel}`;
+                window.history.replaceState({}, '', newUrl);
+            }
+        }
+    }
 }
 
 function addRawMessage(line, anchor) {
@@ -239,7 +305,7 @@ function addRawMessage(line, anchor) {
     insertMessageNode(div, anchor);
 }
 
-function addMessage(text, prepend = false) {
+function addMessage(text, prepend = false, forceNoScroll = false) {
     const isAtBottom = checkChatIsAtBottom();
     const linesArray = text.split(/\r?\n/);
     let anchor = null;
@@ -265,9 +331,14 @@ function addMessage(text, prepend = false) {
 
     if (prepend && chat.scrollHeight > previousScrollHeight) {
         chat.scrollTop += chat.scrollHeight - previousScrollHeight;
-    } else if (isAtBottom && !prepend) {
+    } else if (isAtBottom && !prepend && !forceNoScroll) {
         chat.scrollTop = chat.scrollHeight;
     }
+    
+    // Defer updating reference states so it doesn't block rendering
+    setTimeout(() => {
+        reply.updateReplyReferenceStates();
+    }, 10);
 }
 
 export default { chat, clearMessages, checkChatIsAtBottom, addMessage };
