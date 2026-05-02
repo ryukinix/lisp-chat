@@ -10,6 +10,41 @@
           *messages-stack*))
   (bt:signal-semaphore *message-semaphore*))
 
+(defun push-notification (user from content &key (channel "#general"))
+  "Push a notification for a USER from FROM as CONTENT"
+  (declare (ignore channel))
+  (bt:with-lock-held (*notifications-lock*)
+      (let* ((subscriptions (gethash user *notifications*))
+             ;; If the notifications list was purely internal messages, keep them?
+             ;; No, with the new web push we store the *subscription JSON* directly on *notifications* key in memory.
+             ;; So let's extract them:
+             (subs (loop for s in subscriptions
+                         when (stringp s) collect s)))
+        (bt:make-thread
+         (lambda ()
+           ;; Load VAPID credentials
+           (let ((vapid-pub (uiop:getenv "VAPID_PUBLIC_KEY"))
+                 (vapid-priv (uiop:getenv "VAPID_PRIVATE_KEY"))
+                 (vapid-sub "mailto:admin@lisp-chat.test"))
+             (when (and vapid-pub vapid-priv)
+               (dolist (sub-json subs)
+                 (handler-case
+                     (cl-web-push:send-push-notification
+                      sub-json
+                      (format nil "New mention from ~a: ~a" from content)
+                      vapid-pub
+                      vapid-priv
+                      vapid-sub)
+                   (dex:http-request-gone ()
+                     ;; Subscription has expired or was removed by user, we should drop it.
+                     (bt:with-lock-held (*notifications-lock*)
+                       (setf (gethash user *notifications*)
+                             (remove sub-json (gethash user *notifications*) :test #'string-equal))))
+                   (dex:http-request-not-found ()
+                     (bt:with-lock-held (*notifications-lock*)
+                       (setf (gethash user *notifications*)
+                             (remove sub-json (gethash user *notifications*) :test #'string-equal))))))))))))))
+
 (defun user-joined-message (client)
   "Create a user joined message for the given client."
   (push-message "@server" (format nil "The user @~a joined to the party! ~a"
@@ -85,6 +120,13 @@
                    (bt:with-lock-held (*persistence-lock*)
                      (setf *persistence-queue* (append *persistence-queue* (list message-raw))))
                    (bt:signal-semaphore *persistence-semaphore*))
+                 ;; Mention detection
+                 (unless (equal (message-from message-raw) "@server")
+                   (let ((mentions (extract-mentions (message-content message-raw))))
+                     (dolist (user mentions)
+                       (unless (string-equal user (message-from message-raw))
+                         (push-notification user (message-from message-raw) (message-content message-raw)
+                                            :channel (message-channel message-raw))))))
                   (let ((clients *clients*))
                    (loop for client in clients
                          when (string-equal (message-channel message-raw)

@@ -3,12 +3,14 @@
 (defparameter *messages-log* nil  "Messages log")
 (defparameter *user-channels* (make-hash-table :test 'equal) "Mapping of usernames to their last active channel")
 (defparameter *private-channels* (make-hash-table :test 'equal) "Set of channels where messages are not saved")
+(defparameter *notifications* (make-hash-table :test 'equal) "Mapping of usernames to their notifications list")
 
 ;; thread control
 (defvar *message-semaphore* (bt:make-semaphore :name "message semaphore"
                                             :count 0))
 (defvar *client-lock* (bt:make-lock "client list lock"))
 (defvar *messages-lock* (bt:make-lock "messages stack lock"))
+(defvar *notifications-lock* (bt:make-lock "notifications lock"))
 (defvar *day-names* '("Monday" "Tuesday" "Wednesday"
                       "Thursday" "Friday" "Saturday" "Sunday")
   "Day names")
@@ -43,6 +45,8 @@
     (setf *clients* nil))
   (bt:with-lock-held (*messages-lock*)
     (setf *messages-stack* nil))
+  (bt:with-lock-held (*notifications-lock*)
+    (setf *notifications* (make-hash-table :test 'equal)))
   (setf *user-channels* (make-hash-table :test 'equal))
   (setf *private-channels* (make-hash-table :test 'equal))
   (setf *messages-log* nil))

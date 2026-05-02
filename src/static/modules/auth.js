@@ -121,6 +121,9 @@ function handleAuthHandshake(line) {
             setLoggedIn(false);
             updateUsernamePrefix();
             showLoginPanel();
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_USERNAME' });
+            }
         }
         return true;
     }

@@ -8,6 +8,55 @@ import notifications from './modules/notifications.js';
 import history from './modules/history.js';
 import reply from "./modules/reply.js";
 
+// Utility to convert Base64-URL to Uint8Array for the browser API
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
+
+async function setupPushNotifications(username) {
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+        try {
+            const swReg = await navigator.serviceWorker.register('./sw.js');
+            console.log('Service Worker Registered!', swReg);
+            
+            // 1. Fetch public key from Lisp
+            const vKeyReq = await fetch('/api/vapid-public-key');
+            if (!vKeyReq.ok) return;
+            const vKey = await vKeyReq.text();
+            
+            // 2. Subscribe Browser
+            const subscription = await swReg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(vKey.trim())
+            });
+            
+            // 3. Send to Lisp Server
+            await fetch(`/api/subscribe-push?user=${encodeURIComponent(username)}`, {
+                method: 'POST',
+                body: JSON.stringify(subscription),
+                headers: { 'Content-Type': 'application/json' }
+            });
+            console.log("Web push subscription succeeded");
+        } catch (err) {
+            console.log('Web push setup failed: ', err);
+        }
+    }
+}
+
+// Attach a listener to auth module to handle push subscription when logged in
+const originalPerformLogin = auth.performLogin;
+auth.performLogin = function(username) {
+    originalPerformLogin.call(auth, username);
+    setupPushNotifications(username);
+};
+
 function updatePageTitle() {
     let channel = window.location.search.substring(1).split('&')[0];
     if (!channel || channel.includes('=')) {
@@ -121,3 +170,23 @@ updatePageTitle();
 history.initHistoryLoading();
 autocomplete.initAutocomplete(input);
 network.connect(messages.addMessage);
+
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', event => {
+        if (event.data && event.data.type === 'NAVIGATE_CHANNEL') {
+            const newChannel = event.data.channel.replace(/^#/, '');
+            const cleanPath = window.location.pathname.replace(/\/index\.html$/, '/');
+            const url = new URL(window.location.origin + cleanPath);
+            url.search = newChannel;
+            window.history.pushState({}, '', url);
+            updatePageTitle();
+
+            messages.clearMessages();
+            history.resetReachedEnd();
+            if (network.getWs() && network.getWs().readyState === WebSocket.OPEN) {
+                 network.getWs().send(`/join #${newChannel}`);
+                 network.getWs().send(`/log :depth ${config.LOG_HISTORY_SIZE} :date-format date`);
+            }
+        }
+    });
+}

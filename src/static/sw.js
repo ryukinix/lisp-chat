@@ -41,3 +41,36 @@ self.addEventListener('fetch', (event) => {
       }))
   );
 });
+
+self.addEventListener('push', function(event) {
+  let title = "New message in Lisp Chat!";
+  let body = "";
+  if (event.data) {
+     body = event.data.text();
+  }
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: body,
+      icon: '/logo.png'
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    let url = '/';
+    event.waitUntil(
+        clients.matchAll({ type: 'window' }).then((windowClients) => {
+            for (var i = 0; i < windowClients.length; i++) {
+                var client = windowClients[i];
+                if (client.url.includes('/') && 'focus' in client) {
+                    return client.focus();
+                }
+            }
+            if (clients.openWindow) {
+                return clients.openWindow(url);
+            }
+        })
+    );
+});
+
