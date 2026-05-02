@@ -41,3 +41,71 @@ self.addEventListener('fetch', (event) => {
       }))
   );
 });
+
+let username = null;
+let pollInterval = null;
+
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'SET_USERNAME') {
+        username = event.data.username;
+        if (!pollInterval && username) {
+            startPolling();
+        }
+    } else if (event.data && event.data.type === 'CLEAR_USERNAME') {
+        username = null;
+        if (pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+        }
+    }
+});
+
+function startPolling() {
+    pollInterval = setInterval(async () => {
+        if (!username) return;
+
+        try {
+            const response = await fetch(`/api/notifications?user=${encodeURIComponent(username)}&clear=true`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.notifications && data.notifications.length > 0) {
+                    for (const notif of data.notifications) {
+                        self.registration.showNotification(`Mention from @${notif.from}`, {
+                            body: notif.content,
+                            icon: '/logo.png',
+                            data: { channel: notif.channel }
+                        });
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Failed to poll notifications:", e);
+        }
+    }, 15000); // Poll every 15 seconds
+}
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    const channel = event.notification.data ? event.notification.data.channel : null;
+    let url = '/';
+    if (channel) {
+        url = `/?${encodeURIComponent(channel)}`;
+    }
+
+    event.waitUntil(
+        clients.matchAll({ type: 'window' }).then((windowClients) => {
+            for (var i = 0; i < windowClients.length; i++) {
+                var client = windowClients[i];
+                if (client.url.includes('/') && 'focus' in client) {
+                    // Update the channel if necessary via postMessage or just focus
+                    client.postMessage({ type: 'NAVIGATE_CHANNEL', channel: channel });
+                    return client.focus();
+                }
+            }
+            if (clients.openWindow) {
+                return clients.openWindow(url);
+            }
+        })
+    );
+});
+

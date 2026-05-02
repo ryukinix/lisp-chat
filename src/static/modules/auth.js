@@ -94,6 +94,13 @@ function performLogin(loginUsername) {
     hideLoginPanel();
     network.getWs().send(`/session`);
 
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+            type: 'SET_USERNAME',
+            username: username
+        });
+    }
+
     const urlParams = new URLSearchParams(window.location.search);
     const messageRef = urlParams.get('message_ref');
 
@@ -121,6 +128,9 @@ function handleAuthHandshake(line) {
             setLoggedIn(false);
             updateUsernamePrefix();
             showLoginPanel();
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_USERNAME' });
+            }
         }
         return true;
     }

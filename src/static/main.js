@@ -121,3 +121,23 @@ updatePageTitle();
 history.initHistoryLoading();
 autocomplete.initAutocomplete(input);
 network.connect(messages.addMessage);
+
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', event => {
+        if (event.data && event.data.type === 'NAVIGATE_CHANNEL') {
+            const newChannel = event.data.channel.replace(/^#/, '');
+            const cleanPath = window.location.pathname.replace(/\/index\.html$/, '/');
+            const url = new URL(window.location.origin + cleanPath);
+            url.search = newChannel;
+            window.history.pushState({}, '', url);
+            updatePageTitle();
+
+            messages.clearMessages();
+            history.resetReachedEnd();
+            if (network.getWs() && network.getWs().readyState === WebSocket.OPEN) {
+                 network.getWs().send(`/join #${newChannel}`);
+                 network.getWs().send(`/log :depth ${config.LOG_HISTORY_SIZE} :date-format date`);
+            }
+        }
+    });
+}
