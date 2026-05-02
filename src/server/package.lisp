@@ -40,6 +40,13 @@
            #:message-content
            #:message-channel
            #:make-message
+           #:notification
+           #:notification-from
+           #:notification-content
+           #:notification-time
+           #:notification-channel
+           #:notification-read-p
+           #:make-notification
            #:message-time-hour-format
            #:message-time-date-format
            #:get-client
@@ -51,6 +58,7 @@
            #:message-universal-time
            #:search-message
            #:push-message
+           #:push-notification
            #:user-joined-message
            #:user-exited-message
            #:private-message
@@ -61,6 +69,7 @@
            #:client-latency-ms
            #:reset-server
            #:split
+           #:extract-mentions
            #:startswith
            #:normalize-channel))
 

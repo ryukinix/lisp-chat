@@ -10,6 +10,18 @@
           *messages-stack*))
   (bt:signal-semaphore *message-semaphore*))
 
+(defun push-notification (user from content &key (channel "#general"))
+  "Push a notification for a USER from FROM as CONTENT"
+  (bt:with-lock-held (*notifications-lock*)
+    (let ((notifications (gethash user *notifications*))
+          (new-notification (make-notification :from from
+                                               :content content
+                                               :time (get-time)
+                                               :channel channel)))
+      ;; Limit to 50 notifications
+      (setf (gethash user *notifications*)
+            (cons new-notification (subseq notifications 0 (min (length notifications) 49)))))))
+
 (defun user-joined-message (client)
   "Create a user joined message for the given client."
   (push-message "@server" (format nil "The user @~a joined to the party! ~a"
@@ -85,6 +97,13 @@
                    (bt:with-lock-held (*persistence-lock*)
                      (setf *persistence-queue* (append *persistence-queue* (list message-raw))))
                    (bt:signal-semaphore *persistence-semaphore*))
+                 ;; Mention detection
+                 (unless (equal (message-from message-raw) "@server")
+                   (let ((mentions (extract-mentions (message-content message-raw))))
+                     (dolist (user mentions)
+                       (unless (string-equal user (message-from message-raw))
+                         (push-notification user (message-from message-raw) (message-content message-raw)
+                                            :channel (message-channel message-raw))))))
                   (let ((clients *clients*))
                    (loop for client in clients
                          when (string-equal (message-channel message-raw)

@@ -11,6 +11,16 @@
   time
   (channel "#general"))
 
+(defstruct notification
+  "This structure handles mentions/notifications for users.
+   FROM is the sender, CONTENT is the message content, TIME is decoded time,
+   CHANNEL is where it happened."
+  from
+  content
+  time
+  channel
+  (read-p nil))
+
 (defstruct client
   "This structure handle the creation/control of the clients of the server.
    NAME is a string. Socket is a USOCKET:SOCKET and address is a ipv4 encoded

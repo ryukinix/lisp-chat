@@ -56,3 +56,16 @@
       (loop for c1 across string
             for c2 across substring
             always (equal c1 c2)))))
+
+(defun extract-mentions (content)
+  "Extract usernames mentioned in the content (e.g., @username)."
+  (let ((mentions nil)
+        (tokens (split content)))
+    (dolist (token tokens)
+      (when (and (> (length token) 1)
+                 (char= (char token 0) #\@))
+        ;; Remove trailing punctuation like @user: or @user,
+        (let ((name (string-right-trim ".,:;!?" (subseq token 1))))
+          (when (plusp (length name))
+            (push name mentions)))))
+    (delete-duplicates (nreverse mentions) :test #'string-equal)))
