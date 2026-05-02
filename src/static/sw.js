@@ -81,7 +81,7 @@ function startPolling() {
         } catch (e) {
             console.error("Failed to poll notifications:", e);
         }
-    }, 15000); // Poll every 15 seconds
+    }, 5000); // Poll every 5 seconds. Note: Mobile OSes (Android/iOS) heavily restrict background Service Worker execution. This will mostly work on Desktop or when the PWA is active.
 }
 
 self.addEventListener('notificationclick', (event) => {
