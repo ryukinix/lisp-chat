@@ -410,9 +410,21 @@ a:active {
     animation: highlightFade 3s forwards;
 }
 
-.message.shared-focus {
-    background-color: rgba(255, 255, 255, 0.2);
-    transition: background-color 0.5s;
+.message-reference {
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.message-reference.local {
+    color: #aaa;
+}
+
+.message-reference.external {
+    color: lightblue; /* same as a:link */
+}
+
+.message-reference.external:hover {
+    color: deepskyblue; /* same as a:hover */
 }
 
 @keyframes highlightFade {

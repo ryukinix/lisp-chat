@@ -5,6 +5,7 @@ import notifications from './notifications.js';
 import users from './users.js';
 import auth from './auth.js';
 import network from './network.js';
+import reply from './reply.js';
 
 const chat = document.getElementById("chat");
 
@@ -333,6 +334,11 @@ function addMessage(text, prepend = false, forceNoScroll = false) {
     } else if (isAtBottom && !prepend && !forceNoScroll) {
         chat.scrollTop = chat.scrollHeight;
     }
+    
+    // Defer updating reference states so it doesn't block rendering
+    setTimeout(() => {
+        reply.updateReplyReferenceStates();
+    }, 10);
 }
 
 export default { chat, clearMessages, checkChatIsAtBottom, addMessage };

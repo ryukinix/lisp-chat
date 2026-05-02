@@ -1,3 +1,48 @@
+function updateReplyReferenceStates() {
+    const chat = document.getElementById('chat');
+    if (!chat) return;
+
+    const references = chat.querySelectorAll('.message-reference');
+    const messages = chat.querySelectorAll('.message');
+
+    // Create a fast lookup map for messages currently in the DOM
+    const messageMap = new Set();
+    for (const msg of messages) {
+        if (msg.dataset.date && msg.dataset.timeHm && msg.dataset.from) {
+            // Include seconds for exact match
+            if (msg.dataset.timeS) {
+                messageMap.add(`${msg.dataset.date}|${msg.dataset.timeHm}:${msg.dataset.timeS}|${msg.dataset.from}`);
+            }
+            // Add fallback match without seconds
+            messageMap.add(`${msg.dataset.date}|${msg.dataset.timeHm}|${msg.dataset.from}`);
+        }
+    }
+
+    for (const ref of references) {
+        const date = ref.dataset.date;
+        const timeHM = ref.dataset.timeHm;
+        const timeS = ref.dataset.timeS;
+        const from = ref.dataset.from;
+
+        const exactKey = `${date}|${timeHM}:${timeS}|${from}`;
+        const fallbackKey = `${date}|${timeHM}|${from}`;
+
+        if (messageMap.has(exactKey) || messageMap.has(fallbackKey)) {
+            if (ref.classList.contains('external')) {
+                ref.classList.remove('external');
+                ref.classList.add('local');
+                ref.title = "Click to focus message";
+            }
+        } else {
+            if (ref.classList.contains('local')) {
+                ref.classList.remove('local');
+                ref.classList.add('external');
+                ref.title = "Click to open message link";
+            }
+        }
+    }
+}
+
 function setupReplyFocus() {
     document.getElementById('chat').addEventListener('click', (e) => {
         // If we click inside the reference but not exactly on the element (like clicking the span inside)
@@ -62,4 +107,4 @@ function setupReplyFocus() {
     });
 }
 
-export default { setupReplyFocus };
+export default { setupReplyFocus, updateReplyReferenceStates };
