@@ -40,13 +40,10 @@
            #:message-content
            #:message-channel
            #:make-message
-           #:notification
-           #:notification-from
-           #:notification-content
-           #:notification-time
-           #:notification-channel
-           #:notification-read-p
-           #:make-notification
+
+
+
+
            #:message-time-hour-format
            #:message-time-date-format
            #:get-client
