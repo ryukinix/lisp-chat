@@ -24,6 +24,8 @@
            #:*server-nickname*
            #:*raw-command-message*
            #:*uptime*
+           #:*vapid-public-key*
+           #:*vapid-private-key*
            #:client
            #:client-name
            #:client-address

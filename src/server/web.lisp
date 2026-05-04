@@ -105,14 +105,14 @@
               (env (lack.request:request-env ningle:*request*)))
           (api-app env (concatenate 'string "/" command-name)))))
 
-(setf (ningle:route *web-app* "/api/vapid-public-key" :method :GET)
+(setf (ningle:route *web-app* "/api/notifications/vapid-public-key" :method :GET)
       (lambda (params)
         (declare (ignore params))
         `(200 (:content-type "text/plain"
                :access-control-allow-origin "*" )
-              (,(uiop:getenv "VAPID_PUBLIC_KEY")))))
+              (,*vapid-public-key*))))
 
-(setf (ningle:route *web-app* "/api/subscribe-push" :method :POST)
+(setf (ningle:route *web-app* "/api/notifications/subscribe-push" :method :POST)
       (lambda (params)
         (let* ((env (lack.request:request-env ningle:*request*))
                (body-stream (getf env :raw-body))

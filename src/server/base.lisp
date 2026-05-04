@@ -16,6 +16,9 @@
   "Day names")
 (defvar *uptime* nil "Uptime of server variable, initialized at server start")
 
+(defvar *vapid-public-key* nil "VAPID Public Key for Web Push initialization")
+(defvar *vapid-private-key* nil "VAPID Private Key for Web Push initialization")
+
 (defun system-interrupt ()
   #+sbcl 'sb-sys:interactive-interrupt
   #+ccl  'ccl:interrupt-signal-condition

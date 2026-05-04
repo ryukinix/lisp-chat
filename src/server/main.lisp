@@ -49,6 +49,8 @@
 (defun main (&key (host config:*host*) (port config:*port*) (should-quit t))
   "Main entrypoint to start the tcp-server and http server (with websockets)"
   (setq *uptime* (get-time))
+  (setq *vapid-public-key* (uiop:getenv "VAPID_PUBLIC_KEY"))
+  (setq *vapid-private-key* (uiop:getenv "VAPID_PRIVATE_KEY"))
   (load-persistent-messages)
   (let ((socket-server nil)
         (error-code 0))

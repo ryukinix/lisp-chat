@@ -27,7 +27,7 @@ async function setupPushNotifications(username) {
             console.log('Service Worker Registered!', swReg);
             
             // 1. Fetch public key from Lisp
-            const vKeyReq = await fetch('/api/vapid-public-key');
+            const vKeyReq = await fetch('/api/notifications/vapid-public-key');
             if (!vKeyReq.ok) return;
             const vKey = await vKeyReq.text();
             
@@ -38,7 +38,7 @@ async function setupPushNotifications(username) {
             });
             
             // 3. Send to Lisp Server
-            await fetch(`/api/subscribe-push?user=${encodeURIComponent(username)}`, {
+            await fetch(`/api/notifications/subscribe-push?user=${encodeURIComponent(username)}`, {
                 method: 'POST',
                 body: JSON.stringify(subscription),
                 headers: { 'Content-Type': 'application/json' }

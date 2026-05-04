@@ -22,18 +22,15 @@
                          when (stringp s) collect s)))
         (bt:make-thread
          (lambda ()
-           ;; Load VAPID credentials
-           (let ((vapid-pub (uiop:getenv "VAPID_PUBLIC_KEY"))
-                 (vapid-priv (uiop:getenv "VAPID_PRIVATE_KEY"))
-                 (vapid-sub "mailto:admin@lisp-chat.test"))
-             (when (and vapid-pub vapid-priv)
+           (let ((vapid-sub "mailto:admin@lisp-chat.test"))
+             (when (and *vapid-public-key* *vapid-private-key*)
                (dolist (sub-json subs)
                  (handler-case
                      (cl-web-push:send-push-notification
                       sub-json
                       (format nil "New mention from ~a: ~a" from content)
-                      vapid-pub
-                      vapid-priv
+                      *vapid-public-key*
+                      *vapid-private-key*
                       vapid-sub)
                    (dex:http-request-gone ()
                      ;; Subscription has expired or was removed by user, we should drop it.
