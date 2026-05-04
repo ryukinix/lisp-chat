@@ -43,9 +43,6 @@
            #:message-channel
            #:make-message
 
-
-
-
            #:message-time-hour-format
            #:message-time-date-format
            #:get-client
