@@ -4,6 +4,7 @@ WORKDIR /lisp-chat
 RUN ln -s /lisp-chat /root/.roswell/local-projects/lisp-chat
 COPY ./lisp-chat.asd lisp-chat.asd
 COPY ./qlfile qlfile
+COPY ./qlfile.lock qlfile.lock
 RUN ros install qlot
 RUN qlot install
 
