@@ -9,4 +9,4 @@
 ("cl-web-push" .
  (:class qlot/source/github:source-github
   :initargs (:repos "ryukinix/cl-web-push" :ref nil :branch "master" :tag nil)
-  :version "github-42d2a7056873461832707a008b56c21244402e89"))
+  :version "github-cb31520a445884fb08f04a86c515c9cecb6fe18c"))
