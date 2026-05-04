@@ -43,7 +43,7 @@
                    (dex:http-request-not-found ()
                      (bt:with-lock-held (*notifications-lock*)
                        (setf (gethash user *notifications*)
-                             (remove sub-json (gethash user *notifications*) :test #'string-equal))))))))))))))
+                             (remove sub-json (gethash user *notifications*) :test #'string-equal)))))))))))))
 
 (defun user-joined-message (client)
   "Create a user joined message for the given client."
