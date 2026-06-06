@@ -12,6 +12,7 @@
            :*port*
            :*persistence-file*
            :*push-subscriptions-file*
+           :*user-sessions-file*
            :*websocket-port*))
 
 (in-package :lisp-chat/config)
@@ -24,6 +25,7 @@
 (defparameter *source-code* "https://github.com/ryukinix/lisp-chat")
 (defparameter *persistence-file* "messages.sexp")
 (defparameter *push-subscriptions-file* "push-subscriptions.sexp")
+(defparameter *user-sessions-file* "user-sessions.sexp")
 
 (defun get-version ()
   "Get the application version."

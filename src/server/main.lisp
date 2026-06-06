@@ -69,6 +69,7 @@
            (print (list new-pub new-priv) out))))))
   (load-persistent-messages)
   (load-push-subscriptions)
+  (load-user-sessions)
   (let ((socket-server nil)
         (error-code 0))
     (unwind-protect

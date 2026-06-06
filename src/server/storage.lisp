@@ -58,3 +58,27 @@
                 (setf (gethash (car pair) *push-subscriptions*) (cdr pair)))
               (debug-format t "[info] push subscriptions loaded: ~a entries~%" (length alist))))
         (error (e) (debug-format t "Error loading push subscriptions: ~a~%" e))))))
+
+(defun save-user-sessions ()
+  "Write *username-to-sessions* hash table to disk as an alist."
+  (with-open-file (out config:*user-sessions-file*
+                       :direction :output
+                       :if-exists :supersede
+                       :if-does-not-exist :create)
+    (let ((*print-readably* t))
+      (let ((alist nil))
+        (maphash (lambda (k v) (push (cons k v) alist)) *username-to-sessions*)
+        (print alist out))
+      (finish-output out))))
+
+(defun load-user-sessions ()
+  "Load *username-to-sessions* from disk."
+  (when (probe-file config:*user-sessions-file*)
+    (with-open-file (in config:*user-sessions-file* :direction :input)
+      (handler-case
+          (let ((alist (read in nil nil)))
+            (when alist
+              (dolist (pair alist)
+                (setf (gethash (car pair) *username-to-sessions*) (cdr pair)))
+              (debug-format t "[info] user sessions loaded: ~a entries~%" (length alist))))
+        (error (e) (debug-format t "Error loading user sessions: ~a~%" e))))))

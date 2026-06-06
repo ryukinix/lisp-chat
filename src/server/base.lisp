@@ -6,6 +6,8 @@
 (defparameter *notifications* (make-hash-table :test 'equal) "Mapping of usernames to their notifications list")
 (defparameter *push-subscriptions* (make-hash-table :test 'equal)
   "Mapping of session-id to list of push subscription JSON strings")
+(defparameter *username-to-sessions* (make-hash-table :test 'equal)
+  "Mapping of username to a list of session-ids")
 
 ;; thread control
 (defvar *message-semaphore* (bt:make-semaphore :name "message semaphore"
@@ -14,6 +16,7 @@
 (defvar *messages-lock* (bt:make-lock "messages stack lock"))
 (defvar *notifications-lock* (bt:make-lock "notifications lock"))
 (defvar *push-subscriptions-lock* (bt:make-lock "push subscriptions lock"))
+(defvar *username-to-sessions-lock* (bt:make-lock "username to sessions lock"))
 (defvar *day-names* '("Monday" "Tuesday" "Wednesday"
                       "Thursday" "Friday" "Saturday" "Sunday")
   "Day names")
@@ -55,6 +58,8 @@
     (setf *notifications* (make-hash-table :test 'equal)))
   (bt:with-lock-held (*push-subscriptions-lock*)
     (setf *push-subscriptions* (make-hash-table :test 'equal)))
+  (bt:with-lock-held (*username-to-sessions-lock*)
+    (setf *username-to-sessions* (make-hash-table :test 'equal)))
   (setf *user-channels* (make-hash-table :test 'equal))
   (setf *private-channels* (make-hash-table :test 'equal))
   (setf *messages-log* nil))

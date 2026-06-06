@@ -68,7 +68,9 @@
            #:extract-mentions
            #:startswith
            #:normalize-channel
-           #:*push-subscriptions*))
+           #:*push-subscriptions*
+           #:*username-to-sessions*
+           #:*username-to-sessions-lock*))
 
 (defpackage #:lisp-chat/commands
   (:use #:cl)

@@ -76,6 +76,11 @@
                                                 :expand-reply expand-reply
                                                 :session-id client-session-id))
                       (setf (gethash name *user-channels*) active-channel)
+                      (bt:with-lock-held (*username-to-sessions-lock*)
+                        (let ((sessions (gethash name *username-to-sessions*)))
+                          (unless (find client-session-id sessions :test #'string-equal)
+                            (push client-session-id (gethash name *username-to-sessions*)))
+                          (save-user-sessions)))
                       (bt:with-lock-held (*client-lock*)
                         (push client *clients*))
                       (user-joined-message client)
@@ -122,13 +127,9 @@
 
 (setf (ningle:route *web-app* "/api/notifications/subscribe-push" :method :POST)
       (lambda (params)
-        (let* ((env (lack.request:request-env ningle:*request*))
-               (body-stream (getf env :raw-body))
-               (content-length (getf env :content-length))
-               (raw-json (and body-stream content-length
-                              (let ((seq (make-array content-length :element-type '(unsigned-byte 8))))
-                                (read-sequence seq body-stream)
-                                (babel:octets-to-string seq :encoding :utf-8))))
+        (let* ((content (lack.request:request-content ningle:*request*))
+               (raw-json (when (plusp (length content))
+                           (babel:octets-to-string content :encoding :utf-8)))
                (session-id (cdr (assoc "session_id" params :test #'string-equal))))
           (if (or (not session-id) (not raw-json))
               (json-response 400 '(:error "session_id parameter and JSON body are required"))
