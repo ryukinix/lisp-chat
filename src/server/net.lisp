@@ -10,37 +10,35 @@
           *messages-stack*))
   (bt:signal-semaphore *message-semaphore*))
 
-(defun push-notification (user from content &key (channel "#general"))
-  "Push a notification for a USER from FROM as CONTENT"
+(defun push-notification (session-id from content &key (channel "#general"))
+  "Push a web-push notification for SESSION-ID from FROM as CONTENT."
   (declare (ignore channel))
-  (bt:with-lock-held (*notifications-lock*)
-      (let* ((subscriptions (gethash user *notifications*))
-             ;; If the notifications list was purely internal messages, keep them?
-             ;; No, with the new web push we store the *subscription JSON* directly on *notifications* key in memory.
-             ;; So let's extract them:
-             (subs (loop for s in subscriptions
-                         when (stringp s) collect s)))
-        (bt:make-thread
-         (lambda ()
-           (let ((vapid-sub "mailto:admin@lisp-chat.test"))
-             (when (and *vapid-public-key* *vapid-private-key*)
-               (dolist (sub-json subs)
-                 (handler-case
-                     (cl-web-push:send-push-notification
-                      sub-json
-                      (format nil "New mention from ~a: ~a" from content)
-                      *vapid-public-key*
-                      *vapid-private-key*
-                      vapid-sub)
-                   (dex:http-request-gone ()
-                     ;; Subscription has expired or was removed by user, we should drop it.
-                     (bt:with-lock-held (*notifications-lock*)
-                       (setf (gethash user *notifications*)
-                             (remove sub-json (gethash user *notifications*) :test #'string-equal))))
-                   (dex:http-request-not-found ()
-                     (bt:with-lock-held (*notifications-lock*)
-                       (setf (gethash user *notifications*)
-                             (remove sub-json (gethash user *notifications*) :test #'string-equal)))))))))))))
+  (let* ((subs (bt:with-lock-held (*push-subscriptions-lock*)
+                 (loop for s in (gethash session-id *push-subscriptions*)
+                       when (stringp s) collect s))))
+    (when subs
+      (bt:make-thread
+       (lambda ()
+         (let ((vapid-sub "mailto:admin@lisp-chat.test"))
+           (when (and *vapid-public-key* *vapid-private-key*)
+             (dolist (sub-json subs)
+               (handler-case
+                   (cl-web-push:send-push-notification
+                    sub-json
+                    (format nil "New mention from ~a: ~a" from content)
+                    *vapid-public-key*
+                    *vapid-private-key*
+                    vapid-sub)
+                 (dex:http-request-gone ()
+                   (bt:with-lock-held (*push-subscriptions-lock*)
+                     (setf (gethash session-id *push-subscriptions*)
+                           (remove sub-json (gethash session-id *push-subscriptions*) :test #'string-equal)))
+                   (save-push-subscriptions))
+                 (dex:http-request-not-found ()
+                   (bt:with-lock-held (*push-subscriptions-lock*)
+                     (setf (gethash session-id *push-subscriptions*)
+                           (remove sub-json (gethash session-id *push-subscriptions*) :test #'string-equal)))
+                   (save-push-subscriptions)))))))))))
 
 (defun user-joined-message (client)
   "Create a user joined message for the given client."
@@ -122,8 +120,13 @@
                    (let ((mentions (extract-mentions (message-content message-raw))))
                      (dolist (user mentions)
                        (unless (string-equal user (message-from message-raw))
-                         (push-notification user (message-from message-raw) (message-content message-raw)
-                                            :channel (message-channel message-raw))))))
+                         (let ((active-clients *clients*))
+                           (loop for c in active-clients
+                                 when (string-equal user (client-name c))
+                                 do (push-notification (client-session-id c)
+                                                       (message-from message-raw)
+                                                       (message-content message-raw)
+                                                       :channel (message-channel message-raw))))))))
                   (let ((clients *clients*))
                    (loop for client in clients
                          when (string-equal (message-channel message-raw)

@@ -11,6 +11,7 @@
            :*source-code*
            :*port*
            :*persistence-file*
+           :*push-subscriptions-file*
            :*websocket-port*))
 
 (in-package :lisp-chat/config)
@@ -22,6 +23,7 @@
 (defparameter *lisp-command-timeout* 2 "Max seconds to timeout command")
 (defparameter *source-code* "https://github.com/ryukinix/lisp-chat")
 (defparameter *persistence-file* "messages.sexp")
+(defparameter *push-subscriptions-file* "push-subscriptions.sexp")
 
 (defun get-version ()
   "Get the application version."

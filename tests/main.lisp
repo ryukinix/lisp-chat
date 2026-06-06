@@ -11,6 +11,7 @@
 (defparameter config:*websocket-port* 9997)
 (defparameter config:*lisp-command-timeout* 0.5)
 (defparameter config:*persistence-file* "messages.test.sexp")
+(defparameter config:*push-subscriptions-file* "push-subscriptions.test.sexp")
 
 
 (defun start-test-server ()

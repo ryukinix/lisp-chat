@@ -43,13 +43,20 @@
           (not (string-equal val "false")))
         t)))
 
+(defun parse-session-id (query-string)
+  (let* ((params (uiop:split-string (or query-string "") :separator "&"))
+         (param (find-if (lambda (p) (uiop:string-prefix-p "session_id=" p)) params)))
+    (when param (subseq param 11))))
+
 (defun ws-app (env)
   (let* ((ws (make-server env))
          (client nil)
          (query-string (getf env :query-string))
          (channel (parse-channel query-string))
          (tz (parse-tz query-string))
-         (expand-reply (parse-expand-reply query-string)))
+         (expand-reply (parse-expand-reply query-string))
+         (client-session-id (or (parse-session-id query-string)
+                                (princ-to-string (uuid:make-v4-uuid)))))
     (on :message ws
         (lambda (message)
           ;; (debug-format t "Received WS message: ~s~%" message)
@@ -66,13 +73,14 @@
                                                 :user-agent (gethash "user-agent" (getf env :headers))
                                                 :active-channel active-channel
                                                 :timezone tz
-                                                :expand-reply expand-reply))
+                                                :expand-reply expand-reply
+                                                :session-id client-session-id))
                       (setf (gethash name *user-channels*) active-channel)
                       (bt:with-lock-held (*client-lock*)
                         (push client *clients*))
                       (user-joined-message client)
                       (recalculate-client-latency client)
-                      (debug-format t "New web-socket user ~a@~a~%" name (client-address client)))))
+                      (debug-format t "New web-socket user ~a@~a (session ~a)~%" name (client-address client) client-session-id))))
               (let ((response (lisp-chat/commands:call-command client message)))
                 (if response
                     (send-message client response)
@@ -121,15 +129,15 @@
                               (let ((seq (make-array content-length :element-type '(unsigned-byte 8))))
                                 (read-sequence seq body-stream)
                                 (babel:octets-to-string seq :encoding :utf-8))))
-               (user (cdr (assoc "user" params :test #'string-equal))))
-          (if (or (not user) (not raw-json))
-              (json-response 400 '(:error "User parameter and JSON body are required"))
+               (session-id (cdr (assoc "session_id" params :test #'string-equal))))
+          (if (or (not session-id) (not raw-json))
+              (json-response 400 '(:error "session_id parameter and JSON body are required"))
               (progn
-                (bt:with-lock-held (*notifications-lock*)
-                  ;; Track one active JSON payload string per user.
-                  (let ((subs (gethash user *notifications*)))
+                (bt:with-lock-held (*push-subscriptions-lock*)
+                  (let ((subs (gethash session-id *push-subscriptions*)))
                     (unless (find raw-json subs :test #'string-equal)
-                       (push raw-json (gethash user *notifications*)))))
+                      (push raw-json (gethash session-id *push-subscriptions*))))
+                  (save-push-subscriptions))
                 (json-response 200 '(:success t)))))))
 
 (setf (ningle:route *web-app* "/api/notifications" :method :GET)

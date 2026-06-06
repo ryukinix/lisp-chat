@@ -50,15 +50,25 @@
   "Main entrypoint to start the tcp-server and http server (with websockets)"
   (setq *uptime* (get-time))
   (let ((pub (uiop:getenv "VAPID_PUBLIC_KEY"))
-        (priv (uiop:getenv "VAPID_PRIVATE_KEY")))
-    (if (and pub priv)
-        (progn
-          (setq *vapid-public-key* pub)
-          (setq *vapid-private-key* priv))
-        (multiple-value-bind (new-pub new-priv) (cl-web-push:generate-vapid-keys)
-          (setq *vapid-public-key* new-pub)
-          (setq *vapid-private-key* new-priv))))
+        (priv (uiop:getenv "VAPID_PRIVATE_KEY"))
+        (vapid-file "vapid.sexp"))
+    (cond
+      ((and pub priv)
+       (setq *vapid-public-key* pub)
+       (setq *vapid-private-key* priv))
+      ((probe-file vapid-file)
+       (with-open-file (in vapid-file :direction :input)
+         (let ((keys (read in nil nil)))
+           (setq *vapid-public-key* (first keys))
+           (setq *vapid-private-key* (second keys)))))
+      (t
+       (multiple-value-bind (new-pub new-priv) (cl-web-push:generate-vapid-keys)
+         (setq *vapid-public-key* new-pub)
+         (setq *vapid-private-key* new-priv)
+         (with-open-file (out vapid-file :direction :output :if-exists :supersede :if-does-not-exist :create)
+           (print (list new-pub new-priv) out))))))
   (load-persistent-messages)
+  (load-push-subscriptions)
   (let ((socket-server nil)
         (error-code 0))
     (unwind-protect

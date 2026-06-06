@@ -67,7 +67,8 @@
            #:split
            #:extract-mentions
            #:startswith
-           #:normalize-channel))
+           #:normalize-channel
+           #:*push-subscriptions*))
 
 (defpackage #:lisp-chat/commands
   (:use #:cl)

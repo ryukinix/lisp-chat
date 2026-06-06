@@ -34,3 +34,27 @@
             (debug-format t "[info] messages loaded: ~a~%" (length msgs))
             (setq *messages-log* (reverse msgs)))
         (error (e) (debug-format t "Error loading persistence: ~a~%" e))))))
+
+(defun save-push-subscriptions ()
+  "Write *push-subscriptions* hash table to disk as an alist."
+  (with-open-file (out config:*push-subscriptions-file*
+                       :direction :output
+                       :if-exists :supersede
+                       :if-does-not-exist :create)
+    (let ((*print-readably* t))
+      (let ((alist nil))
+        (maphash (lambda (k v) (push (cons k v) alist)) *push-subscriptions*)
+        (print alist out))
+      (finish-output out))))
+
+(defun load-push-subscriptions ()
+  "Load *push-subscriptions* from disk."
+  (when (probe-file config:*push-subscriptions-file*)
+    (with-open-file (in config:*push-subscriptions-file* :direction :input)
+      (handler-case
+          (let ((alist (read in nil nil)))
+            (when alist
+              (dolist (pair alist)
+                (setf (gethash (car pair) *push-subscriptions*) (cdr pair)))
+              (debug-format t "[info] push subscriptions loaded: ~a entries~%" (length alist))))
+        (error (e) (debug-format t "Error loading push subscriptions: ~a~%" e))))))

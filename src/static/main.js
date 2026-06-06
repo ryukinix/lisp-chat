@@ -20,25 +20,56 @@ function urlBase64ToUint8Array(base64String) {
     return outputArray;
 }
 
-async function setupPushNotifications(username) {
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
+async function setupPushNotifications() {
+    if ('serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window) {
         try {
+            if (Notification.permission === 'default') {
+                const perm = await Notification.requestPermission();
+                if (perm !== 'granted') return;
+            } else if (Notification.permission === 'denied') {
+                return;
+            }
+
             const swReg = await navigator.serviceWorker.register('./sw.js');
             console.log('Service Worker Registered!', swReg);
-            
+
             // 1. Fetch public key from Lisp
             const vKeyReq = await fetch('/api/notifications/vapid-public-key');
             if (!vKeyReq.ok) return;
             const vKey = await vKeyReq.text();
-            
+
             // 2. Subscribe Browser
-            const subscription = await swReg.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(vKey.trim())
-            });
+            let subscription = await swReg.pushManager.getSubscription();
+            if (subscription) {
+                const currentKeyArray = urlBase64ToUint8Array(vKey.trim());
+                const subKeyArray = new Uint8Array(subscription.options.applicationServerKey);
+                
+                let keysMatch = currentKeyArray.length === subKeyArray.length;
+                if (keysMatch) {
+                    for (let i = 0; i < currentKeyArray.length; i++) {
+                        if (currentKeyArray[i] !== subKeyArray[i]) {
+                            keysMatch = false;
+                            break;
+                        }
+                    }
+                }
+                
+                if (!keysMatch) {
+                    console.log('VAPID key changed, unsubscribing old push subscription');
+                    await subscription.unsubscribe();
+                    subscription = null;
+                }
+            }
             
-            // 3. Send to Lisp Server
-            await fetch(`/api/notifications/subscribe-push?user=${encodeURIComponent(username)}`, {
+            if (!subscription) {
+                subscription = await swReg.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(vKey.trim())
+                });
+            }
+
+            // 3. Send to Lisp Server keyed by session_id
+            await fetch(`/api/notifications/subscribe-push?session_id=${encodeURIComponent(auth.getSessionId())}`, {
                 method: 'POST',
                 body: JSON.stringify(subscription),
                 headers: { 'Content-Type': 'application/json' }
@@ -54,7 +85,7 @@ async function setupPushNotifications(username) {
 const originalPerformLogin = auth.performLogin;
 auth.performLogin = function(username) {
     originalPerformLogin.call(auth, username);
-    setupPushNotifications(username);
+    setupPushNotifications();
 };
 
 function updatePageTitle() {

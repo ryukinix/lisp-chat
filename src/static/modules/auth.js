@@ -5,7 +5,22 @@ import history from './history.js';
 
 let username = utils.getCookie("username") || "";
 let loggedIn = false;
-let sessionId = null;
+
+// Stable session-id: generated once per browser profile and persisted in a cookie.
+function generateUUID() {
+    if (crypto.randomUUID) return crypto.randomUUID();
+    // Fallback for non-secure contexts (plain HTTP non-localhost)
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = (crypto.getRandomValues(new Uint8Array(1))[0] & 15) >> (c === 'x' ? 0 : 1);
+        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
+}
+
+let sessionId = utils.getCookie("sessionId");
+if (!sessionId) {
+    sessionId = generateUUID();
+    utils.setCookie("sessionId", sessionId, 365);
+}
 
 function getSessionId() { return sessionId; }
 function setSessionId(id) { sessionId = id; }
@@ -92,7 +107,6 @@ function performLogin(loginUsername) {
     setLoggedIn(true);
     updateUsernamePrefix();
     hideLoginPanel();
-    network.getWs().send(`/session`);
 
     const urlParams = new URLSearchParams(window.location.search);
     const messageRef = urlParams.get('message_ref');
