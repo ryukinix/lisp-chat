@@ -30,6 +30,7 @@ function updateUserList(usersString) {
         const displayName = count > 1 ? `${user}${getSuperscript(count)}` : user;
         const li = document.createElement("li");
         li.className = "user-item";
+        li.dataset.username = user;
         li.textContent = displayName;
         li.style.color = utils.getUserColor(user);
         userList.appendChild(li);
