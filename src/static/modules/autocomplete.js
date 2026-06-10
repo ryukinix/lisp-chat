@@ -17,7 +17,7 @@ function getAutocompletePopup() {
 async function fetchAutoCompleteData(trigger) {
     if (trigger === '@') {
         const userList = document.getElementById("user-list");
-        return Array.from(userList.querySelectorAll('.user-item')).map(li => li.dataset.username || li.textContent);
+        return Array.from(userList.querySelectorAll('.user-item')).map(li => li.dataset.username);
     }
 
     if (autocompleteCache[trigger] !== null) return autocompleteCache[trigger];
