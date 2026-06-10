@@ -47,6 +47,25 @@ Online version with connection through web sockets instead raw tcp sockets:
 $ lisp-chat wss://chat.manoel.dev/ws
 ```
 
+## Docker usage
+
+```
+docker run -d -t \
+    --name lisp-chat \
+    --restart unless-stopped \
+    --pull always \
+    -w /lisp-chat/log \
+    -v lisp-chat-log:/lisp-chat/log \
+    -e TZ=America/Belem \
+    -p 5559:5559 \
+    -p 5558:5558 \
+    ryukinix/lisp-chat:latest
+```
+
+
+If you omit `-w` and `-v` parameters it will not persist messages
+between sessions of docker run.
+
 # Web Interface
 
 A web interface is now available! You can access the public instance at:
