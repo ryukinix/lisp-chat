@@ -1,15 +1,15 @@
-name: Lint
+name: Check
 
 on:
   pull_request:
-    branches: [ master ]
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
 
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Run docker-lint
         run: make docker-lint
 
@@ -30,3 +30,19 @@ jobs:
       with:
         file: emacs/*.el
         warnings_as_errors: true
+
+  tests:
+    runs-on: ubuntu-latest
+    needs: [lint, elisp-check]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker Image & Run Integration tests
+        run: make docker-check
+
+  docker-appimage:
+    runs-on: ubuntu-latest
+    needs: [tests]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Lisp Chat appimage
+        run: make docker-appimage
