@@ -110,13 +110,18 @@
 ;; user commands prefixed with /
 (define-command /search (client query &rest args &key user (limit "10") before after global &allow-other-keys)
   "/search QUERY searches for messages containing QUERY as substring.
-   QUERY is an mandatory parameter.
+   QUERY is an optional parameter (can be omitted if setting keyword only filters).
    KEY PARAMETERS:
    :user USERNAME   - Filter by a specific user.
    :limit NUMBER    - Maximum number of messages to return (default 10).
    :before ISO-DATE - ISO format datetime filter (e.g., 2026-02-22T14:30).
    :after ISO-DATE  - ISO format datetime filter (e.g., 2026-02-22T14:30).
-   :global BOOLEAN  - Search across all channels."
+   :global BOOLEAN  - Search across all channels.
+   EXAMPLES:
+   /search \"hello\" :limit 5
+   /search :after 2026-05-01
+   /search :user ryukinix
+   /search :before 2025-10-01 :limit 2"
   (declare (ignorable client args))
   (let* ((parsed-limit (parse-integer (ensure-string limit) :junk-allowed t))
              (before-time (server:parse-iso8601 (ensure-string before)))
