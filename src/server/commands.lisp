@@ -78,6 +78,9 @@
        (/users client :channel (car args)))
       ((string-equal command "/dm") (/dm client (car args) (extract-args-as-string message :accessor #'cddr)))
       ((string-equal command "/lisp") (/lisp client (extract-args-as-string message)))
+      ((and (string-equal command "/search")
+            (evenp (length args)))
+       (apply command-function (cons client (cons nil (parse-keywords args)))))
       (command-function (apply command-function (cons client (parse-keywords args))))
       (t (server:command-message (format nil "command ~a doesn't exists" message)
                                  :client client)))))
@@ -115,9 +118,7 @@
    :after ISO-DATE  - ISO format datetime filter (e.g., 2026-02-22T14:30).
    :global BOOLEAN  - Search across all channels."
   (declare (ignorable client args))
-  (if (not query)
-      (server:command-message "error: QUERY is mandatory parameter. Try /search QUERY" :client client)
-      (let* ((parsed-limit (parse-integer (ensure-string limit) :junk-allowed t))
+  (let* ((parsed-limit (parse-integer (ensure-string limit) :junk-allowed t))
              (before-time (server:parse-iso8601 (ensure-string before)))
              (after-time (server:parse-iso8601 (ensure-string after)))
              (filtered (filter-messages client :query query :user user :global global
@@ -133,7 +134,7 @@
                     (mapcar (lambda (m) (server:search-message m :client client :global global))
                             (if sort-from-oldest
                                 limited
-                                (reverse limited))))))))
+                                (reverse limited)))))))
 
 (define-command /users (client &key (channel nil) (global nil) &allow-other-keys)
   "/users returns a list separated by commas of the currently logged users.
