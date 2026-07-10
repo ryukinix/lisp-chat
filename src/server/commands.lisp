@@ -122,12 +122,18 @@
              (after-time (server:parse-iso8601 (ensure-string after)))
              (filtered (filter-messages client :query query :user user :global global
                                         :before-time before-time :after-time after-time))
-             (limited (subseq filtered 0 (min (length filtered) parsed-limit))))
+             (sort-from-oldest (and after-time (not before-time)))
+             (limited (if sort-from-oldest
+                          (let ((rev (reverse filtered)))
+                            (subseq rev 0 (min (length rev) parsed-limit)))
+                          (subseq filtered 0 (min (length filtered) parsed-limit)))))
         (if (not limited)
             (server:command-message "the search returned a empty result" :client client)
             (format nil "~{~a~^~%~}"
                     (mapcar (lambda (m) (server:search-message m :client client :global global))
-                            (reverse limited)))))))
+                            (if sort-from-oldest
+                                limited
+                                (reverse limited))))))))
 
 (define-command /users (client &key (channel nil) (global nil) &allow-other-keys)
   "/users returns a list separated by commas of the currently logged users.
