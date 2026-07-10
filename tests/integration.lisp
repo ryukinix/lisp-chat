@@ -276,6 +276,23 @@ Returns the line as a string, or NIL if it timed out."
         "/search dated :before 2000-01-01"
         '(:expect ""))))) ;; Should not find anything
 
+(define-test search-command-without-query-parameter
+  :parent integration-tests
+  (let ((today (get-current-date)))
+    (with-tcp-client (stream)
+      (tcp-interaction stream
+        '(:expect "> Type your username: ")
+        "tester-no-query"
+        '(:wait-for "tester-no-query joined")
+        (format nil "today is ~a" today)
+        '(:wait-for "today is")
+        (format nil "/search :limit 1")
+        (list :expect (format nil "[search:tester-no-query]: today is ~a" today))
+        "/search :user tester-no-query"
+        (list :expect (format nil "[search:tester-no-query]: today is ~a" today))
+        "/search :before 2000-01-01"
+        '(:expect "")))))
+
 (define-test lisp-command-with-keywords
   :parent integration-tests
   (with-tcp-client (stream)
