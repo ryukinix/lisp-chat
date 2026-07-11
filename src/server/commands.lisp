@@ -78,6 +78,9 @@
        (/users client :channel (car args)))
       ((string-equal command "/dm") (/dm client (car args) (extract-args-as-string message :accessor #'cddr)))
       ((string-equal command "/lisp") (/lisp client (extract-args-as-string message)))
+      ((and (string-equal command "/search")
+            (evenp (length args)))
+       (apply command-function (cons client (cons nil (parse-keywords args)))))
       (command-function (apply command-function (cons client (parse-keywords args))))
       (t (server:command-message (format nil "command ~a doesn't exists" message)
                                  :client client)))))
@@ -107,27 +110,36 @@
 ;; user commands prefixed with /
 (define-command /search (client query &rest args &key user (limit "10") before after global &allow-other-keys)
   "/search QUERY searches for messages containing QUERY as substring.
-   QUERY is an mandatory parameter.
+   QUERY is an optional parameter (can be omitted if setting keyword only filters).
    KEY PARAMETERS:
    :user USERNAME   - Filter by a specific user.
    :limit NUMBER    - Maximum number of messages to return (default 10).
    :before ISO-DATE - ISO format datetime filter (e.g., 2026-02-22T14:30).
    :after ISO-DATE  - ISO format datetime filter (e.g., 2026-02-22T14:30).
-   :global BOOLEAN  - Search across all channels."
+   :global BOOLEAN  - Search across all channels.
+   EXAMPLES:
+   /search \"hello\" :limit 5
+   /search :after 2026-05-01
+   /search :user ryukinix
+   /search :before 2025-10-01 :limit 2"
   (declare (ignorable client args))
-  (if (not query)
-      (server:command-message "error: QUERY is mandatory parameter. Try /search QUERY" :client client)
-      (let* ((parsed-limit (parse-integer (ensure-string limit) :junk-allowed t))
+  (let* ((parsed-limit (parse-integer (ensure-string limit) :junk-allowed t))
              (before-time (server:parse-iso8601 (ensure-string before)))
              (after-time (server:parse-iso8601 (ensure-string after)))
              (filtered (filter-messages client :query query :user user :global global
                                         :before-time before-time :after-time after-time))
-             (limited (subseq filtered 0 (min (length filtered) parsed-limit))))
+             (sort-from-oldest (and after-time (not before-time)))
+             (limited (if sort-from-oldest
+                          (let ((rev (reverse filtered)))
+                            (subseq rev 0 (min (length rev) parsed-limit)))
+                          (subseq filtered 0 (min (length filtered) parsed-limit)))))
         (if (not limited)
             (server:command-message "the search returned a empty result" :client client)
             (format nil "~{~a~^~%~}"
                     (mapcar (lambda (m) (server:search-message m :client client :global global))
-                            (reverse limited)))))))
+                            (if sort-from-oldest
+                                limited
+                                (reverse limited)))))))
 
 (define-command /users (client &key (channel nil) (global nil) &allow-other-keys)
   "/users returns a list separated by commas of the currently logged users.
