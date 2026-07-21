@@ -191,7 +191,8 @@ function openModal() {
         pendingSettings.imagePreview = document.getElementById('setting-imagePreview').checked;
         const nicknameInput = document.getElementById('setting-nickname').value.trim();
         const oldNickname = auth.getUsername();
-        if (nicknameInput && nicknameInput !== oldNickname) {
+        const nicknameChanged = nicknameInput && nicknameInput !== oldNickname;
+        if (nicknameChanged) {
             pendingSettings.nickname = nicknameInput;
         }
         pendingSettings.timezone = document.getElementById('setting-timezone').value;
@@ -199,21 +200,28 @@ function openModal() {
         pendingSettings.reconnectEnabled = document.getElementById('setting-reconnectEnabled').checked;
         pendingSettings.maxReconnectAttempts = parseInt(document.getElementById('setting-maxReconnectAttempts').value) || 0;
 
+        // Capture new nickname before clearing pendingSettings
+        const newNickname = nicknameChanged ? nicknameInput : null;
+
         // Apply settings
         settings = { ...settings, ...pendingSettings };
         saveSettings();
         applyAll();
         closeModal();
 
-        // Send nick change command if nickname was changed
-        if (pendingSettings.nickname && pendingSettings.nickname !== oldNickname) {
+        // Send nick change command and update local state if nickname was changed
+        if (newNickname) {
             // Lazy import to avoid circular dependency
             import('./network.js').then(network => {
                 const ws = network.getWs();
                 if (ws && ws.readyState === WebSocket.OPEN) {
-                    ws.send(`/nick ${pendingSettings.nickname}`);
+                    ws.send(`/nick ${newNickname}`);
                 }
+                auth.setUsername(newNickname);
+                auth.updateUsernamePrefix();
+                notifyListeners();
             });
+            return;
         }
 
         // Notify listeners
