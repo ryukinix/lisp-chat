@@ -86,6 +86,11 @@ function openModal() {
     // Remove existing modal if any
     closeModal();
 
+    // Close the virtual keyboard by blurring the active input
+    if (document.activeElement && document.activeElement.blur) {
+        document.activeElement.blur();
+    }
+
     pendingSettings = { ...settings };
 
     const overlay = document.createElement('div');

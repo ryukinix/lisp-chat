@@ -296,12 +296,12 @@ code {
     }
 
     body.light-theme #sidebar {
-        background: #e8e8e8;
+        background: transparent;
         border-bottom-color: #ccc;
     }
 
     body.light-theme .user-item {
-        background: #ddd;
+        background: transparent;
     }
 
     #main {
@@ -559,7 +559,7 @@ body.light-theme {
 }
 
 body.light-theme #sidebar {
-    background: #e8e8e8;
+    background: transparent;
 }
 
 body.light-theme #chat {
@@ -649,7 +649,7 @@ body.light-theme #sidebar h3 {
 
 body.light-theme #user-list .user-item,
 body.light-theme #username-prefix {
-    filter: brightness(0.55) saturate(1.5);
+    filter: brightness(0.45) saturate(2);
 }
 
 body.light-theme .date-divider {
@@ -689,7 +689,7 @@ body.light-theme a:active {
 
 /* High-contrast mention/user colors for light theme */
 body.light-theme .message span[style*="color:"] {
-    filter: brightness(0.55) saturate(1.5);
+    filter: brightness(0.45) saturate(2);
 }
 
 @keyframes highlightFade {

@@ -34,7 +34,7 @@ function updateUserList(usersString) {
         li.textContent = displayName;
         li.style.color = utils.getUserColor(user);
         if (window.isLightTheme) {
-            li.style.filter = "brightness(0.55) saturate(1.5)";
+            li.style.filter = "brightness(0.45) saturate(2)";
         } else {
             li.style.filter = "";
         }
@@ -51,7 +51,7 @@ export function refreshUserListColors() {
         const user = li.dataset.username;
         if (!user) return;
         li.style.color = utils.getUserColor(user);
-        li.style.filter = window.isLightTheme ? "brightness(0.55) saturate(1.5)" : "";
+        li.style.filter = window.isLightTheme ? "brightness(0.45) saturate(2)" : "";
     });
 }
 
