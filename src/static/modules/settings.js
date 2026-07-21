@@ -120,16 +120,6 @@ function openModal() {
             </label>
         </div>
         <div class="settings-section">
-            <label class="settings-label">Nickname</label>
-            <input type="text" id="setting-nickname" class="settings-input" value="${utils.escapeHTML(pendingSettings.nickname || '')}" placeholder="Current nickname">
-        </div>
-        <div class="settings-section">
-            <label class="settings-label">Timezone</label>
-            <select id="setting-timezone" class="settings-select">
-                ${timezoneOptions.map(opt => `<option value="${opt.value}" ${pendingSettings.timezone === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('')}
-            </select>
-        </div>
-        <div class="settings-section">
             <label class="settings-label">
                 <input type="checkbox" id="setting-themeDark" ${pendingSettings.theme === 'dark' ? 'checked' : ''}>
                 Dark theme (uncheck for light)
@@ -144,6 +134,16 @@ function openModal() {
         <div class="settings-section">
             <label class="settings-label">Max reconnection attempts (0 = infinite)</label>
             <input type="number" id="setting-maxReconnectAttempts" class="settings-input" value="${pendingSettings.maxReconnectAttempts}" min="0" max="100">
+        </div>
+        <div class="settings-section">
+            <label class="settings-label">Timezone</label>
+            <select id="setting-timezone" class="settings-select">
+                ${timezoneOptions.map(opt => `<option value="${opt.value}" ${pendingSettings.timezone === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('')}
+            </select>
+        </div>
+        <div class="settings-section">
+            <label class="settings-label">Nickname</label>
+            <input type="text" id="setting-nickname" class="settings-input" value="${utils.escapeHTML(pendingSettings.nickname || '')}" placeholder="Current nickname">
         </div>
         <div class="settings-buttons">
             <button type="button" id="settings-cancel" class="settings-cancel-btn">Cancel</button>

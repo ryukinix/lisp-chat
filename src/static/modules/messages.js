@@ -341,4 +341,14 @@ function addMessage(text, prepend = false, forceNoScroll = false) {
     }, 10);
 }
 
-export default { chat, clearMessages, checkChatIsAtBottom, addMessage };
+function refreshMessageContent() {
+    const msgs = chat.querySelectorAll('.message .msg-content');
+    for (const span of msgs) {
+        const raw = span.dataset.rawContent;
+        if (raw !== undefined) {
+            span.innerHTML = formatting.formatMessage(raw);
+        }
+    }
+}
+
+export default { chat, clearMessages, checkChatIsAtBottom, addMessage, refreshMessageContent };

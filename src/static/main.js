@@ -33,6 +33,7 @@ formatting.setImagePreviewEnabled(settings.get('imagePreview'));
 // Listen for settings changes and apply them at runtime
 settings.addListener((newSettings) => {
     formatting.setImagePreviewEnabled(newSettings.imagePreview);
+    messages.refreshMessageContent();
 });
 
 form.addEventListener("submit", (e) => {

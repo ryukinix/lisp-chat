@@ -557,8 +557,32 @@ body.light-theme #main {
     border-right-color: #ccc;
 }
 
+body.light-theme .msg-content {
+    color: #222;
+}
+
+body.light-theme .msg-from {
+    color: #2980b9;
+}
+
+body.light-theme .timestamp {
+    color: #888 !important;
+}
+
 body.light-theme .message-reference.local {
     color: #888;
+}
+
+body.light-theme .message-reference.external {
+    color: #2980b9;
+}
+
+body.light-theme .message-reference.external:hover {
+    color: #1a5276;
+}
+
+body.light-theme .command {
+    color: #16a085;
 }
 
 body.light-theme .settings-modal {
@@ -613,6 +637,31 @@ body.light-theme .notification {
     background: rgba(240, 240, 240, 0.95);
     color: #222;
     border-color: #ccc;
+}
+
+body.light-theme .user-item {
+    border-bottom-color: #ddd;
+}
+
+body.light-theme a:link {
+    color: #2980b9;
+}
+
+body.light-theme a:visited {
+    color: #2471a3;
+}
+
+body.light-theme a:hover {
+    color: #1a5276;
+}
+
+body.light-theme a:active {
+    color: #000;
+}
+
+/* High-contrast mention colors for light theme */
+body.light-theme .msg-content span[style*="color:"] {
+    filter: brightness(0.7) saturate(1.3);
 }
 
 @keyframes highlightFade {
