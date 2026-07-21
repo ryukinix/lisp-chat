@@ -58,8 +58,8 @@ function connect(onMessageCallback) {
     let wsUrl = `${protocol}//${window.location.host}/ws`;
     
     // Calculate the timezone offset in hours (e.g. UTC-3 is -3)
-    // Uses settings if a fixed timezone is configured, otherwise auto-detect
-    const tzOffset = settings.getTimezoneOffset();
+    // Auto-detect from browser locale
+    const tzOffset = -(new Date().getTimezoneOffset() / 60);
     
     let channel = window.location.search.substring(1).split('&')[0];
     if (!channel || channel.includes('=')) {

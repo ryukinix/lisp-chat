@@ -5,7 +5,6 @@ import auth from './auth.js';
 const DEFAULTS = {
     imagePreview: true,
     theme: 'dark',
-    timezone: 'auto',
     reconnectEnabled: true,
     maxReconnectAttempts: 0,  // 0 = infinite
 };
@@ -96,36 +95,6 @@ function openModal() {
     const modal = document.createElement('div');
     modal.className = 'settings-modal';
 
-    const timezoneOptions = [
-        { value: 'auto', label: 'Auto (browser detection)' },
-        { value: 'UTC', label: 'UTC' },
-        { value: '-12', label: 'UTC-12' },
-        { value: '-11', label: 'UTC-11' },
-        { value: '-10', label: 'UTC-10' },
-        { value: '-9', label: 'UTC-9' },
-        { value: '-8', label: 'UTC-8' },
-        { value: '-7', label: 'UTC-7' },
-        { value: '-6', label: 'UTC-6' },
-        { value: '-5', label: 'UTC-5' },
-        { value: '-4', label: 'UTC-4' },
-        { value: '-3', label: 'UTC-3' },
-        { value: '-2', label: 'UTC-2' },
-        { value: '-1', label: 'UTC-1' },
-        { value: '0', label: 'UTC+0' },
-        { value: '1', label: 'UTC+1' },
-        { value: '2', label: 'UTC+2' },
-        { value: '3', label: 'UTC+3' },
-        { value: '4', label: 'UTC+4' },
-        { value: '5', label: 'UTC+5' },
-        { value: '6', label: 'UTC+6' },
-        { value: '7', label: 'UTC+7' },
-        { value: '8', label: 'UTC+8' },
-        { value: '9', label: 'UTC+9' },
-        { value: '10', label: 'UTC+10' },
-        { value: '11', label: 'UTC+11' },
-        { value: '12', label: 'UTC+12' },
-    ];
-
     modal.innerHTML = `
         <h2>Settings</h2>
         <div class="settings-section">
@@ -149,12 +118,6 @@ function openModal() {
         <div class="settings-section">
             <label class="settings-label">Max reconnection attempts (0 = infinite)</label>
             <input type="number" id="setting-maxReconnectAttempts" class="settings-input" value="${pendingSettings.maxReconnectAttempts}" min="0" max="100">
-        </div>
-        <div class="settings-section">
-            <label class="settings-label">Timezone</label>
-            <select id="setting-timezone" class="settings-select">
-                ${timezoneOptions.map(opt => `<option value="${opt.value}" ${pendingSettings.timezone === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('')}
-            </select>
         </div>
         <div class="settings-section">
             <label class="settings-label">Nickname</label>
@@ -195,7 +158,6 @@ function openModal() {
         if (nicknameChanged) {
             pendingSettings.nickname = nicknameInput;
         }
-        pendingSettings.timezone = document.getElementById('setting-timezone').value;
         pendingSettings.theme = document.getElementById('setting-themeDark').checked ? 'dark' : 'light';
         pendingSettings.reconnectEnabled = document.getElementById('setting-reconnectEnabled').checked;
         pendingSettings.maxReconnectAttempts = parseInt(document.getElementById('setting-maxReconnectAttempts').value) || 0;
@@ -250,13 +212,10 @@ function notifyListeners() {
     }
 }
 
-// --- Timezone helper ---
+// --- Timezone helper (always auto-detect) ---
 
 function getTimezoneOffset() {
-    if (settings.timezone === 'auto') {
-        return -(new Date().getTimezoneOffset() / 60);
-    }
-    return parseInt(settings.timezone);
+    return -(new Date().getTimezoneOffset() / 60);
 }
 
 export default {
