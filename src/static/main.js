@@ -34,6 +34,7 @@ settings.addListener((newSettings) => {
     settings.applyAll();
     users.refreshUserListColors();
     auth.updateUsernamePrefix();
+    inputModule.updateCaretColor();
 });
 
 form.addEventListener("submit", (e) => {

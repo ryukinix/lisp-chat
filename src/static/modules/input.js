@@ -72,7 +72,7 @@ function setupInputOverlay(inputElement) {
     wrapper.appendChild(inputElement);
 
     inputElement.style.color = 'transparent';
-    inputElement.style.caretColor = '#fff';
+    inputElement.style.caretColor = window.isLightTheme ? '#222' : '#fff';
     inputElement.style.background = 'transparent';
     inputElement.style.position = 'relative';
     inputElement.style.zIndex = '2';
@@ -114,8 +114,16 @@ function setupInputOverlay(inputElement) {
     updateOverlay();
 }
 
+function updateCaretColor() {
+    const inputElement = document.getElementById('message-input');
+    if (inputElement) {
+        inputElement.style.caretColor = window.isLightTheme ? '#222' : '#fff';
+    }
+}
+
 export default {
     initInputHistory,
     addMessageToHistory,
-    setupInputOverlay
+    setupInputOverlay,
+    updateCaretColor
 };
