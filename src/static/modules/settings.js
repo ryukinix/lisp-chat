@@ -7,6 +7,7 @@ const DEFAULTS = {
     theme: 'dark',
     reconnectEnabled: true,
     maxReconnectAttempts: 0,  // 0 = infinite
+    autoloadHistory: false,
 };
 
 // In-memory runtime state (synced with cookies)
@@ -121,6 +122,12 @@ function openModal() {
             </label>
         </div>
         <div class="settings-section">
+            <label class="settings-label">
+                <input type="checkbox" id="setting-autoloadHistory" ${pendingSettings.autoloadHistory ? 'checked' : ''}>
+                Auto-load history on scroll
+            </label>
+        </div>
+        <div class="settings-section">
             <label class="settings-label">Max reconnection attempts (0 = infinite)</label>
             <input type="number" id="setting-maxReconnectAttempts" class="settings-input" value="${pendingSettings.maxReconnectAttempts}" min="0" max="100">
         </div>
@@ -166,6 +173,7 @@ function openModal() {
         pendingSettings.theme = document.getElementById('setting-themeDark').checked ? 'dark' : 'light';
         pendingSettings.reconnectEnabled = document.getElementById('setting-reconnectEnabled').checked;
         pendingSettings.maxReconnectAttempts = parseInt(document.getElementById('setting-maxReconnectAttempts').value) || 0;
+        pendingSettings.autoloadHistory = document.getElementById('setting-autoloadHistory').checked;
 
         // Capture new nickname before clearing pendingSettings
         const newNickname = nicknameChanged ? nicknameInput : null;
