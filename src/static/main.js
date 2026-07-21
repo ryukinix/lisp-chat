@@ -7,6 +7,8 @@ import inputModule from './modules/input.js';
 import notifications from './modules/notifications.js';
 import history from './modules/history.js';
 import reply from "./modules/reply.js";
+import settings from './modules/settings.js';
+import formatting from './modules/formatting.js';
 
 function updatePageTitle() {
     let channel = window.location.search.substring(1).split('&')[0];
@@ -24,6 +26,15 @@ inputModule.initInputHistory(input);
 inputModule.setupInputOverlay(input);
 reply.setupReplyFocus();
 
+// Initialize settings module and sync formatting toggle
+settings.init();
+formatting.setImagePreviewEnabled(settings.get('imagePreview'));
+
+// Listen for settings changes and apply them at runtime
+settings.addListener((newSettings) => {
+    formatting.setImagePreviewEnabled(newSettings.imagePreview);
+});
+
 form.addEventListener("submit", (e) => {
     e.preventDefault();
     const value = input.value;
@@ -36,6 +47,11 @@ form.addEventListener("submit", (e) => {
         if (trimmed === "/clear") {
             messages.clearMessages();
             history.resetReachedEnd();
+            input.value = "";
+            return;
+        }
+        if (trimmed === "/settings") {
+            settings.openModal();
             input.value = "";
             return;
         }

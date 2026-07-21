@@ -1,9 +1,12 @@
 import notifications from './notifications.js';
 import auth from './auth.js';
+import settings from './settings.js';
 
 let ws;
 let fetchUsersInterval;
 let userRequestsPending = 0;
+let reconnectAttempts = 0;
+let reconnectTimer = null;
 
 function getWs() { return ws; }
 function setWs(newWs) { ws = newWs; }
@@ -55,7 +58,8 @@ function connect(onMessageCallback) {
     let wsUrl = `${protocol}//${window.location.host}/ws`;
     
     // Calculate the timezone offset in hours (e.g. UTC-3 is -3)
-    const tzOffset = -(new Date().getTimezoneOffset() / 60);
+    // Uses settings if a fixed timezone is configured, otherwise auto-detect
+    const tzOffset = settings.getTimezoneOffset();
     
     let channel = window.location.search.substring(1).split('&')[0];
     if (!channel || channel.includes('=')) {
@@ -75,6 +79,7 @@ function connect(onMessageCallback) {
 
     ws.onopen = () => {
         notifications.showNotification("Connected to server.");
+        reconnectAttempts = 0;
         auth.setLoggedIn(false);
         auth.updateUsernamePrefix();
     };
@@ -92,8 +97,24 @@ function connect(onMessageCallback) {
             keepAliveWorker.postMessage('stop');
             setFetchUsersInterval(null);
         }
-        notifications.showNotification("Disconnected. Reconnecting in 3s...");
-        setTimeout(() => connect(onMessageCallback), 3000);
+
+        const reconnectEnabled = settings.get('reconnectEnabled');
+        const maxAttempts = settings.get('maxReconnectAttempts');
+
+        if (!reconnectEnabled) {
+            notifications.showNotification("Disconnected. Auto-reconnect is disabled.");
+            return;
+        }
+
+        reconnectAttempts++;
+
+        if (maxAttempts > 0 && reconnectAttempts > maxAttempts) {
+            notifications.showNotification(`Disconnected. Max reconnection attempts (${maxAttempts}) reached.`);
+            return;
+        }
+
+        notifications.showNotification(`Disconnected. Reconnecting in 3s... (attempt ${reconnectAttempts})`);
+        reconnectTimer = setTimeout(() => connect(onMessageCallback), 3000);
     };
 
     ws.onerror = (err) => {
