@@ -112,7 +112,7 @@ function openModal() {
         <div class="settings-section">
             <label class="settings-label">
                 <input type="checkbox" id="setting-reconnectEnabled" ${pendingSettings.reconnectEnabled ? 'checked' : ''}>
-                Reconnection in background
+                Reconnect while in background
             </label>
         </div>
         <div class="settings-section">
