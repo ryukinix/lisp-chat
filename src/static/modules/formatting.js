@@ -1,12 +1,29 @@
 import utils from './utils.js';
 
+// Image file extensions for auto-detection
+const IMAGE_EXTENSIONS = /\.(jpe?g|png|gif|webp|svg|bmp|ico|avif)(\?[^/\s]*)?$/i;
+
+function isImageUrl(url) {
+    return IMAGE_EXTENSIONS.test(url);
+}
+
 function formatMessage(text, preserveRaw = false) {
     if (!text) return "";
 
     const urls = [];
-    const urlPattern = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;\*]*[-A-Z0-9+&@#\/%=~_|])/ig;
+    const forcedImages = new Set();
+    const urlPattern = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#/%?=~_|!:,.;\*]*[-A-Z0-9+&@#/%=~_|])/ig;
 
-    let processed = text.replace(urlPattern, (match) => {
+    // Pre-process image+URL syntax: strip the marker and flag as forced image
+    let processed = text.replace(/image\+((?:https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;\*]*[-A-Z0-9+&@#\/%=~_|])/ig, (match, url) => {
+        const id = urls.length;
+        urls.push(url);
+        forcedImages.add(id);
+        return `URLPLACEHOLDER${id}URL`;
+    });
+
+    // Extract remaining normal URLs
+    processed = processed.replace(urlPattern, (match) => {
         const id = urls.length;
         urls.push(match);
         return `URLPLACEHOLDER${id}URL`;
@@ -47,12 +64,17 @@ function formatMessage(text, preserveRaw = false) {
     processed = processed.replace(/_(.*?)_/g, preserveRaw ? '<em>_$1_</em>' : '<em>$1</em>');
     processed = processed.replace(/~~(.*?)~~/g, preserveRaw ? '<del>~~$1~~</del>' : '<del>$1</del>');
 
-    // 6. URLs
+    // 6. URLs (with optional inline image preview)
     return processed.replace(/URLPLACEHOLDER(\d+)URL/g, (match, id) => {
         const url = urls[parseInt(id)];
         const escapedUrl = utils.escapeHTML(url);
+        const shouldPreview = forcedImages.has(parseInt(id)) || isImageUrl(url);
+
+        if (shouldPreview && !preserveRaw) {
+            return `<a href="${escapedUrl}" target="_blank" rel="noopener noreferrer">${escapedUrl}</a><img src="${escapedUrl}" alt="image preview" class="image-preview" loading="lazy" onerror="this.style.display='none'">`;
+        }
         return `<a href="${escapedUrl}" target="_blank" rel="noopener noreferrer">${escapedUrl}</a>`;
     });
 }
 
-export default { formatMessage };
+export default { formatMessage, isImageUrl };
