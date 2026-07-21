@@ -295,6 +295,15 @@ code {
         white-space: nowrap;
     }
 
+    body.light-theme #sidebar {
+        background: #e8e8e8;
+        border-bottom-color: #ccc;
+    }
+
+    body.light-theme .user-item {
+        background: #ddd;
+    }
+
     #main {
         border-right: none;
         flex: 1;
