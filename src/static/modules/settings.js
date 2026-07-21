@@ -158,7 +158,7 @@ function openModal() {
         </div>
         <div class="settings-section">
             <label class="settings-label">Nickname</label>
-            <input type="text" id="setting-nickname" class="settings-input" value="${utils.escapeHTML(pendingSettings.nickname || '')}" placeholder="Current nickname">
+            <input type="text" id="setting-nickname" class="settings-input" value="${utils.escapeHTML(pendingSettings.nickname || auth.getUsername() || '')}" placeholder="Current nickname">
         </div>
         <div class="settings-buttons">
             <button type="button" id="settings-cancel" class="settings-cancel-btn">Cancel</button>
@@ -212,7 +212,8 @@ function openModal() {
         // Send nick change command and update local state if nickname was changed
         if (newNickname) {
             // Lazy import to avoid circular dependency
-            import('./network.js').then(network => {
+            import('./network.js').then(module => {
+                const network = module.default;
                 const ws = network.getWs();
                 if (ws && ws.readyState === WebSocket.OPEN) {
                     ws.send(`/nick ${newNickname}`);
