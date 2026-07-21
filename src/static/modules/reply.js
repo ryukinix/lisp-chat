@@ -83,10 +83,29 @@ function setupReplyFocus() {
 
                 matchedMessage.classList.add('focused');
 
-                // Remove the class after animation completes so it can be triggered again
-                setTimeout(() => {
+                // Remove highlight when user scrolls, clicks, or types
+                const removeFocus = () => {
                     matchedMessage.classList.remove('focused');
-                }, 3000);
+                    chat.removeEventListener('scroll', removeFocus);
+                    chat.removeEventListener('click', removeFocus);
+                    const msgInput = document.getElementById('message-input');
+                    if (msgInput) {
+                        msgInput.removeEventListener('input', removeFocus);
+                        msgInput.removeEventListener('keydown', removeFocus);
+                    }
+                };
+
+                // Add listeners after a short delay so the initial
+                // scrollIntoView doesn't immediately trigger removal
+                setTimeout(() => {
+                    chat.addEventListener('scroll', removeFocus, { once: true });
+                    chat.addEventListener('click', removeFocus, { once: true });
+                    const msgInput = document.getElementById('message-input');
+                    if (msgInput) {
+                        msgInput.addEventListener('input', removeFocus, { once: true });
+                        msgInput.addEventListener('keydown', removeFocus, { once: true });
+                    }
+                }, 800);
             } else {
                 let channel = target.dataset.channel;
                 if (!channel) {

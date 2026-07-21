@@ -416,7 +416,11 @@ a:active {
 
 /* Focused message highlight */
 .message.focused {
-    animation: highlightFade 3s forwards;
+    animation: highlightFade 1.5s forwards;
+}
+
+body.light-theme .message.focused {
+    animation: highlightFadeLight 1.5s forwards;
 }
 
 .message-reference {
@@ -692,7 +696,14 @@ body.light-theme .message span[style*="color:"] {
     filter: brightness(0.45) saturate(2);
 }
 
+/* Dark theme: highlight starts bright, settles to gray */
 @keyframes highlightFade {
     0% { background-color: rgba(255, 255, 255, 0.2); }
-    100% { background-color: transparent; }
+    100% { background-color: rgba(80, 80, 80, 0.4); }
+}
+
+/* Light theme: highlight starts dark gray, settles to lighter gray */
+@keyframes highlightFadeLight {
+    0% { background-color: rgba(120, 120, 120, 0.35); }
+    100% { background-color: rgba(200, 200, 200, 0.4); }
 }
