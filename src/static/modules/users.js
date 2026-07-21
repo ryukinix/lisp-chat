@@ -33,8 +33,26 @@ function updateUserList(usersString) {
         li.dataset.username = user;
         li.textContent = displayName;
         li.style.color = utils.getUserColor(user);
+        if (window.isLightTheme) {
+            li.style.filter = "brightness(0.55) saturate(1.5)";
+        } else {
+            li.style.filter = "";
+        }
         userList.appendChild(li);
     });
 }
 
-export default { updateUserList };
+// Re-render user list colors when theme changes
+export function refreshUserListColors() {
+    const userList = document.getElementById("user-list");
+    if (!userList) return;
+    const items = userList.querySelectorAll('.user-item');
+    items.forEach(li => {
+        const user = li.dataset.username;
+        if (!user) return;
+        li.style.color = utils.getUserColor(user);
+        li.style.filter = window.isLightTheme ? "brightness(0.55) saturate(1.5)" : "";
+    });
+}
+
+export default { updateUserList, refreshUserListColors };

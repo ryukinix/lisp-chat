@@ -55,8 +55,10 @@ function applyTheme() {
     const theme = settings.theme;
     if (theme === 'light') {
         document.body.classList.add('light-theme');
+        window.isLightTheme = true;
     } else {
         document.body.classList.remove('light-theme');
+        window.isLightTheme = false;
     }
 }
 

@@ -632,9 +632,18 @@ body.light-theme .input-overlay {
     color: #222 !important;
 }
 
+body.light-theme #sidebar h3 {
+    color: #222;
+    border-bottom-color: #ccc;
+}
+
+body.light-theme #user-list .user-item,
 body.light-theme #username-prefix {
-    color: #222 !important;
     filter: brightness(0.55) saturate(1.5);
+}
+
+body.light-theme #username-prefix {
+    color: inherit !important;
 }
 
 body.light-theme .date-divider {

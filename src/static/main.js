@@ -8,6 +8,7 @@ import notifications from './modules/notifications.js';
 import history from './modules/history.js';
 import reply from "./modules/reply.js";
 import settings from './modules/settings.js';
+import users from './modules/users.js';
 
 function updatePageTitle() {
     let channel = window.location.search.substring(1).split('&')[0];
@@ -31,6 +32,8 @@ settings.init();
 // Listen for settings changes and apply dynamic classes at runtime
 settings.addListener((newSettings) => {
     settings.applyAll();
+    users.refreshUserListColors();
+    auth.updateUsernamePrefix();
 });
 
 form.addEventListener("submit", (e) => {
