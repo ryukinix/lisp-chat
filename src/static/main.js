@@ -8,7 +8,6 @@ import notifications from './modules/notifications.js';
 import history from './modules/history.js';
 import reply from "./modules/reply.js";
 import settings from './modules/settings.js';
-import formatting from './modules/formatting.js';
 
 function updatePageTitle() {
     let channel = window.location.search.substring(1).split('&')[0];
@@ -26,14 +25,12 @@ inputModule.initInputHistory(input);
 inputModule.setupInputOverlay(input);
 reply.setupReplyFocus();
 
-// Initialize settings module and sync formatting toggle
+// Initialize settings module (applies theme and image-preview classes)
 settings.init();
-formatting.setImagePreviewEnabled(settings.get('imagePreview'));
 
-// Listen for settings changes and apply them at runtime
+// Listen for settings changes and apply dynamic classes at runtime
 settings.addListener((newSettings) => {
-    formatting.setImagePreviewEnabled(newSettings.imagePreview);
-    messages.refreshMessageContent();
+    settings.applyAll();
 });
 
 form.addEventListener("submit", (e) => {

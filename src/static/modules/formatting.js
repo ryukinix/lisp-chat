@@ -7,13 +7,6 @@ function isImageUrl(url) {
     return IMAGE_EXTENSIONS.test(url);
 }
 
-// Runtime toggle for image preview (controlled by settings module)
-let imagePreviewEnabled = true;
-
-function setImagePreviewEnabled(enabled) {
-    imagePreviewEnabled = enabled;
-}
-
 function formatMessage(text, preserveRaw = false) {
     if (!text) return "";
 
@@ -75,7 +68,7 @@ function formatMessage(text, preserveRaw = false) {
     return processed.replace(/URLPLACEHOLDER(\d+)URL/g, (match, id) => {
         const url = urls[parseInt(id)];
         const escapedUrl = utils.escapeHTML(url);
-        const shouldPreview = imagePreviewEnabled && (forcedImages.has(parseInt(id)) || isImageUrl(url));
+        const shouldPreview = forcedImages.has(parseInt(id)) || isImageUrl(url);
 
         if (shouldPreview && !preserveRaw) {
             return `<a href="${escapedUrl}" target="_blank" rel="noopener noreferrer">${escapedUrl}</a><img src="${escapedUrl}" alt="image preview" class="image-preview" loading="lazy" onerror="this.style.display='none'">`;
@@ -84,4 +77,4 @@ function formatMessage(text, preserveRaw = false) {
     });
 }
 
-export default { formatMessage, isImageUrl, setImagePreviewEnabled };
+export default { formatMessage, isImageUrl };

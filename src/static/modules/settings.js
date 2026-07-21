@@ -18,7 +18,7 @@ let pendingSettings = null;
 
 function init() {
     loadSettings();
-    applyTheme();
+    applyAll();
 }
 
 function loadSettings() {
@@ -58,6 +58,19 @@ function applyTheme() {
     } else {
         document.body.classList.remove('light-theme');
     }
+}
+
+function applyImagePreview() {
+    if (settings.imagePreview) {
+        document.body.classList.remove('image-preview-disabled');
+    } else {
+        document.body.classList.add('image-preview-disabled');
+    }
+}
+
+function applyAll() {
+    applyTheme();
+    applyImagePreview();
 }
 
 function toggleTheme() {
@@ -154,14 +167,24 @@ function openModal() {
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
 
-    // Close on overlay click
+    // Close on overlay click (outside modal)
     overlay.addEventListener('click', (e) => {
         if (e.target === overlay) closeModal();
     });
 
     // Button handlers
-    document.getElementById('settings-cancel').addEventListener('click', closeModal);
-    document.getElementById('settings-save').addEventListener('click', () => {
+    const cancelBtn = document.getElementById('settings-cancel');
+    const saveBtn = document.getElementById('settings-save');
+
+    cancelBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeModal();
+    });
+
+    saveBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+
         // Read pending values from inputs
         pendingSettings.imagePreview = document.getElementById('setting-imagePreview').checked;
         const nicknameInput = document.getElementById('setting-nickname').value.trim();
@@ -177,7 +200,7 @@ function openModal() {
         // Apply settings
         settings = { ...settings, ...pendingSettings };
         saveSettings();
-        applyTheme();
+        applyAll();
         closeModal();
 
         // Send nick change command if nickname was changed
@@ -227,6 +250,6 @@ function getTimezoneOffset() {
 
 export default {
     init, loadSettings, saveSettings, getSettings, get, set,
-    openModal, closeModal, applyTheme, toggleTheme,
+    openModal, closeModal, applyAll, applyTheme, toggleTheme,
     addListener, getTimezoneOffset
 };

@@ -347,7 +347,7 @@ function refreshMessageContent() {
         const raw = span.dataset.rawContent;
         if (!raw) continue;
         // Handle multi-line messages where rawContent uses literal \n (backslash + n)
-        const lines = raw.split('\\n');
+        const lines = raw.split('\n');
         if (lines.length > 1) {
             span.innerHTML = lines.map(line => formatting.formatMessage(line)).join('<br>');
         } else {

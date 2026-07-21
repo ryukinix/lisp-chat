@@ -440,6 +440,10 @@ a:active {
     background: #1a1a1a;
 }
 
+body.image-preview-disabled .image-preview {
+    display: none;
+}
+
 /* Settings modal */
 .settings-overlay {
     position: fixed;
@@ -626,6 +630,11 @@ body.light-theme .input-wrapper {
 
 body.light-theme .input-overlay {
     color: #222 !important;
+}
+
+body.light-theme #username-prefix {
+    color: #222 !important;
+    filter: brightness(0.55) saturate(1.5);
 }
 
 body.light-theme .date-divider {
