@@ -624,6 +624,10 @@ body.light-theme .input-wrapper {
     border-color: #ccc !important;
 }
 
+body.light-theme .input-overlay {
+    color: #222 !important;
+}
+
 body.light-theme .date-divider {
     color: #999;
 }
@@ -659,9 +663,9 @@ body.light-theme a:active {
     color: #000;
 }
 
-/* High-contrast mention colors for light theme */
-body.light-theme .msg-content span[style*="color:"] {
-    filter: brightness(0.7) saturate(1.3);
+/* High-contrast mention/user colors for light theme */
+body.light-theme .message span[style*="color:"] {
+    filter: brightness(0.55) saturate(1.5);
 }
 
 @keyframes highlightFade {

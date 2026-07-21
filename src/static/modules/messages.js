@@ -345,10 +345,19 @@ function refreshMessageContent() {
     const msgs = chat.querySelectorAll('.message .msg-content');
     for (const span of msgs) {
         const raw = span.dataset.rawContent;
-        if (raw !== undefined) {
+        if (!raw) continue;
+        // Handle multi-line messages where rawContent uses literal \n (backslash + n)
+        const lines = raw.split('\\n');
+        if (lines.length > 1) {
+            span.innerHTML = lines.map(line => formatting.formatMessage(line)).join('<br>');
+        } else {
             span.innerHTML = formatting.formatMessage(raw);
         }
     }
+    // Re-apply reply reference states after re-render
+    setTimeout(() => {
+        if (reply.updateReplyReferenceStates) reply.updateReplyReferenceStates();
+    }, 10);
 }
 
 export default { chat, clearMessages, checkChatIsAtBottom, addMessage, refreshMessageContent };

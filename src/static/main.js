@@ -51,7 +51,7 @@ form.addEventListener("submit", (e) => {
             input.value = "";
             return;
         }
-        if (trimmed === "/settings") {
+        if (trimmed.startsWith("/settings")) {
             settings.openModal();
             input.value = "";
             return;
