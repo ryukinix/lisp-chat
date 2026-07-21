@@ -427,6 +427,19 @@ a:active {
     color: deepskyblue; /* same as a:hover */
 }
 
+/* Inline image preview */
+.image-preview {
+    display: block;
+    max-width: 400px;
+    max-height: 300px;
+    margin-top: 4px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    cursor: pointer;
+    object-fit: contain;
+    background: #1a1a1a;
+}
+
 @keyframes highlightFade {
     0% { background-color: rgba(255, 255, 255, 0.2); }
     100% { background-color: transparent; }
