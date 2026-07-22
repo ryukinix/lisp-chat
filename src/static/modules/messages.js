@@ -251,12 +251,12 @@ function processStructuredMessage(line, match, anchor, prepend) {
         if (refMatch) {
             const [_, refChannel, refDate, refTimeHM, refTimeS, refFrom] = refMatch;
             if (effectiveDate === refDate && timeHM === refTimeHM && timeS === refTimeS && from === refFrom) {
-                div.classList.add('shared-focus');
+                div.classList.add('focused');
                 setTimeout(() => div.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
                 
                 // Remove focus on interaction
                 const removeFocus = () => {
-                    div.classList.remove('shared-focus');
+                    div.classList.remove('focused');
                     chat.removeEventListener('scroll', removeFocus);
                     chat.removeEventListener('click', removeFocus);
                     const msgInput = document.getElementById('message-input');
@@ -341,4 +341,23 @@ function addMessage(text, prepend = false, forceNoScroll = false) {
     }, 10);
 }
 
-export default { chat, clearMessages, checkChatIsAtBottom, addMessage };
+function refreshMessageContent() {
+    const msgs = chat.querySelectorAll('.message .msg-content');
+    for (const span of msgs) {
+        const raw = span.dataset.rawContent;
+        if (!raw) continue;
+        // Handle multi-line messages where rawContent uses literal \n (backslash + n)
+        const lines = raw.split('\n');
+        if (lines.length > 1) {
+            span.innerHTML = lines.map(line => formatting.formatMessage(line)).join('<br>');
+        } else {
+            span.innerHTML = formatting.formatMessage(raw);
+        }
+    }
+    // Re-apply reply reference states after re-render
+    setTimeout(() => {
+        if (reply.updateReplyReferenceStates) reply.updateReplyReferenceStates();
+    }, 10);
+}
+
+export default { chat, clearMessages, checkChatIsAtBottom, addMessage, refreshMessageContent };

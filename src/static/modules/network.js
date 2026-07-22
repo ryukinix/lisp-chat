@@ -1,9 +1,13 @@
 import notifications from './notifications.js';
 import auth from './auth.js';
+import settings from './settings.js';
 
 let ws;
 let fetchUsersInterval;
 let userRequestsPending = 0;
+let reconnectAttempts = 0;
+let reconnectTimer = null;
+let savedOnMessageCallback = null;
 
 function getWs() { return ws; }
 function setWs(newWs) { ws = newWs; }
@@ -43,6 +47,9 @@ function requestUserList(isBackground = false) {
 keepAliveWorker.onmessage = () => requestUserList(true);
 
 function connect(onMessageCallback) {
+    if (onMessageCallback) savedOnMessageCallback = onMessageCallback;
+    const cb = onMessageCallback || savedOnMessageCallback;
+
     if (ws) {
         ws.onclose = null;
         ws.onmessage = null;
@@ -55,6 +62,7 @@ function connect(onMessageCallback) {
     let wsUrl = `${protocol}//${window.location.host}/ws`;
     
     // Calculate the timezone offset in hours (e.g. UTC-3 is -3)
+    // Auto-detect from browser locale
     const tzOffset = -(new Date().getTimezoneOffset() / 60);
     
     let channel = window.location.search.substring(1).split('&')[0];
@@ -75,12 +83,13 @@ function connect(onMessageCallback) {
 
     ws.onopen = () => {
         notifications.showNotification("Connected to server.");
+        reconnectAttempts = 0;
         auth.setLoggedIn(false);
         auth.updateUsernamePrefix();
     };
 
     ws.onmessage = (event) => {
-        if (onMessageCallback) onMessageCallback(event.data);
+        if (cb) cb(event.data);
     };
 
     ws.onclose = (event) => {
@@ -92,14 +101,59 @@ function connect(onMessageCallback) {
             keepAliveWorker.postMessage('stop');
             setFetchUsersInterval(null);
         }
-        notifications.showNotification("Disconnected. Reconnecting in 3s...");
-        setTimeout(() => connect(onMessageCallback), 3000);
+
+        const reconnectEnabled = settings.get('reconnectEnabled');
+        const maxAttempts = settings.get('maxReconnectAttempts');
+
+        // When auto-reconnect is disabled, only reconnect if the page
+        // is currently visible. If hidden, defer until it becomes visible.
+        if (!reconnectEnabled) {
+            if (document.visibilityState === 'visible') {
+                notifications.showNotification("Disconnected. Reconnecting...");
+                reconnectTimer = setTimeout(() => connect(), 3000);
+            } else {
+                notifications.showNotification("Disconnected. Will reconnect when page is active.");
+            }
+            return;
+        }
+
+        reconnectAttempts++;
+
+        if (maxAttempts > 0 && reconnectAttempts > maxAttempts) {
+            notifications.showNotification(`Disconnected. Max reconnection attempts (${maxAttempts}) reached.`);
+            return;
+        }
+
+        notifications.showNotification(`Disconnected. Reconnecting in 3s... (attempt ${reconnectAttempts})`);
+        reconnectTimer = setTimeout(() => connect(), 3000);
     };
 
     ws.onerror = (err) => {
         console.error("WS Error", err);
     };
 }
+
+// Reconnect when page becomes visible if auto-reconnect is disabled
+// and the socket is currently disconnected
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+
+    // If auto-reconnect is enabled, the normal onclose handler already
+    // handles reconnection. Only intervene when it's disabled.
+    if (settings.get('reconnectEnabled')) return;
+
+    // Clear any pending reconnect timer (we're reconnecting now)
+    if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+    }
+
+    if (!ws || ws.readyState === WebSocket.CLOSED) {
+        notifications.showNotification("Page active. Reconnecting...");
+        reconnectAttempts = 0;
+        connect();
+    }
+});
 
 export default {
     getWs, setWs, getFetchUsersInterval, getUserRequestsPending,

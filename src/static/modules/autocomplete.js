@@ -31,6 +31,13 @@ async function fetchAutoCompleteData(trigger) {
             data = await api.fetchCommand("help");
             result = data.result || "";
             items = result.replace("Available commands: ", "").split(",").map(c => c.trim().substring(1)).filter(c => c.length > 0);
+            // Add client-only commands not returned by server /help
+            const clientCommands = ['settings'];
+            for (const cmd of clientCommands) {
+                if (!items.includes(cmd)) {
+                    items.push(cmd);
+                }
+            }
         } else if (trigger === '#') {
             data = await api.channels(true);
             result = data.result || "";

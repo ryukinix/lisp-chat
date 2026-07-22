@@ -47,6 +47,7 @@ function updateUsernamePrefix() {
     if (username && loggedIn) {
         prefix.textContent = `[${username}]:`;
         prefix.style.color = utils.getUserColor(username);
+        prefix.style.filter = window.isLightTheme ? "brightness(0.45) saturate(2)" : "";
         prefix.style.fontWeight = "bold";
         input.placeholder = "";
         input.disabled = false;

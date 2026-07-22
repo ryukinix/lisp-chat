@@ -2,6 +2,7 @@ import config from './config.js';
 import messages from './messages.js';
 import notifications from './notifications.js';
 import api from './api.js';
+import utils from './utils.js';
 
 const textButton = "⬆"
 const textNewerButton = "⬇"
@@ -26,6 +27,17 @@ function updateNewerButtonVisibility() {
     }
 }
 
+function isAutoloadEnabled() {
+    try {
+        const saved = utils.getCookie('lispchat_settings');
+        if (saved) {
+            const parsed = JSON.parse(decodeURIComponent(saved));
+            return parsed.autoloadHistory === true;
+        }
+    } catch (e) {}
+    return false;
+}
+
 function initHistoryLoading() {
     const loadMoreBtn = document.getElementById("load-more-btn");
     const loadNewerBtn = document.getElementById("load-newer-btn");
@@ -35,7 +47,31 @@ function initHistoryLoading() {
     
     if (!loadMoreBtn) return;
 
+    let scrollTimer = null;
+
     messages.chat.addEventListener('scroll', () => {
+        const autoload = isAutoloadEnabled();
+
+        if (autoload) {
+            // Debounce to avoid spamming API during rapid scroll
+            if (scrollTimer) clearTimeout(scrollTimer);
+            scrollTimer = setTimeout(() => {
+                // Auto-load older messages when scrolled to top
+                if (messages.chat.scrollTop <= 5 && messages.chat.scrollHeight > messages.chat.clientHeight) {
+                    loadMoreBtn.click();
+                }
+                // Auto-load newer messages when scrolled to bottom in historical context
+                if (isHistoricalContext && !hasReachedNewest) {
+                    const nearBottom = messages.chat.scrollTop + messages.chat.clientHeight >= messages.chat.scrollHeight - 100;
+                    if (nearBottom && loadNewerBtn) {
+                        loadNewerBtn.click();
+                    }
+                }
+            }, 300);
+            return;
+        }
+
+        // Manual mode: show/hide buttons
         if (!hasReachedEnd) {
             if (messages.chat.scrollTop === 0 && messages.chat.scrollHeight > messages.chat.clientHeight) {
                 loadMoreBtn.classList.remove("hidden");
@@ -48,7 +84,7 @@ function initHistoryLoading() {
 
     let isLoadingHistory = false;
     loadMoreBtn.addEventListener('click', async () => {
-        if (isLoadingHistory || hasReachedEnd) return;
+        if (isLoadingHistory) return;
         isLoadingHistory = true;
         const oldestMsg = messages.chat.querySelector('.message');
         if (!oldestMsg) {
@@ -85,6 +121,7 @@ function initHistoryLoading() {
             }
         } catch (e) {
             console.error("Failed to load history", e);
+            // Don't set hasReachedEnd on error — allow retry
         }
 
         isLoadingHistory = false;

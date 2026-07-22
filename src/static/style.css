@@ -295,6 +295,15 @@ code {
         white-space: nowrap;
     }
 
+    body.light-theme #sidebar {
+        background: transparent;
+        border-bottom-color: #ccc;
+    }
+
+    body.light-theme .user-item {
+        background: transparent;
+    }
+
     #main {
         border-right: none;
         flex: 1;
@@ -407,7 +416,11 @@ a:active {
 
 /* Focused message highlight */
 .message.focused {
-    animation: highlightFade 3s forwards;
+    animation: highlightFade 1.5s forwards;
+}
+
+body.light-theme .message.focused {
+    animation: highlightFadeLight 1.5s forwards;
 }
 
 .message-reference {
@@ -431,6 +444,7 @@ a:active {
 .image-preview {
     display: block;
     max-width: 400px;
+    max-width: min(400px, 100%);
     max-height: 300px;
     margin-top: 4px;
     border: 1px solid #444;
@@ -440,7 +454,257 @@ a:active {
     background: #1a1a1a;
 }
 
+body.image-preview-disabled .image-preview {
+    display: none;
+}
+
+/* Settings modal */
+.settings-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.settings-modal {
+    background: #2a2a2a;
+    border: 1px solid #555;
+    border-radius: 8px;
+    padding: 20px 24px;
+    min-width: 320px;
+    max-width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    color: #eee;
+    font-family: monospace;
+    font-size: 12px;
+}
+
+.settings-modal h2 {
+    margin-top: 0;
+    color: #55efc4;
+    margin-bottom: 16px;
+}
+
+.settings-section {
+    margin-bottom: 14px;
+}
+
+.settings-label {
+    display: block;
+    margin-bottom: 4px;
+    cursor: pointer;
+}
+
+.settings-input,
+.settings-select {
+    width: 100%;
+    background: #333;
+    border: 1px solid #555;
+    color: #eee;
+    padding: 6px 8px;
+    font-family: monospace;
+    font-size: 12px;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.settings-input:focus,
+.settings-select:focus {
+    outline: none;
+    border-color: #55efc4;
+}
+
+.settings-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 20px;
+    justify-content: flex-end;
+}
+
+.settings-cancel-btn,
+.settings-save-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: monospace;
+    font-size: 12px;
+}
+
+.settings-cancel-btn {
+    background: #444;
+    color: #eee;
+}
+
+.settings-cancel-btn:hover {
+    background: #555;
+}
+
+.settings-save-btn {
+    background: #55efc4;
+    color: #222;
+}
+
+.settings-save-btn:hover {
+    background: #4ade80;
+}
+
+/* Light theme */
+body.light-theme {
+    background: #f5f5f5;
+    color: #222;
+}
+
+body.light-theme #sidebar {
+    background: transparent;
+}
+
+body.light-theme #chat {
+    border-bottom-color: #ccc;
+}
+
+body.light-theme #main {
+    border-right-color: #ccc;
+}
+
+body.light-theme .msg-content {
+    color: #222;
+}
+
+body.light-theme .msg-from {
+    color: #2980b9;
+}
+
+body.light-theme .timestamp {
+    color: #888 !important;
+}
+
+body.light-theme .message-reference.local {
+    color: #888;
+}
+
+body.light-theme .message-reference.external {
+    color: #2980b9;
+}
+
+body.light-theme .message-reference.external:hover {
+    color: #1a5276;
+}
+
+body.light-theme .command {
+    color: #16a085;
+}
+
+body.light-theme .settings-modal {
+    background: #fff;
+    border-color: #ccc;
+    color: #222;
+}
+
+body.light-theme .settings-input,
+body.light-theme .settings-select {
+    background: #eee;
+    border-color: #ccc;
+    color: #222;
+}
+
+body.light-theme .settings-cancel-btn {
+    background: #ddd;
+    color: #222;
+}
+
+body.light-theme .image-preview {
+    background: #eee;
+    border-color: #ccc;
+}
+
+body.light-theme code {
+    background: #ddd;
+    color: #222;
+}
+
+body.light-theme #message-input {
+    background: #eee;
+    border-color: #ccc;
+    color: #222;
+    caret-color: #222 !important;
+}
+
+body.light-theme .input-wrapper {
+    background: #eee !important;
+    border-color: #ccc !important;
+}
+
+body.light-theme .input-overlay {
+    color: #222 !important;
+}
+
+body.light-theme #sidebar h3 {
+    color: #222;
+    border-bottom-color: #ccc;
+}
+
+body.light-theme #user-list .user-item,
+body.light-theme #username-prefix {
+    filter: brightness(0.45) saturate(2);
+}
+
+body.light-theme .date-divider {
+    color: #999;
+}
+
+body.light-theme .date-divider::before,
+body.light-theme .date-divider::after {
+    border-bottom-color: #ccc;
+}
+
+body.light-theme .notification {
+    background: rgba(240, 240, 240, 0.95);
+    color: #222;
+    border-color: #ccc;
+}
+
+body.light-theme .user-item {
+    border-bottom-color: #ddd;
+}
+
+body.light-theme a:link {
+    color: #2980b9;
+}
+
+body.light-theme a:visited {
+    color: #2471a3;
+}
+
+body.light-theme a:hover {
+    color: #1a5276;
+}
+
+body.light-theme a:active {
+    color: #000;
+}
+
+/* High-contrast mention/user colors for light theme */
+body.light-theme .message span[style*="color:"] {
+    filter: brightness(0.45) saturate(2);
+}
+
+/* Dark theme: highlight starts bright, settles to gray */
 @keyframes highlightFade {
     0% { background-color: rgba(255, 255, 255, 0.2); }
-    100% { background-color: transparent; }
+    100% { background-color: rgba(80, 80, 80, 0.4); }
+}
+
+/* Light theme: highlight starts dark gray, settles to lighter gray */
+@keyframes highlightFadeLight {
+    0% { background-color: rgba(120, 120, 120, 0.35); }
+    100% { background-color: rgba(200, 200, 200, 0.4); }
 }
