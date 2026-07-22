@@ -251,12 +251,12 @@ function processStructuredMessage(line, match, anchor, prepend) {
         if (refMatch) {
             const [_, refChannel, refDate, refTimeHM, refTimeS, refFrom] = refMatch;
             if (effectiveDate === refDate && timeHM === refTimeHM && timeS === refTimeS && from === refFrom) {
-                div.classList.add('shared-focus');
+                div.classList.add('focused');
                 setTimeout(() => div.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
                 
                 // Remove focus on interaction
                 const removeFocus = () => {
-                    div.classList.remove('shared-focus');
+                    div.classList.remove('focused');
                     chat.removeEventListener('scroll', removeFocus);
                     chat.removeEventListener('click', removeFocus);
                     const msgInput = document.getElementById('message-input');
