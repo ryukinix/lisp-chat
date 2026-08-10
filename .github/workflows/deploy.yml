@@ -1,0 +1,52 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and Publish Image
+        run: make docker-publish
+
+      - name: Configure SSH and Cloudflare Tunnel
+        run: |
+          mkdir -p ~/.ssh
+          
+          # Setup private key
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          
+          # Install cloudflared
+          curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+          sudo dpkg -i cloudflared.deb
+          
+          # Setup SSH configuration (using env vars explicitly to avoid bash substitution issues in file creation)
+          cat << 'SSHCFG' > ~/.ssh/config
+          Host *
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+          
+          Host ${{ secrets.DEPLOY_HOST }}
+            User ${{ secrets.DEPLOY_USER }}
+            ProxyCommand cloudflared access ssh --hostname %h --id ${{ secrets.TUNNEL_SERVICE_TOKEN_ID }} --secret ${{ secrets.TUNNEL_SERVICE_TOKEN_SECRET }}
+          SSHCFG
+          
+          chmod 600 ~/.ssh/config
+
+      - name: Trigger Remote Deployment
+        run: |
+          ssh ${{ secrets.DEPLOY_HOST }} 'deploy apply lisp-chat'

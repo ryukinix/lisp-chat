@@ -1,0 +1,59 @@
+name: Deploy to QA
+
+on:
+  workflow_run:
+    workflows: ["Check"]
+    types:
+      - completed
+  workflow_dispatch:
+
+jobs:
+  deploy-qa:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch != 'master' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR Source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and Publish QA Image
+        run: |
+          # Fetch the full repo to get tags matching the current commit
+          git fetch --prune --unshallow --tags
+          make docker-publish-qa
+
+      - name: Configure SSH and Cloudflare Tunnel
+        run: |
+          mkdir -p ~/.ssh
+          
+          # Setup private key
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          
+          # Install cloudflared
+          curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+          sudo dpkg -i cloudflared.deb
+          
+          # Setup SSH configuration (using env vars explicitly to avoid bash substitution issues in file creation)
+          cat << 'SSHCFG' > ~/.ssh/config
+          Host *
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+          
+          Host ${{ secrets.DEPLOY_HOST }}
+            User ${{ secrets.DEPLOY_USER }}
+            ProxyCommand cloudflared access ssh --hostname %h --id ${{ secrets.TUNNEL_SERVICE_TOKEN_ID }} --secret ${{ secrets.TUNNEL_SERVICE_TOKEN_SECRET }}
+          SSHCFG
+          
+          chmod 600 ~/.ssh/config
+
+      - name: Trigger Remote QA Deployment
+        run: |
+          ssh ${{ secrets.DEPLOY_HOST }} 'deploy apply lisp-chat-qa'
