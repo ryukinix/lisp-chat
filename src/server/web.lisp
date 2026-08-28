@@ -54,7 +54,7 @@
         (lambda (message)
           ;; (debug-format t "Received WS message: ~s~%" message)
           (if (null client)
-              (let ((name (string-trim '(#\Space #\Return #\Newline) message)))
+              (multiple-value-bind (name modified-p) (normalize-username message)
                 (if (zerop (length name))
                     (send ws "> Name cannot be empty. Try again: ")
                     (let* ((history-channel (gethash name *user-channels*))
@@ -71,6 +71,10 @@
                       (bt:with-lock-held (*client-lock*)
                         (push client *clients*))
                       (user-joined-message client)
+                      (when modified-p
+                        (send-message client
+                                      (command-message (format nil "Your nickname was normalized to: @~a" name)
+                                                       :client client)))
                       (recalculate-client-latency client)
                       (debug-format t "New web-socket user ~a@~a~%" name (client-address client)))))
               (let ((response (lisp-chat/commands:call-command client message)))

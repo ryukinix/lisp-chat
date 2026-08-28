@@ -136,6 +136,24 @@ Returns the line as a string, or NIL if it timed out."
       "tester-ws"
       '(:expect "The user @tester-ws joined to the party!"))))
 
+(define-test websocket-normalized-username-notification
+  :parent integration-tests
+  (with-websocket-client (client messages)
+    (ws-interaction client (lambda () messages)
+      '(:expect "Type your username")
+      "{\"jsonrpc\":\"2.0\",\"id\":1}"
+      '(:expect "Your nickname was normalized to: @jsonrpc20id1")
+      '(:expect "The user @jsonrpc20id1 joined to the party!"))))
+
+(define-test tcp-normalized-username-notification
+  :parent integration-tests
+  (with-tcp-client (stream)
+    (tcp-interaction stream
+      '(:expect "> Type your username: ")
+      "user with spaces"
+      '(:expect "Your nickname was normalized to: @user-with-spaces")
+      '(:expect "The user @user-with-spaces joined to the party!"))))
+
 (define-test websocket-ping-command
   :parent integration-tests
   (with-websocket-client (client messages)

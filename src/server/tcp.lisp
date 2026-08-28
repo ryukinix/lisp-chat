@@ -32,7 +32,9 @@
   (let ((client-stream (usocket:socket-stream connection)))
     (write-line "> Type your username: " client-stream)
     (finish-output client-stream)
-    (let* ((name (read-line client-stream))
+    (let* ((raw-name (read-line client-stream))
+           (name (normalize-username raw-name))
+           (modified-p (not (string= raw-name name)))
            (history-channel (gethash name *user-channels*))
            (active-channel (or history-channel "#general"))
            (client (make-client :name name
@@ -47,8 +49,14 @@
                       (client-address client))
         (push client *clients*))
       (user-joined-message client)
+      (when modified-p
+        (send-message client
+                      (command-message (format nil "Your nickname was normalized to: @~a" name)
+                                       :client client)))
       (when history-channel
-        (send-message client (command-message (format nil "You were restored to channel ~a" active-channel) :client client)))
+        (send-message client
+                      (command-message (format nil "You were restored to channel ~a" active-channel)
+                                       :client client)))
       (bt:make-thread
          (lambda () (client-reader client))
          :name (format nil "reader-thread: ~a" (client-name client))))))

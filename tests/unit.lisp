@@ -63,6 +63,37 @@
   (is string= "#general" (server:normalize-channel "%23"))
   (is eq nil (server:normalize-channel nil)))
 
+(define-test username-normalization
+  :parent unit-tests
+  (multiple-value-bind (name modified-p) (server:normalize-username "john_doe")
+    (is string= "john_doe" name)
+    (false modified-p))
+  (multiple-value-bind (name modified-p) (server:normalize-username "john doe")
+    (is string= "john-doe" name)
+    (true modified-p))
+  (multiple-value-bind (name modified-p) (server:normalize-username "  john doe  ")
+    (is string= "john-doe" name)
+    (true modified-p))
+  (multiple-value-bind (name modified-p) (server:normalize-username "{\"jsonrpc\":\"2.0\",\"id\":1}")
+    (is string= "jsonrpc20id1" name)
+    (true modified-p))
+  (multiple-value-bind (name modified-p) (server:normalize-username "this_is_a_very_long_username_that_exceeds_limit")
+    (is string= "this_is_a_very_long_" name)
+    (is equal 20 (length name))
+    (true modified-p))
+  (multiple-value-bind (name modified-p) (server:normalize-username "jõão_vítor")
+    (is string= "joao_vitor" name)
+    (true modified-p))
+  (multiple-value-bind (name modified-p) (server:normalize-username "!@#$%^&*()")
+    (is string= "anonymous" name)
+    (true modified-p))
+  (multiple-value-bind (name modified-p) (server:normalize-username "")
+    (is string= "anonymous" name)
+    (true modified-p))
+  (multiple-value-bind (name modified-p) (server:normalize-username nil)
+    (is string= "anonymous" name)
+    (true modified-p)))
+
 (define-test message-references
   :parent unit-tests
   (server:reset-server)

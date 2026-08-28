@@ -330,14 +330,17 @@
   "/nick changes the server:client-name given a NEW-NICK which should be a string"
   (declare (ignorable args))
   (if new-nick
-      (progn
+      (multiple-value-bind (normalized-nick modified-p)
+          (server:normalize-username new-nick)
         (server:push-message "@command"
                       (format nil "User @~a is now known as @~a"
                               (server:client-name client)
-                              new-nick)
+                              normalized-nick)
                       :channel (server:client-active-channel client))
-        (setf (server:client-name client) new-nick)
-        (server:command-message (format nil "Your new nick is: @~a" new-nick) :client client))
+        (setf (server:client-name client) normalized-nick)
+        (if modified-p
+            (server:command-message (format nil "Your new nick was normalized to: @~a" normalized-nick) :client client)
+            (server:command-message (format nil "Your new nick is: @~a" normalized-nick) :client client)))
       (server:command-message (format nil "/nick NEW-NICKNAME") :client client)))
 
 (define-command /dm (client &optional (username nil) msg-content)

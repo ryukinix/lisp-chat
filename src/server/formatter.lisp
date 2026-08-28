@@ -32,6 +32,45 @@
           (values-list (message-time message)))
     (format nil "~4d-~2,'0d-~2,'0d ~2,'0d:~2,'0d:~2,'0d" year month day hour minute second)))
 
+(defun clean-username-char (c)
+  "Clean a single character for username normalization."
+  (let ((down (char-downcase c)))
+    (cond
+      ((char= c #\Space) #\-)
+      ((member down '(#\à #\á #\â #\ã #\ä #\å)) #\a)
+      ((member down '(#\è #\é #\ê #\ë)) #\e)
+      ((member down '(#\ì #\í #\î #\ï)) #\i)
+      ((member down '(#\ò #\ó #\ô #\õ #\ö)) #\o)
+      ((member down '(#\ù #\ú #\û #\ü)) #\u)
+      ((char= down #\ç) #\c)
+      ((char= down #\ñ) #\n)
+      ((or (and (char>= c #\a) (char<= c #\z))
+           (and (char>= c #\A) (char<= c #\Z))
+           (and (char>= c #\0) (char<= c #\9))
+           (char= c #\_)
+           (char= c #\-))
+       c)
+      (t nil))))
+
+(defun normalize-username (username)
+  "Normalize USERNAME: truncate to 20 chars, remove special symbols/quotes/commas,
+   allow only letters, digits, underscores, and hyphens.
+   Replaces whitespace with hyphens and trims leading/trailing whitespace.
+   Returns (values normalized-username modified-p)."
+  (if (null username)
+      (values "anonymous" t)
+      (let* ((raw-trimmed (string-trim '(#\Space #\Return #\Newline #\Tab) username))
+             (cleaned (make-array (length raw-trimmed) :element-type 'character :fill-pointer 0)))
+        (loop for char across raw-trimmed
+              for new-char = (clean-username-char char)
+              when new-char do (vector-push new-char cleaned))
+        (let* ((cleaned-str (coerce cleaned 'string))
+               (final-name (if (zerop (length cleaned-str))
+                               "anonymous"
+                               (subseq cleaned-str 0 (min 20 (length cleaned-str)))))
+               (modified-p (not (string= username final-name))))
+          (values final-name modified-p)))))
+
 (defun clean-channel-char (c)
   (let ((down (char-downcase c)))
     (cond

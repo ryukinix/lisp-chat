@@ -62,7 +62,8 @@
            #:reset-server
            #:split
            #:startswith
-           #:normalize-channel))
+           #:normalize-channel
+           #:normalize-username))
 
 (defpackage #:lisp-chat/commands
   (:use #:cl)
