@@ -48,11 +48,11 @@
                       (client-name client)
                       (client-address client))
         (push client *clients*))
-      (user-joined-message client)
       (when modified-p
         (send-message client
                       (command-message (format nil "Your nickname was normalized to: @~a" name)
                                        :client client)))
+      (user-joined-message client)
       (when history-channel
         (send-message client
                       (command-message (format nil "You were restored to channel ~a" active-channel)

@@ -70,11 +70,11 @@
                       (setf (gethash name *user-channels*) active-channel)
                       (bt:with-lock-held (*client-lock*)
                         (push client *clients*))
-                      (user-joined-message client)
                       (when modified-p
                         (send-message client
                                       (command-message (format nil "Your nickname was normalized to: @~a" name)
                                                        :client client)))
+                      (user-joined-message client)
                       (recalculate-client-latency client)
                       (debug-format t "New web-socket user ~a@~a~%" name (client-address client)))))
               (let ((response (lisp-chat/commands:call-command client message)))
