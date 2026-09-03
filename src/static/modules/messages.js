@@ -26,9 +26,10 @@ function checkChatIsAtBottom() {
 function processServerMessage(content, isRealTime) {
     const isJoin = content.includes("joined to the party");
     const isExit = content.includes("exited from the party");
-    const isNickChange = content.includes("Your new nick is");
+    const isNickChange = content.includes("Your new nick is") || content.includes("Your new nick was normalized to");
+    const isNickNormalized = content.includes("Your nickname was normalized to");
     const isSessionId = content.includes("Your session ID is:");
-    const isSystemMessage = isJoin || isExit || isNickChange || isSessionId;
+    const isSystemMessage = isJoin || isExit || isNickChange || isNickNormalized || isSessionId;
     const isUsersListResponse = content.startsWith("users: ");
 
     if (isSessionId) {
@@ -39,10 +40,28 @@ function processServerMessage(content, isRealTime) {
         }
     }
 
+    if (isNickNormalized) {
+        const normMatch = content.match(/Your nickname was normalized to: @(\S+)/);
+        if (normMatch && auth.getPendingLogin()) {
+            auth.setUsername(normMatch[1].trim());
+            auth.setPendingLogin(false);
+            auth.updateUsernamePrefix();
+        }
+    }
+
     if (isNickChange) {
-        const nickMatch = content.match(/Your new nick is: @(.*)/);
+        const nickMatch = content.match(/Your new nick (?:is|was normalized to): @(\S+)/);
         if (nickMatch) {
             auth.setUsername(nickMatch[1].trim());
+            auth.updateUsernamePrefix();
+        }
+    }
+
+    if (isJoin) {
+        const joinMatch = content.match(/The user @(\S+) joined to the party/);
+        if (joinMatch && auth.getPendingLogin()) {
+            auth.setUsername(joinMatch[1].trim());
+            auth.setPendingLogin(false);
             auth.updateUsernamePrefix();
         }
     }

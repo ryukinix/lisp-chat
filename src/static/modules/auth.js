@@ -6,6 +6,7 @@ import history from './history.js';
 let username = utils.getCookie("username") || "";
 let loggedIn = false;
 let sessionId = null;
+let pendingLogin = false;
 
 function getSessionId() { return sessionId; }
 function setSessionId(id) { sessionId = id; }
@@ -20,6 +21,14 @@ function getLoggedIn() {
 
 function setLoggedIn(value) {
     loggedIn = value;
+}
+
+function getPendingLogin() {
+    return pendingLogin;
+}
+
+function setPendingLogin(value) {
+    pendingLogin = value;
 }
 
 function setUsername(value) {
@@ -89,6 +98,7 @@ function performLogin(loginUsername) {
     if (loginUsername) {
         setUsername(loginUsername);
     }
+    pendingLogin = true;
     network.getWs().send(username);
     setLoggedIn(true);
     updateUsernamePrefix();
@@ -120,6 +130,7 @@ function handleAuthHandshake(line) {
             performLogin();
         } else {
             setLoggedIn(false);
+            setPendingLogin(false);
             updateUsernamePrefix();
             showLoginPanel();
         }
@@ -127,6 +138,7 @@ function handleAuthHandshake(line) {
     }
     if (line === "> Name cannot be empty. Try again: ") {
         setLoggedIn(false);
+        setPendingLogin(false);
         updateUsernamePrefix();
         input.placeholder = "Name cannot be empty. Try your username: ";
         return true;
@@ -137,5 +149,5 @@ function handleAuthHandshake(line) {
 export default {
     getUsername, getLoggedIn, setLoggedIn, setUsername, updateUsernamePrefix,
     showLoginPanel, hideLoginPanel, handleAuthHandshake, performLogin,
-    getSessionId, setSessionId
+    getSessionId, setSessionId, getPendingLogin, setPendingLogin
 };

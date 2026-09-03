@@ -380,10 +380,10 @@
      (let ((joined-user (subseq content 10 (search " joined" content))))
        (pushnew joined-user (users model) :test #'string=)
        (update-users-list model)
-       ;; Check if it's us joining
+       ;; Check if it's us joining: the first join message received after login represents
+       ;; our accepted (and normalized) username from the server.
        (when (and (null (username model))
-                  (pending-username model)
-                  (string= joined-user (pending-username model)))
+                  (pending-username model))
          (setf (username model) joined-user
                (pending-username model) nil)
          (setf (ti:textinput-prompt (input model))
@@ -402,8 +402,10 @@
             (users-list (cl-ppcre:split ", " list-str)))
        (setf (users model) users-list)
        (update-users-list model)))
-    ;; /nick response
-    ((and (string= user "@server") (search "Your new nick is: @" content))
+    ;; /nick response (supports both standard and normalized notices)
+    ((and (string= user "@server")
+          (or (search "Your new nick is: @" content)
+              (search "Your new nick was normalized to: @" content)))
      (let ((my-name (subseq content (1+ (search "@" content)))))
        (setf (users model)
              (remove (username model) (users model) :test #'string=))
@@ -411,7 +413,11 @@
        (setf (ti:textinput-prompt (input model))
              (render-user-prefix my-name))
        (pushnew my-name (users model) :test #'string=)
-       (recalculate-layout model)))))
+       (recalculate-layout model)))
+    ;; Username normalization notice on login
+    ((and (string= user "@server") (search "Your nickname was normalized to: @" content))
+     (let ((normalized-name (subseq content (1+ (search "@" content)))))
+       (setf (pending-username model) normalized-name)))))
 
 (defun format-chat-message (time user content)
   "Returns a styled string for displaying a chat message."

@@ -85,6 +85,7 @@ function connect(onMessageCallback) {
         notifications.showNotification("Connected to server.");
         reconnectAttempts = 0;
         auth.setLoggedIn(false);
+        auth.setPendingLogin(false);
         auth.updateUsernamePrefix();
     };
 
@@ -96,6 +97,7 @@ function connect(onMessageCallback) {
         if (ws && ws !== event.target) return;
 
         auth.setLoggedIn(false);
+        auth.setPendingLogin(false);
         auth.updateUsernamePrefix();
         if (fetchUsersInterval) {
             keepAliveWorker.postMessage('stop');

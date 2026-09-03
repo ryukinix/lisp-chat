@@ -252,10 +252,12 @@
                 (let ((joined-user (match-string 1 content)))
                   (cl-pushnew joined-user lisp-chat-users :test #'string=)
                   (lisp-chat--update-header-line)
+                  ;; Check if it's us joining: the first join message received after login represents
+                  ;; our accepted (and normalized) username from the server.
                   (when (and (null lisp-chat-username)
-                             lisp-chat--pending-username
-                             (string= joined-user lisp-chat--pending-username))
+                             lisp-chat--pending-username)
                     (setq lisp-chat-username joined-user)
+                    (setq lisp-chat--pending-username nil)
                     (lisp-chat--update-prompt)
                     (lisp-chat-send "/users")
                     (lisp-chat-send "/log 100"))))
@@ -266,13 +268,16 @@
                ((string-prefix-p "users: " content)
                 (setq lisp-chat-users (split-string (substring content 7) ", " t))
                 (lisp-chat--update-header-line))
-               ((string-match "Your new nick is: @\\(.*\\)" content)
+               ((string-match "Your new nick \\(?:is\\|was normalized to\\): @\\(.*\\)" content)
                 (let ((new-nick (match-string 1 content)))
                   (setq lisp-chat-users (delete lisp-chat-username lisp-chat-users))
                   (setq lisp-chat-username new-nick)
                   (cl-pushnew new-nick lisp-chat-users :test #'string=)
                   (lisp-chat--update-header-line)
-                  (lisp-chat--update-prompt)))))
+                  (lisp-chat--update-prompt)))
+               ((string-match "Your nickname was normalized to: @\\(.*\\)" content)
+                (let ((norm-nick (match-string 1 content)))
+                  (setq lisp-chat--pending-username norm-nick)))))
 
             (let ((is-hidden-pong (and (string= user "@server") (string-match "pong (system)" content)))
                   (is-hidden-users (and (string= user "@server") (string-prefix-p "users: " content))))
