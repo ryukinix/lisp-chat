@@ -64,8 +64,18 @@ docker-publish: docker-build
 	docker tag $(DOCKER_IMG) $(PUBLIC_IMG)
 	docker push $(PUBLIC_IMG)
 
+docker-publish-qa: docker-build
+	docker tag $(DOCKER_IMG) ryukinix/$(DOCKER_IMG):qa
+	docker push ryukinix/$(DOCKER_IMG):qa
+
 deploy: docker-publish
 	ssh starfox -t deploy apply lisp-chat
+
+deploy-qa: docker-publish-qa
+	ssh starfox -t deploy apply lisp-chat-qa
+
+deploy-remote:
+	ssh starfox -t "cd Desktop/workspace/lisp-chat && git fetch && git reset --hard origin/$(shell git rev-parse --abbrev-ref HEAD) && make deploy"
 
 dep-tree:
 	ros -s asdf-dependency-graph -e '(asdf-dependency-graph:generate "tree.png" "lisp-chat/server")'
