@@ -358,3 +358,19 @@
              (setf lisp-chat/server::*push-workers-running* nil)))
       (setf (symbol-function 'lisp-chat/server::deliver-push-job) orig-deliver)
       (server:stop-push-workers))))
+
+(define-test atomic-sexp-persistence-leaves-no-tmp
+  :parent push-notification-tests
+  (let ((path "atomic-test.sexp")
+        (tmp-path "atomic-test.sexp.tmp"))
+    (unwind-protect
+         (progn
+           (lisp-chat/server::write-sexp-atomically path '(("alice" . ("sid-1"))))
+           (true (probe-file path))
+           (false (probe-file tmp-path))
+           (lisp-chat/server::write-sexp-atomically path '(("alice" . ("sid-1" "sid-2"))))
+           (false (probe-file tmp-path))
+           (with-open-file (in path :direction :input)
+             (is equal '(("alice" . ("sid-1" "sid-2"))) (read in))))
+      (when (probe-file path) (delete-file path))
+      (when (probe-file tmp-path) (delete-file tmp-path)))))

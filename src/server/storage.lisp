@@ -36,16 +36,30 @@
         (error (e) (debug-format t "Error loading persistence: ~a~%" e))))))
 
 (defun write-sexp-atomically (path data)
-  "Write DATA readably to PATH via a temporary file and atomic rename."
-  (let ((tmp-path (format nil "~a.tmp" path)))
-    (with-open-file (out tmp-path
-                         :direction :output
-                         :if-exists :supersede
-                         :if-does-not-exist :create)
-      (let ((*print-readably* t))
-        (print data out)
-        (finish-output out)))
-    (rename-file tmp-path path)))
+  "Write DATA readably to PATH via a temporary file, fsync, and atomic rename."
+  (let ((tmp-path (format nil "~a.tmp" (namestring path)))
+        (renamed nil))
+    (unwind-protect
+         (progn
+           (with-open-file (out tmp-path
+                                :direction :output
+                                :if-exists :supersede
+                                :if-does-not-exist :create)
+             (let ((*print-readably* t))
+               (print data out)
+               (finish-output out))
+             #+sbcl
+             (let ((fsync-fn (find-symbol "FSYNC" :sb-posix)))
+               (when (and fsync-fn (fboundp fsync-fn))
+                 (handler-case
+                     (funcall fsync-fn (sb-sys:fd-stream-fd out))
+                   (error () nil)))))
+           (rename-file tmp-path path)
+           (setf renamed t))
+      (when (and (not renamed) (probe-file tmp-path))
+        (handler-case
+            (delete-file tmp-path)
+          (file-error () nil))))))
 
 (defun load-or-create-vapid-keys ()
   "Initialize VAPID keys from environment variables, config:*vapid-keys-file*,
