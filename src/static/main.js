@@ -9,14 +9,22 @@ import history from './modules/history.js';
 import reply from "./modules/reply.js";
 import settings from './modules/settings.js';
 import users from './modules/users.js';
+import push from './modules/push.js';
 
-function updatePageTitle() {
+function getCurrentChannelName() {
     let channel = window.location.search.substring(1).split('&')[0];
     if (!channel || channel.includes('=')) {
         channel = "general";
+    } else {
+        try { channel = decodeURIComponent(channel); } catch (e) { /* keep raw */ }
     }
-    const channelName = channel.replace(/^#/, '');
+    return channel.replace(/^#/, '');
+}
+
+function updatePageTitle() {
+    const channelName = getCurrentChannelName();
     document.title = `Lisp Chat Web: #${channelName}`;
+    push.clearChannelNotifications(channelName);
 }
 
 const form = document.getElementById("input-area");
@@ -139,6 +147,15 @@ updatePageTitle();
 history.initHistoryLoading();
 autocomplete.initAutocomplete(input);
 network.connect(messages.addMessage);
+
+window.addEventListener('focus', () => {
+    push.clearChannelNotifications(getCurrentChannelName());
+});
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+        push.clearChannelNotifications(getCurrentChannelName());
+    }
+});
 
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('message', event => {

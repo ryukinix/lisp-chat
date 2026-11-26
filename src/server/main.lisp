@@ -20,8 +20,9 @@
            (setf connection-thread (bt:make-thread (lambda () (connection-handler socket-server))
                                                 :name "Connection handler"))
            (setf broadcast-thread (bt:make-thread #'message-broadcast
-                                               :name "Message broadcast"))
+                                              :name "Message broadcast"))
            (bt:make-thread #'persistence-worker :name "Persistence worker")
+           (start-push-workers)
            (setf web-handler (clackup *app*
                                       :debug nil
                                       :address config:*host*
@@ -44,7 +45,8 @@
           (client-delete client))
         (when (and broadcast-thread (bt:thread-alive-p broadcast-thread))
           (debug-format t "Stopping message broadcast...~%")
-          (bt:destroy-thread broadcast-thread))))))
+          (bt:destroy-thread broadcast-thread))
+        (stop-push-workers)))))
 
 (defun main (&key (host config:*host*) (port config:*port*) (should-quit t))
   "Main entrypoint to start the tcp-server and http server (with websockets)"

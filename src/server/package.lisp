@@ -58,6 +58,10 @@
            #:search-message
            #:push-message
            #:push-notification
+           #:*push-worker-count*
+           #:*push-queue-max-size*
+           #:start-push-workers
+           #:stop-push-workers
            #:register-user-session
            #:subscribe-push-session
            #:unsubscribe-push-session

@@ -27,6 +27,46 @@ function keysEqual(a, b) {
     return true;
 }
 
+const PUSH_META_CACHE = 'lisp-chat-push-meta';
+const PUSH_SESSION_KEY = '/__lisp_chat_push_session__';
+
+async function savePushSessionMeta(sessionId) {
+    if (typeof caches === 'undefined' || !sessionId) return;
+    try {
+        const cache = await caches.open(PUSH_META_CACHE);
+        await cache.put(
+            PUSH_SESSION_KEY,
+            new Response(JSON.stringify({ sessionId }), {
+                headers: { 'Content-Type': 'application/json' }
+            })
+        );
+    } catch (e) {
+        // Ignore Cache API errors (e.g., private browsing restrictions)
+    }
+}
+
+async function clearPushSessionMeta() {
+    if (typeof caches === 'undefined') return;
+    try {
+        const cache = await caches.open(PUSH_META_CACHE);
+        await cache.delete(PUSH_SESSION_KEY);
+    } catch (e) {
+        // Ignore Cache API errors
+    }
+}
+
+async function clearChannelNotifications(channel) {
+    if (!isPushSupported() || !channel) return;
+    try {
+        const reg = await navigator.serviceWorker.ready;
+        const normalized = channel.startsWith('#') ? channel : '#' + channel;
+        const notifications = await reg.getNotifications({ tag: 'lisp-chat-' + normalized });
+        notifications.forEach((n) => n.close());
+    } catch (e) {
+        // Ignore notification cleanup errors
+    }
+}
+
 async function getActiveRegistration() {
     await navigator.serviceWorker.register('./sw.js');
     return navigator.serviceWorker.ready;
@@ -93,6 +133,7 @@ async function subscribeAndRegister(requestPermissionIfDefault = false) {
         if (!resp.ok) {
             return { ok: false, reason: 'server-error' };
         }
+        await savePushSessionMeta(sessionId);
         return { ok: true };
     } catch (err) {
         console.error('Web push setup failed:', err);
@@ -129,6 +170,7 @@ async function disablePushNotifications() {
             body: JSON.stringify(endpoint ? { endpoint } : {}),
             headers: { 'Content-Type': 'application/json' }
         });
+        await clearPushSessionMeta();
         return { ok: true };
     } catch (err) {
         console.error('Web push unsubscribe failed:', err);
@@ -141,5 +183,6 @@ export default {
     urlBase64ToUint8Array,
     enablePushNotifications,
     syncPushSubscription,
-    disablePushNotifications
+    disablePushNotifications,
+    clearChannelNotifications
 };

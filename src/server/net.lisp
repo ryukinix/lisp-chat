@@ -28,8 +28,130 @@
     (with-output-to-string (s)
       (yason:encode ht s))))
 
+(defparameter *push-worker-count* 4
+  "Number of dedicated worker threads for sending Web Push notifications.")
+
+(defparameter *push-queue-max-size* 256
+  "Maximum number of pending Web Push jobs queued before dropping new jobs.")
+
+(defparameter *push-ttl-seconds* 86400
+  "Default Web Push TTL (24 hours) so push services retain messages for offline devices.")
+
+(defparameter *push-urgency* "high"
+  "Default Web Push Urgency header for mentions and replies.")
+
+(defstruct push-job
+  session-id
+  sub-json
+  payload
+  vapid-public-key
+  vapid-private-key
+  vapid-subject)
+
+(defvar *push-queue-head* nil)
+(defvar *push-queue-tail* nil)
+(defvar *push-queue-size* 0)
+(defvar *push-queue-lock* (bt:make-lock "push-queue-lock"))
+(defvar *push-queue-semaphore* (bt:make-semaphore :name "push-queue-semaphore"))
+(defvar *push-workers* nil)
+(defvar *push-workers-lock* (bt:make-lock "push-workers-lock"))
+(defvar *push-workers-running* nil)
+
+(defun deliver-push-job (job)
+  "Send a single PUSH-JOB via Web Push, cleaning up expired subscriptions (404/410)."
+  (handler-case
+      (cl-web-push:send-push-notification
+       (push-job-sub-json job)
+       (push-job-payload job)
+       (push-job-vapid-public-key job)
+       (push-job-vapid-private-key job)
+       (push-job-vapid-subject job)
+       :ttl *push-ttl-seconds*
+       :urgency *push-urgency*)
+    (dex:http-request-gone ()
+      (unsubscribe-push-session (push-job-session-id job) (push-job-sub-json job)))
+    (dex:http-request-not-found ()
+      (unsubscribe-push-session (push-job-session-id job) (push-job-sub-json job)))
+    (error (e)
+      (debug-format t "[warn] push notification failed for session ~a: ~a~%"
+                    (push-job-session-id job) e))))
+
+(defun dequeue-push-job ()
+  "Pop the oldest PUSH-JOB from the FIFO queue, or NIL if empty."
+  (bt:with-lock-held (*push-queue-lock*)
+    (when *push-queue-head*
+      (let ((job (car *push-queue-head*)))
+        (setf *push-queue-head* (cdr *push-queue-head*))
+        (unless *push-queue-head*
+          (setf *push-queue-tail* nil))
+        (decf *push-queue-size*)
+        job))))
+
+(defun push-worker-loop ()
+  "Worker thread loop that consumes and delivers queued Web Push jobs."
+  (loop
+    (bt:wait-on-semaphore *push-queue-semaphore*)
+    (let ((job (dequeue-push-job)))
+      (cond
+        ((null job)
+         (unless *push-workers-running*
+           (return)))
+        (t
+         (handler-case
+             (deliver-push-job job)
+           (error (e)
+             (debug-format t "[warn] push worker error: ~a~%" e))))))))
+
+(defun start-push-workers (&optional (count *push-worker-count*))
+  "Start up to COUNT push notification worker threads (idempotent)."
+  (bt:with-lock-held (*push-workers-lock*)
+    (setf *push-workers-running* t)
+    (setf *push-workers* (remove-if-not #'bt:thread-alive-p *push-workers*))
+    (loop for idx from (length *push-workers*) below count
+          do (push (bt:make-thread #'push-worker-loop
+                                   :name (format nil "Push worker ~a" (1+ idx)))
+                   *push-workers*))
+    (length *push-workers*)))
+
+(defun stop-push-workers ()
+  "Gracefully stop all push notification worker threads."
+  (let ((workers nil))
+    (bt:with-lock-held (*push-workers-lock*)
+      (setf *push-workers-running* nil)
+      (setf workers *push-workers*)
+      (setf *push-workers* nil))
+    (let ((alive (remove-if-not #'bt:thread-alive-p workers)))
+      (dotimes (i (length alive))
+        (declare (ignore i))
+        (bt:signal-semaphore *push-queue-semaphore*))
+      (dolist (w alive)
+        (handler-case
+            (bt:join-thread w)
+          (error () nil))))))
+
+(defun enqueue-push-job (job)
+  "Enqueue JOB into the bounded push worker queue. Returns T if queued, NIL if dropped."
+  (unless *push-workers-running*
+    (start-push-workers))
+  (let ((enqueued nil))
+    (bt:with-lock-held (*push-queue-lock*)
+      (if (< *push-queue-size* *push-queue-max-size*)
+          (let ((cell (list job)))
+            (if *push-queue-tail*
+                (setf (cdr *push-queue-tail*) cell
+                      *push-queue-tail* cell)
+                (setf *push-queue-head* cell
+                      *push-queue-tail* cell))
+            (incf *push-queue-size*)
+            (setf enqueued t))
+          (debug-format t "[warn] push queue full (~a), dropping notification for session ~a~%"
+                        *push-queue-max-size* (push-job-session-id job))))
+    (when enqueued
+      (bt:signal-semaphore *push-queue-semaphore*))
+    enqueued))
+
 (defun push-notification (session-id from content &key (channel "#general"))
-  "Push a web-push notification for SESSION-ID from FROM as CONTENT."
+  "Enqueue Web Push notifications for SESSION-ID from FROM as CONTENT."
   (let ((subs (bt:with-lock-held (*push-subscriptions-lock*)
                 (loop for s in (gethash session-id *push-subscriptions*)
                       when (stringp s) collect s))))
@@ -38,24 +160,14 @@
             (pub *vapid-public-key*)
             (priv *vapid-private-key*)
             (subj *vapid-subject*))
-        (bt:make-thread
-         (lambda ()
-           (dolist (sub-json subs)
-             (handler-case
-                 (cl-web-push:send-push-notification
-                  sub-json
-                  payload
-                  pub
-                  priv
-                  subj)
-               (dex:http-request-gone ()
-                 (unsubscribe-push-session session-id sub-json))
-               (dex:http-request-not-found ()
-                 (unsubscribe-push-session session-id sub-json))
-               (error (e)
-                 (debug-format t "[warn] push notification failed for session ~a: ~a~%"
-                               session-id e)))))
-         :name (format nil "web-push: ~a" session-id))))))
+        (dolist (sub-json subs)
+          (enqueue-push-job
+           (make-push-job :session-id session-id
+                          :sub-json sub-json
+                          :payload payload
+                          :vapid-public-key pub
+                          :vapid-private-key priv
+                          :vapid-subject subj)))))))
 
 (defun user-joined-message (client)
   "Create a user joined message for the given client."

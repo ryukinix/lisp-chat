@@ -308,3 +308,53 @@
         (delete-file config:*vapid-keys-file*))
       (setf server:*vapid-public-key* saved-pub
             server:*vapid-private-key* saved-priv))))
+
+(define-test push-worker-pool-lifecycle-and-bounded-queue
+  :parent push-notification-tests
+  (let ((delivered nil)
+        (delivered-lock (bt:make-lock "test-delivered-lock"))
+        (orig-deliver (symbol-function 'lisp-chat/server::deliver-push-job)))
+    (unwind-protect
+         (progn
+           (server:stop-push-workers)
+           ;; Mock delivery to capture delivered jobs without network calls
+           (setf (symbol-function 'lisp-chat/server::deliver-push-job)
+                 (lambda (job)
+                   (bt:with-lock-held (delivered-lock)
+                     (push (lisp-chat/server::push-job-session-id job) delivered))))
+           ;; Start 2 workers (idempotent)
+           (is = 2 (server:start-push-workers 2))
+           (is = 2 (server:start-push-workers 2))
+           ;; Enqueue 5 jobs and wait for worker pool to drain them
+           (dotimes (i 5)
+             (true (lisp-chat/server::enqueue-push-job
+                    (lisp-chat/server::make-push-job
+                     :session-id (format nil "sid-~a" i)
+                     :sub-json "{}"
+                     :payload "{}"
+                     :vapid-public-key "pub"
+                     :vapid-private-key "priv"
+                     :vapid-subject "mailto:test@example.com"))))
+           (loop repeat 40
+                 while (< (bt:with-lock-held (delivered-lock) (length delivered)) 5)
+                 do (sleep 0.05))
+           (is = 5 (bt:with-lock-held (delivered-lock) (length delivered)))
+           ;; Stop workers cleanly
+           (server:stop-push-workers)
+           (is eq nil lisp-chat/server::*push-workers*)
+           ;; Verify bounded queue drops when full (with workers paused)
+           (let ((server:*push-queue-max-size* 2))
+             (setf lisp-chat/server::*push-workers-running* t)
+             (true (lisp-chat/server::enqueue-push-job
+                    (lisp-chat/server::make-push-job :session-id "q1")))
+             (true (lisp-chat/server::enqueue-push-job
+                    (lisp-chat/server::make-push-job :session-id "q2")))
+             (false (lisp-chat/server::enqueue-push-job
+                     (lisp-chat/server::make-push-job :session-id "q3")))
+             ;; Drain queued items
+             (is string= "q1" (lisp-chat/server::push-job-session-id (lisp-chat/server::dequeue-push-job)))
+             (is string= "q2" (lisp-chat/server::push-job-session-id (lisp-chat/server::dequeue-push-job)))
+             (is eq nil (lisp-chat/server::dequeue-push-job))
+             (setf lisp-chat/server::*push-workers-running* nil)))
+      (setf (symbol-function 'lisp-chat/server::deliver-push-job) orig-deliver)
+      (server:stop-push-workers))))
