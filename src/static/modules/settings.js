@@ -131,6 +131,12 @@ function openModal() {
             </label>
         </div>
         <div class="settings-section">
+            <label class="settings-label">
+                <input type="checkbox" id="setting-pushNotifications" ${(pendingSettings.pushNotifications && typeof Notification !== 'undefined' && Notification.permission === 'granted') ? 'checked' : ''} ${push.isPushSupported() ? '' : 'disabled'}>
+                Push notifications (mentions &amp; replies)${!push.isPushSupported() ? ' — unsupported in this browser' : (typeof Notification !== 'undefined' && Notification.permission === 'denied' ? ' — blocked in browser' : '')}
+            </label>
+        </div>
+        <div class="settings-section">
             <label class="settings-label">Max reconnection attempts (0 = infinite)</label>
             <input type="number" id="setting-maxReconnectAttempts" class="settings-input" value="${pendingSettings.maxReconnectAttempts}" min="0" max="100">
         </div>
@@ -140,12 +146,6 @@ function openModal() {
                 <option value="en" ${pendingSettings.emojiLanguage === 'en' ? 'selected' : ''}>English</option>
                 <option value="pt" ${pendingSettings.emojiLanguage === 'pt' ? 'selected' : ''}>Português</option>
             </select>
-        </div>
-        <div class="settings-section">
-            <label class="settings-label">
-                <input type="checkbox" id="setting-pushNotifications" ${(pendingSettings.pushNotifications && typeof Notification !== 'undefined' && Notification.permission === 'granted') ? 'checked' : ''} ${push.isPushSupported() ? '' : 'disabled'}>
-                Push notifications (mentions &amp; replies)${!push.isPushSupported() ? ' — unsupported in this browser' : (typeof Notification !== 'undefined' && Notification.permission === 'denied' ? ' — blocked in browser' : '')}
-            </label>
         </div>
         <div class="settings-section">
             <label class="settings-label">Nickname</label>
