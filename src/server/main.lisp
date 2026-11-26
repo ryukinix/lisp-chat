@@ -49,7 +49,10 @@
 (defun main (&key (host config:*host*) (port config:*port*) (should-quit t))
   "Main entrypoint to start the tcp-server and http server (with websockets)"
   (setq *uptime* (get-time))
+  (load-or-create-vapid-keys)
   (load-persistent-messages)
+  (load-push-subscriptions)
+  (load-user-sessions)
   (let ((socket-server nil)
         (error-code 0))
     (unwind-protect

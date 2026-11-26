@@ -10,6 +10,49 @@
           *messages-stack*))
   (bt:signal-semaphore *message-semaphore*))
 
+(defun build-push-payload (from content channel)
+  "Build a JSON payload string for Web Push notifications, truncating long content."
+  (let* ((max-body 300)
+         (truncated (if (> (length content) max-body)
+                        (concatenate 'string (subseq content 0 (- max-body 3)) "...")
+                        content))
+         (ht (make-hash-table :test 'equal)))
+    (setf (gethash "title" ht) (format nil "~a — @~a" channel from)
+          (gethash "body" ht) truncated
+          (gethash "channel" ht) channel
+          (gethash "from" ht) from)
+    (with-output-to-string (s)
+      (yason:encode ht s))))
+
+(defun push-notification (session-id from content &key (channel "#general"))
+  "Push a web-push notification for SESSION-ID from FROM as CONTENT."
+  (let ((subs (bt:with-lock-held (*push-subscriptions-lock*)
+                (loop for s in (gethash session-id *push-subscriptions*)
+                      when (stringp s) collect s))))
+    (when (and subs *vapid-public-key* *vapid-private-key*)
+      (let ((payload (build-push-payload from content channel))
+            (pub *vapid-public-key*)
+            (priv *vapid-private-key*)
+            (subj *vapid-subject*))
+        (bt:make-thread
+         (lambda ()
+           (dolist (sub-json subs)
+             (handler-case
+                 (cl-web-push:send-push-notification
+                  sub-json
+                  payload
+                  pub
+                  priv
+                  subj)
+               (dex:http-request-gone ()
+                 (unsubscribe-push-session session-id sub-json))
+               (dex:http-request-not-found ()
+                 (unsubscribe-push-session session-id sub-json))
+               (error (e)
+                 (debug-format t "[warn] push notification failed for session ~a: ~a~%"
+                               session-id e)))))
+         :name (format nil "web-push: ~a" session-id))))))
+
 (defun user-joined-message (client)
   "Create a user joined message for the given client."
   (push-message "@server" (format nil "The user @~a joined to the party! ~a"
@@ -85,6 +128,22 @@
                    (bt:with-lock-held (*persistence-lock*)
                      (setf *persistence-queue* (append *persistence-queue* (list message-raw))))
                    (bt:signal-semaphore *persistence-semaphore*))
+                 ;; Mention detection
+                 (unless (equal (message-from message-raw) "@server")
+                   (let ((mentions (extract-mentions (message-content message-raw))))
+                     (dolist (user mentions)
+                       (unless (string-equal user (message-from message-raw))
+                         (let ((sessions nil))
+                           (bt:with-lock-held (*username-to-sessions-lock*)
+                             (maphash (lambda (k v)
+                                        (when (string-equal k user)
+                                          (setf sessions (append sessions v))))
+                                      *username-to-sessions*))
+                           (dolist (sid (remove-duplicates sessions :test #'string-equal))
+                             (push-notification sid
+                                                (message-from message-raw)
+                                                (message-content message-raw)
+                                                :channel (message-channel message-raw))))))))
                   (let ((clients *clients*))
                    (loop for client in clients
                          when (string-equal (message-channel message-raw)

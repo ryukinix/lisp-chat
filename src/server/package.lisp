@@ -24,6 +24,12 @@
            #:*server-nickname*
            #:*raw-command-message*
            #:*uptime*
+           #:*vapid-public-key*
+           #:*vapid-private-key*
+           #:*vapid-subject*
+           #:*push-subscriptions*
+           #:*username-to-sessions*
+           #:*username-to-sessions-lock*
            #:client
            #:client-name
            #:client-address
@@ -51,6 +57,15 @@
            #:message-universal-time
            #:search-message
            #:push-message
+           #:push-notification
+           #:register-user-session
+           #:subscribe-push-session
+           #:unsubscribe-push-session
+           #:load-or-create-vapid-keys
+           #:load-push-subscriptions
+           #:save-push-subscriptions
+           #:load-user-sessions
+           #:save-user-sessions
            #:user-joined-message
            #:user-exited-message
            #:private-message
@@ -61,6 +76,7 @@
            #:client-latency-ms
            #:reset-server
            #:split
+           #:extract-mentions
            #:startswith
            #:normalize-channel
            #:normalize-username))

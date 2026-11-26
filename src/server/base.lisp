@@ -3,16 +3,26 @@
 (defparameter *messages-log* nil  "Messages log")
 (defparameter *user-channels* (make-hash-table :test 'equal) "Mapping of usernames to their last active channel")
 (defparameter *private-channels* (make-hash-table :test 'equal) "Set of channels where messages are not saved")
+(defparameter *push-subscriptions* (make-hash-table :test 'equal)
+  "Mapping of session-id to list of push subscription JSON strings")
+(defparameter *username-to-sessions* (make-hash-table :test 'equal)
+  "Mapping of username to a list of session-ids")
 
 ;; thread control
 (defvar *message-semaphore* (bt:make-semaphore :name "message semaphore"
                                             :count 0))
 (defvar *client-lock* (bt:make-lock "client list lock"))
 (defvar *messages-lock* (bt:make-lock "messages stack lock"))
+(defvar *push-subscriptions-lock* (bt:make-lock "push subscriptions lock"))
+(defvar *username-to-sessions-lock* (bt:make-lock "username to sessions lock"))
 (defvar *day-names* '("Monday" "Tuesday" "Wednesday"
                       "Thursday" "Friday" "Saturday" "Sunday")
   "Day names")
 (defvar *uptime* nil "Uptime of server variable, initialized at server start")
+
+(defvar *vapid-public-key* nil "VAPID Public Key for Web Push initialization")
+(defvar *vapid-private-key* nil "VAPID Private Key for Web Push initialization")
+(defvar *vapid-subject* "mailto:admin@lisp-chat.org" "VAPID Subject URI for Web Push")
 
 (defun system-interrupt ()
   #+sbcl 'sb-sys:interactive-interrupt
@@ -43,6 +53,10 @@
     (setf *clients* nil))
   (bt:with-lock-held (*messages-lock*)
     (setf *messages-stack* nil))
+  (bt:with-lock-held (*push-subscriptions-lock*)
+    (setf *push-subscriptions* (make-hash-table :test 'equal)))
+  (bt:with-lock-held (*username-to-sessions-lock*)
+    (setf *username-to-sessions* (make-hash-table :test 'equal)))
   (setf *user-channels* (make-hash-table :test 'equal))
   (setf *private-channels* (make-hash-table :test 'equal))
   (setf *messages-log* nil))

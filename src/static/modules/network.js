@@ -76,6 +76,7 @@ function connect(onMessageCallback) {
     }
     wsParams.set('tz', tzOffset);
     wsParams.set('expand_reply', 'false');
+    wsParams.set('session_id', auth.getSessionId());
     
     wsUrl += `?${wsParams.toString()}`;
     

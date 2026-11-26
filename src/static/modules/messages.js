@@ -6,6 +6,8 @@ import users from './users.js';
 import auth from './auth.js';
 import network from './network.js';
 import reply from './reply.js';
+import push from './push.js';
+import settings from './settings.js';
 
 const chat = document.getElementById("chat");
 
@@ -28,17 +30,8 @@ function processServerMessage(content, isRealTime) {
     const isExit = content.includes("exited from the party");
     const isNickChange = content.includes("Your new nick is") || content.includes("Your new nick was normalized to");
     const isNickNormalized = content.includes("Your nickname was normalized to");
-    const isSessionId = content.includes("Your session ID is:");
-    const isSystemMessage = isJoin || isExit || isNickChange || isNickNormalized || isSessionId;
+    const isSystemMessage = isJoin || isExit || isNickChange || isNickNormalized;
     const isUsersListResponse = content.startsWith("users: ");
-
-    if (isSessionId) {
-        const sessionIdMatch = content.match(/Your session ID is: (.*)/);
-        if (sessionIdMatch) {
-            auth.setSessionId(sessionIdMatch[1].trim());
-            return false;
-        }
-    }
 
     if (isNickNormalized) {
         const normMatch = content.match(/Your nickname was normalized to: @(\S+)/);
@@ -46,6 +39,9 @@ function processServerMessage(content, isRealTime) {
             auth.setUsername(normMatch[1].trim());
             auth.setPendingLogin(false);
             auth.updateUsernamePrefix();
+            if (settings.get('pushNotifications')) {
+                push.syncPushSubscription();
+            }
         }
     }
 
@@ -63,6 +59,9 @@ function processServerMessage(content, isRealTime) {
             auth.setUsername(joinMatch[1].trim());
             auth.setPendingLogin(false);
             auth.updateUsernamePrefix();
+            if (settings.get('pushNotifications')) {
+                push.syncPushSubscription();
+            }
         }
     }
 

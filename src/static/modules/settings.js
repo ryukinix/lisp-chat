@@ -1,5 +1,6 @@
 import utils from './utils.js';
 import auth from './auth.js';
+import push from './push.js';
 
 // Default settings
 const DEFAULTS = {
@@ -9,6 +10,7 @@ const DEFAULTS = {
     maxReconnectAttempts: 0,  // 0 = infinite
     autoloadHistory: false,
     emojiLanguage: 'en',
+    pushNotifications: false,
 };
 
 // In-memory runtime state (synced with cookies)
@@ -140,6 +142,12 @@ function openModal() {
             </select>
         </div>
         <div class="settings-section">
+            <label class="settings-label">
+                <input type="checkbox" id="setting-pushNotifications" ${(pendingSettings.pushNotifications && typeof Notification !== 'undefined' && Notification.permission === 'granted') ? 'checked' : ''} ${push.isPushSupported() ? '' : 'disabled'}>
+                Push notifications (mentions)${!push.isPushSupported() ? ' — unsupported in this browser' : (typeof Notification !== 'undefined' && Notification.permission === 'denied' ? ' — blocked in browser' : '')}
+            </label>
+        </div>
+        <div class="settings-section">
             <label class="settings-label">Nickname</label>
             <input type="text" id="setting-nickname" class="settings-input" value="${utils.escapeHTML(pendingSettings.nickname || auth.getUsername() || '')}" placeholder="Current nickname">
         </div>
@@ -183,9 +191,27 @@ function openModal() {
         pendingSettings.maxReconnectAttempts = parseInt(document.getElementById('setting-maxReconnectAttempts').value) || 0;
         pendingSettings.autoloadHistory = document.getElementById('setting-autoloadHistory').checked;
         pendingSettings.emojiLanguage = document.getElementById('setting-emojiLanguage').value || 'en';
+        const pushToggle = document.getElementById('setting-pushNotifications');
+        const wantsPush = pushToggle ? pushToggle.checked : false;
+        const previousPush = settings.pushNotifications;
+        pendingSettings.pushNotifications = wantsPush;
 
         // Capture new nickname before clearing pendingSettings
         const newNickname = nicknameChanged ? nicknameInput : null;
+
+        // Trigger Web Push subscribe/unsubscribe inside user gesture (required by Firefox/Safari)
+        if (push.isPushSupported()) {
+            if (wantsPush && (!previousPush || Notification.permission !== 'granted')) {
+                push.enablePushNotifications().then(res => {
+                    if (!res.ok) {
+                        settings.pushNotifications = false;
+                        saveSettings();
+                    }
+                });
+            } else if (!wantsPush && previousPush) {
+                push.disablePushNotifications();
+            }
+        }
 
         // Apply settings
         settings = { ...settings, ...pendingSettings };
