@@ -77,6 +77,8 @@
            #:reset-server
            #:split
            #:extract-mentions
+           #:extract-reply-targets
+           #:extract-notification-targets
            #:startswith
            #:normalize-channel
            #:normalize-username))

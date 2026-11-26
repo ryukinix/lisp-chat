@@ -13,9 +13,10 @@
 (defun build-push-payload (from content channel)
   "Build a JSON payload string for Web Push notifications, truncating long content."
   (let* ((max-body 300)
-         (truncated (if (> (length content) max-body)
-                        (concatenate 'string (subseq content 0 (- max-body 3)) "...")
-                        content))
+         (readable (format-push-body content))
+         (truncated (if (> (length readable) max-body)
+                        (concatenate 'string (subseq readable 0 (- max-body 3)) "...")
+                        readable))
          (ht (make-hash-table :test 'equal)))
     (setf (gethash "title" ht) (format nil "~a — @~a" channel from)
           (gethash "body" ht) truncated
@@ -128,10 +129,10 @@
                    (bt:with-lock-held (*persistence-lock*)
                      (setf *persistence-queue* (append *persistence-queue* (list message-raw))))
                    (bt:signal-semaphore *persistence-semaphore*))
-                 ;; Mention detection
-                 (unless (equal (message-from message-raw) "@server")
-                   (let ((mentions (extract-mentions (message-content message-raw))))
-                     (dolist (user mentions)
+                 ;; Mention & reply notification detection
+                 (unless (member (message-from message-raw) '("@server" "@command") :test #'equal)
+                   (let ((targets (extract-notification-targets (message-content message-raw))))
+                     (dolist (user targets)
                        (unless (string-equal user (message-from message-raw))
                          (let ((sessions nil))
                            (bt:with-lock-held (*username-to-sessions-lock*)

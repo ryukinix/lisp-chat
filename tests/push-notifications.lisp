@@ -187,6 +187,27 @@
   (is equal nil
       (server:extract-mentions "No mentions here or bare @ sign")))
 
+(define-test extract-reply-targets-and-notification-targets
+  :parent push-notification-tests
+  (is equal '("alice")
+      (server:extract-reply-targets "<#general: 2026-11-26 02:10:00 [alice]> Sounds great!"))
+  (is equal '("alice" "bob")
+      (server:extract-reply-targets
+       "<#general: 2026-11-26 02:10:00 [alice]> <#dev: 2026-11-26 02:11:00 [bob]> both!"))
+  ;; Mention + reply to same user deduplicates to a single target
+  (is equal '("alice" "bob")
+      (server:extract-notification-targets
+       "<#general: 2026-11-26 02:10:00 [bob]> Hey @alice and @bob!"))
+  ;; Human-readable push body replaces raw reply reference tag
+  (let* ((payload-json (lisp-chat/server::build-push-payload
+                        "charlie"
+                        "<#general: 2026-11-26 02:10:00 [alice]> Sounds great!"
+                        "#general"))
+         (parsed (yason:parse payload-json)))
+    (is string= "#general — @charlie" (gethash "title" parsed))
+    (is string= "«reply to @alice» Sounds great!" (gethash "body" parsed))
+    (is string= "#general" (gethash "channel" parsed))))
+
 (define-test nick-change-updates-user-sessions
   :parent push-notification-tests
   (server:reset-server)

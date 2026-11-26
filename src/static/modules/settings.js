@@ -144,7 +144,7 @@ function openModal() {
         <div class="settings-section">
             <label class="settings-label">
                 <input type="checkbox" id="setting-pushNotifications" ${(pendingSettings.pushNotifications && typeof Notification !== 'undefined' && Notification.permission === 'granted') ? 'checked' : ''} ${push.isPushSupported() ? '' : 'disabled'}>
-                Push notifications (mentions)${!push.isPushSupported() ? ' — unsupported in this browser' : (typeof Notification !== 'undefined' && Notification.permission === 'denied' ? ' — blocked in browser' : '')}
+                Push notifications (mentions &amp; replies)${!push.isPushSupported() ? ' — unsupported in this browser' : (typeof Notification !== 'undefined' && Notification.permission === 'denied' ? ' — blocked in browser' : '')}
             </label>
         </div>
         <div class="settings-section">
