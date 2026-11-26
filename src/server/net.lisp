@@ -17,11 +17,14 @@
          (truncated (if (> (length readable) max-body)
                         (concatenate 'string (subseq readable 0 (- max-body 3)) "...")
                         readable))
+         (channel-name (string-left-trim "#" (or channel "general")))
+         (url (format nil "/?~a" (quri:url-encode channel-name)))
          (ht (make-hash-table :test 'equal)))
     (setf (gethash "title" ht) (format nil "~a — @~a" channel from)
           (gethash "body" ht) truncated
           (gethash "channel" ht) channel
-          (gethash "from" ht) from)
+          (gethash "from" ht) from
+          (gethash "url" ht) url)
     (with-output-to-string (s)
       (yason:encode ht s))))
 

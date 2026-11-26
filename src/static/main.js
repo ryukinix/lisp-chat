@@ -146,7 +146,7 @@ if ('serviceWorker' in navigator) {
             const newChannel = event.data.channel.replace(/^#/, '');
             const cleanPath = window.location.pathname.replace(/\/index\.html$/, '/');
             const url = new URL(window.location.origin + cleanPath);
-            url.search = newChannel;
+            url.search = encodeURIComponent(newChannel);
             window.history.pushState({}, '', url);
             updatePageTitle();
 
@@ -155,6 +155,8 @@ if ('serviceWorker' in navigator) {
             if (network.getWs() && network.getWs().readyState === WebSocket.OPEN) {
                 network.getWs().send(`/join #${newChannel}`);
                 network.getWs().send(`/log :depth ${config.LOG_HISTORY_SIZE} :date-format date`);
+            } else {
+                network.connect();
             }
         }
     });

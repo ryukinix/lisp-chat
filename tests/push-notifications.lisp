@@ -206,7 +206,15 @@
          (parsed (yason:parse payload-json)))
     (is string= "#general — @charlie" (gethash "title" parsed))
     (is string= "«reply to @alice» Sounds great!" (gethash "body" parsed))
-    (is string= "#general" (gethash "channel" parsed))))
+    (is string= "#general" (gethash "channel" parsed))
+    (is string= "/?general" (gethash "url" parsed)))
+  ;; Channel with special characters is URL-encoded in notification link
+  (let* ((payload-json (lisp-chat/server::build-push-payload
+                        "charlie"
+                        "Hey @alice!"
+                        "#dev-team"))
+         (parsed (yason:parse payload-json)))
+    (is string= "/?dev-team" (gethash "url" parsed))))
 
 (define-test nick-change-updates-user-sessions
   :parent push-notification-tests

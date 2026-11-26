@@ -68,6 +68,8 @@ function connect(onMessageCallback) {
     let channel = window.location.search.substring(1).split('&')[0];
     if (!channel || channel.includes('=')) {
         channel = '';
+    } else {
+        try { channel = decodeURIComponent(channel); } catch (e) { /* keep raw */ }
     }
 
     const wsParams = new URLSearchParams();
