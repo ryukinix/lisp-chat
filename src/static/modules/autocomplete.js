@@ -1,6 +1,7 @@
 import utils from './utils.js';
 import api from './api.js';
 import emojis from './emojis.js';
+import settings from './settings.js';
 
 let autocompleteCache = {
     '/': null,
@@ -24,7 +25,8 @@ async function fetchAutoCompleteData(trigger) {
     }
 
     if (trigger === ':') {
-        return emojis;
+        const lang = settings.get('emojiLanguage') || 'en';
+        return emojis.getEmojis ? emojis.getEmojis(lang) : (emojis[lang] || emojis);
     }
 
     if (autocompleteCache[trigger] !== null) return autocompleteCache[trigger];

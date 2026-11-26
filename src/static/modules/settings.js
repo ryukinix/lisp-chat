@@ -8,6 +8,7 @@ const DEFAULTS = {
     reconnectEnabled: true,
     maxReconnectAttempts: 0,  // 0 = infinite
     autoloadHistory: false,
+    emojiLanguage: 'en',
 };
 
 // In-memory runtime state (synced with cookies)
@@ -132,6 +133,13 @@ function openModal() {
             <input type="number" id="setting-maxReconnectAttempts" class="settings-input" value="${pendingSettings.maxReconnectAttempts}" min="0" max="100">
         </div>
         <div class="settings-section">
+            <label class="settings-label">Emoji language</label>
+            <select id="setting-emojiLanguage" class="settings-select">
+                <option value="en" ${pendingSettings.emojiLanguage === 'en' ? 'selected' : ''}>English</option>
+                <option value="pt" ${pendingSettings.emojiLanguage === 'pt' ? 'selected' : ''}>Português</option>
+            </select>
+        </div>
+        <div class="settings-section">
             <label class="settings-label">Nickname</label>
             <input type="text" id="setting-nickname" class="settings-input" value="${utils.escapeHTML(pendingSettings.nickname || auth.getUsername() || '')}" placeholder="Current nickname">
         </div>
@@ -174,6 +182,7 @@ function openModal() {
         pendingSettings.reconnectEnabled = document.getElementById('setting-reconnectEnabled').checked;
         pendingSettings.maxReconnectAttempts = parseInt(document.getElementById('setting-maxReconnectAttempts').value) || 0;
         pendingSettings.autoloadHistory = document.getElementById('setting-autoloadHistory').checked;
+        pendingSettings.emojiLanguage = document.getElementById('setting-emojiLanguage').value || 'en';
 
         // Capture new nickname before clearing pendingSettings
         const newNickname = nicknameChanged ? nicknameInput : null;
