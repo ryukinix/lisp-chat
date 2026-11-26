@@ -1,14 +1,18 @@
 import utils from './utils.js';
 import api from './api.js';
+import emojis from './emojis.js';
+import settings from './settings.js';
 
 let autocompleteCache = {
     '/': null,
     '@': null,
-    '#': null
+    '#': null,
+    ':': null
 };
 let autocompleteActiveIndex = -1;
 let currentAutocompleteTrigger = null;
 let currentAutocompleteFragment = "";
+let currentFilteredItems = [];
 
 function getAutocompletePopup() {
     return document.getElementById("autocomplete-popup");
@@ -18,6 +22,11 @@ async function fetchAutoCompleteData(trigger) {
     if (trigger === '@') {
         const userList = document.getElementById("user-list");
         return Array.from(userList.querySelectorAll('.user-item')).map(li => li.dataset.username);
+    }
+
+    if (trigger === ':') {
+        const lang = settings.get('emojiLanguage') || 'en';
+        return emojis.getEmojis ? emojis.getEmojis(lang) : (emojis[lang] || emojis);
     }
 
     if (autocompleteCache[trigger] !== null) return autocompleteCache[trigger];
@@ -59,14 +68,34 @@ function renderAutocomplete(filteredItems, input) {
         return;
     }
 
+    currentFilteredItems = filteredItems;
     autocompletePopup.innerHTML = "";
     filteredItems.forEach((item, index) => {
         const div = document.createElement("div");
         div.className = "autocomplete-item";
-        div.textContent = currentAutocompleteTrigger + item;
-        if (currentAutocompleteTrigger === '@') {
-            div.style.color = utils.getUserColor(item);
+
+        if (currentAutocompleteTrigger === ':') {
+            const emojiChar = typeof item === 'object' ? item.emoji : '';
+            const emojiName = typeof item === 'object' ? item.name : item;
+
+            const spanChar = document.createElement("span");
+            spanChar.className = "autocomplete-emoji";
+            spanChar.textContent = emojiChar;
+
+            const spanName = document.createElement("span");
+            spanName.className = "autocomplete-name";
+            spanName.textContent = ":" + emojiName + ":";
+
+            div.appendChild(spanChar);
+            div.appendChild(spanName);
+        } else {
+            const name = typeof item === 'object' ? item.name : item;
+            div.textContent = currentAutocompleteTrigger + name;
+            if (currentAutocompleteTrigger === '@') {
+                div.style.color = utils.getUserColor(name);
+            }
         }
+
         if (index === autocompleteActiveIndex) {
             div.classList.add("selected");
         }
@@ -90,7 +119,14 @@ function handleAutocompleteSelection(item, input) {
 
     if (lastTriggerIndex !== -1) {
         const beforeTrigger = textBeforeCursor.substring(0, lastTriggerIndex);
-        const insertText = currentAutocompleteTrigger + item + " ";
+        let insertText;
+        if (currentAutocompleteTrigger === ':') {
+            const emojiChar = typeof item === 'object' ? item.emoji : item;
+            insertText = emojiChar + " ";
+        } else {
+            const text = typeof item === 'object' ? item.name : item;
+            insertText = currentAutocompleteTrigger + text + " ";
+        }
 
         input.value = beforeTrigger + insertText + textAfterCursor;
         const newPos = beforeTrigger.length + insertText.length;
@@ -110,6 +146,7 @@ function closeAutocomplete() {
     autocompleteActiveIndex = -1;
     currentAutocompleteTrigger = null;
     currentAutocompleteFragment = "";
+    currentFilteredItems = [];
 }
 
 function updateAutocompleteSelection(items) {
@@ -132,7 +169,13 @@ function initAutocomplete(input) {
         const words = textBeforeCursor.split(/\s+/);
         const lastWord = words[words.length - 1];
 
-        if (lastWord && (lastWord.startsWith('/') || lastWord.startsWith('@') || lastWord.startsWith('#'))) {
+        if (lastWord && (lastWord.startsWith('/') || lastWord.startsWith('@') || lastWord.startsWith('#') || lastWord.startsWith(':'))) {
+            // Avoid matching :: (e.g. package prefixes) or already closed emojis :smile:
+            if (lastWord.startsWith('::') || (lastWord.startsWith(':') && lastWord.length > 1 && lastWord.endsWith(':'))) {
+                closeAutocomplete();
+                return;
+            }
+
             const trigger = lastWord[0];
             const fragment = lastWord.substring(1).toLowerCase();
 
@@ -148,12 +191,20 @@ function initAutocomplete(input) {
 
             if (input.value !== value || input.selectionStart !== selectionStart) return;
 
-            const filtered = data.filter(item => item.toLowerCase().startsWith(fragment));
+            let filtered = data.filter(item => {
+                const text = typeof item === 'object' ? item.name : item;
+                return text.toLowerCase().startsWith(fragment);
+            });
+
+            if (trigger === ':') {
+                filtered = filtered.slice(0, 50);
+            }
 
             if (autocompleteActiveIndex >= filtered.length) {
-                autocompleteActiveIndex = 0;
+                autocompleteActiveIndex = filtered.length > 0 ? 0 : -1;
             } else if (autocompleteActiveIndex === -1 && filtered.length > 0) {
-                autocompleteActiveIndex = 0;
+                // Do not preselect on bare colon without search query to avoid hijacking Enter
+                autocompleteActiveIndex = (trigger === ':' && fragment === "") ? -1 : 0;
             }
 
             renderAutocomplete(filtered, input);
@@ -179,9 +230,8 @@ function initAutocomplete(input) {
             updateAutocompleteSelection(items);
         } else if (e.key === "Enter" || e.key === "Tab") {
             e.preventDefault();
-            if (autocompleteActiveIndex >= 0 && autocompleteActiveIndex < items.length) {
-                const selectedText = items[autocompleteActiveIndex].textContent.substring(1);
-                handleAutocompleteSelection(selectedText, input);
+            if (autocompleteActiveIndex >= 0 && autocompleteActiveIndex < currentFilteredItems.length) {
+                handleAutocompleteSelection(currentFilteredItems[autocompleteActiveIndex], input);
             }
         } else if (e.key === "Escape") {
             e.preventDefault();

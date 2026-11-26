@@ -107,6 +107,8 @@ body {
     cursor: pointer;
     color: #eee;
     border-bottom: 1px solid #333;
+    display: flex;
+    align-items: center;
 }
 
 .autocomplete-item:last-child {
@@ -116,6 +118,19 @@ body {
 .autocomplete-item:hover,
 .autocomplete-item.selected {
     background: #444;
+}
+
+.autocomplete-emoji {
+    font-size: 1.25em;
+    margin-right: 8px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.autocomplete-name {
+    font-family: monospace;
+    font-size: 0.95em;
+    opacity: 0.9;
 }
 
 #input-area {
@@ -694,6 +709,26 @@ body.light-theme a:active {
 
 /* High-contrast mention/user colors for light theme */
 body.light-theme .message span[style*="color:"] {
+    filter: brightness(0.45) saturate(2);
+}
+
+body.light-theme #autocomplete-popup {
+    background: #fff;
+    border-color: #ccc;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+}
+
+body.light-theme .autocomplete-item {
+    color: #222;
+    border-bottom-color: #eee;
+}
+
+body.light-theme .autocomplete-item:hover,
+body.light-theme .autocomplete-item.selected {
+    background: #e6e6e6;
+}
+
+body.light-theme .autocomplete-item[style*="color:"] {
     filter: brightness(0.45) saturate(2);
 }
 
