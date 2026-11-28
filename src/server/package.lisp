@@ -70,6 +70,29 @@
            #:save-push-subscriptions
            #:load-user-sessions
            #:save-user-sessions
+           #:dm-message
+           #:make-dm-message
+           #:dm-message-id
+           #:dm-message-room
+           #:dm-message-from
+           #:dm-message-to
+           #:dm-message-content
+           #:dm-message-time
+           #:make-dm-room
+           #:dm-room-p
+           #:dm-room-participants
+           #:dm-room-peer
+           #:dm-participant-p
+           #:load-dm-store
+           #:reset-dm-store
+           #:get-dm-cursor
+           #:set-dm-cursor
+           #:get-dm-room-messages
+           #:get-dm-room-messages-as-messages
+           #:send-dm
+           #:replay-pending-dms
+           #:list-user-dm-rooms
+           #:clear-dm-room
            #:user-joined-message
            #:user-exited-message
            #:private-message

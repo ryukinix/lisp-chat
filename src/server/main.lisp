@@ -55,6 +55,7 @@
   (load-persistent-messages)
   (load-push-subscriptions)
   (load-user-sessions)
+  (load-dm-store)
   (let ((socket-server nil)
         (error-code 0))
     (unwind-protect

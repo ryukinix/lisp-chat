@@ -91,7 +91,14 @@
       (write-to-string s)))
 
 (defun filter-messages (client &key query user global before-time after-time)
-  (let ((channel (server:client-active-channel client)))
+  (let* ((channel (server:client-active-channel client))
+         (source (cond
+                   (global server:*messages-log*)
+                   ((server:dm-room-p channel)
+                    (if (server:dm-participant-p channel (server:client-name client))
+                        (server:get-dm-room-messages-as-messages channel)
+                        nil))
+                   (t server:*messages-log*))))
     (remove-if-not
      (lambda (m)
        (and (not (equal (server:message-from m) "@server"))
@@ -105,7 +112,7 @@
                 (<= (server:message-universal-time m) before-time))
             (or (not after-time)
                 (>= (server:message-universal-time m) after-time))))
-     server:*messages-log*)))
+     source)))
 
 ;; user commands prefixed with /
 (define-command /search (client query &rest args &key user (limit "10") before after global &allow-other-keys)
@@ -159,15 +166,24 @@
 (define-command /join (client &optional (channel nil))
   "/join changes the active channel for the user"
   (if channel
-      (let ((new-channel (server:normalize-channel channel))
-            (old-channel (server:client-active-channel client)))
-        (if (string-equal new-channel old-channel)
-            (server:command-message (format nil "You are already in ~a" new-channel) :client client)
-            (prog1 'ignore
-              (server:user-exited-message client)
-              (setf (server:client-active-channel client) new-channel)
-              (setf (gethash (server:client-name client) server:*user-channels*) new-channel)
-              (server:user-joined-message client))))
+      (let* ((is-dm (server:dm-room-p channel))
+             (new-channel (if is-dm
+                              (string-downcase channel)
+                              (server:normalize-channel channel)))
+             (old-channel (server:client-active-channel client)))
+        (cond
+          ((and is-dm (not (server:dm-participant-p new-channel (server:client-name client))))
+           (server:command-message "error: access denied to private conversation" :client client))
+          ((string-equal new-channel old-channel)
+           (server:command-message (format nil "You are already in ~a" new-channel) :client client))
+          (t
+           (prog1 'ignore
+             (unless (server:dm-room-p old-channel)
+               (server:user-exited-message client))
+             (setf (server:client-active-channel client) new-channel)
+             (unless is-dm
+               (setf (gethash (server:client-name client) server:*user-channels*) new-channel)
+               (server:user-joined-message client))))))
       (server:command-message "/join #CHANNEL-NAME" :client client)))
 
 (define-command /channels (client &rest args &key (usernames nil) (all nil) &allow-other-keys)
@@ -179,13 +195,16 @@
     (setf (gethash "#general" chan-users) nil)
     (when all
       (loop for m in server:*messages-log*
-            do (unless (nth-value 1 (gethash (server:message-channel m) chan-users))
+            do (unless (or (server:dm-room-p (server:message-channel m))
+                           (nth-value 1 (gethash (server:message-channel m) chan-users)))
                  (setf (gethash (server:message-channel m) chan-users) nil))))
     (loop for c in server:*clients*
-          do (push (server:client-name c) (gethash (server:client-active-channel c) chan-users nil)))
+          unless (server:dm-room-p (server:client-active-channel c))
+            do (push (server:client-name c) (gethash (server:client-active-channel c) chan-users nil)))
     (let ((lines nil))
       (maphash (lambda (chan users)
-                 (unless (gethash chan server:*private-channels*)
+                 (unless (or (server:dm-room-p chan)
+                             (gethash chan server:*private-channels*))
                    (if usernames
                        (push (if users
                                  (format nil "~a: ~{~a~^, ~}" chan (reverse users))
@@ -339,26 +358,80 @@
                       :channel (server:client-active-channel client))
         (setf (server:client-name client) normalized-nick)
         (server:register-user-session normalized-nick (server:client-session-id client))
-        (if modified-p
-            (server:command-message (format nil "Your new nick was normalized to: @~a" normalized-nick) :client client)
-            (server:command-message (format nil "Your new nick is: @~a" normalized-nick) :client client)))
+        (prog1
+            (if modified-p
+                (server:command-message
+                 (format nil "Your new nick was normalized to: @~a" normalized-nick)
+                 :client client)
+                (server:command-message
+                 (format nil "Your new nick is: @~a" normalized-nick)
+                 :client client))
+          (server:replay-pending-dms client)))
       (server:command-message (format nil "/nick NEW-NICKNAME") :client client)))
 
-(define-command /dm (client &optional (username nil) msg-content)
-  "/dm sends a direct message to a USERNAME"
+(define-command /dm (client &optional (username nil) &rest msg-parts)
+  "/dm USERNAME [MESSAGE] sends a private direct message (even if offline, with retention and replay)
+   or switches into the 1:1 private conversation with USERNAME when MESSAGE is omitted."
   (let ((from (server:client-name client))
-        (user (server:get-client username)))
+        (target (when username
+                  (server:normalize-username (string-left-trim "@" username))))
+        (content (string-trim '(#\Space #\Tab #\Return #\Newline)
+                              (format nil "~{~a~^ ~}" msg-parts))))
     (cond
-      ((not username)
-       (server:command-message "/dm USERNAME your message" :client client))
-      ((not user)
-       (server:command-message (format nil "error: ~s user not found" username) :client client))
-      ((string= from username)
+      ((or (not target) (zerop (length target)))
+       (server:command-message "/dm USERNAME [message]" :client client))
+      ((string-equal from target)
        (server:command-message "you can't dm to yourself" :client client))
-      (t
+      ((plusp (length content))
        (prog1 'ignore
-         (server:send-message client (server:private-message from msg-content :client client))
-         (server:send-message user (server:private-message from msg-content :client user)))))))
+         (server:send-dm from target content)))
+      (t
+       (let ((room (server:make-dm-room from target))
+             (old-channel (server:client-active-channel client)))
+         (unless (or (string-equal old-channel room) (server:dm-room-p old-channel))
+           (server:user-exited-message client))
+         (setf (server:client-active-channel client) room)
+         (server:command-message
+          (format nil
+                  "Entered private conversation with @~a (~a). Use /log, /dm-clear, or /join #general."
+                  target room)
+          :client client))))))
+
+(define-command /dms (client &rest args)
+  "/dms lists your 1:1 private conversations with message counts and unread counts."
+  (declare (ignorable args))
+  (let ((rooms (server:list-user-dm-rooms (server:client-name client))))
+    (if rooms
+        (let ((lines (mapcar (lambda (entry)
+                               (destructuring-bind (room peer total unread last-id) entry
+                                 (declare (ignore room last-id))
+                                 (if (plusp unread)
+                                     (format nil "@~a: ~a message~:p (~a unread)" peer total unread)
+                                     (format nil "@~a: ~a message~:p" peer total))))
+                             rooms)))
+          (server:command-message (format nil "dms:~%~{~a~^~%~}" lines) :client client))
+        (server:command-message "dms: none" :client client))))
+
+(define-command /dm-clear (client &optional (username nil) &rest args)
+  "/dm-clear [USERNAME] permanently deletes all retained direct messages with USERNAME
+   (or the current DM conversation if omitted) so neither user can query or replay them."
+  (declare (ignorable args))
+  (let* ((from (server:client-name client))
+         (active (server:client-active-channel client))
+         (target (cond
+                   (username (server:normalize-username (string-left-trim "@" username)))
+                   ((server:dm-room-p active) (server:dm-room-peer active from))
+                   (t nil))))
+    (cond
+      ((or (not target) (zerop (length target)))
+       (server:command-message "Usage: /dm-clear USERNAME (or run inside a DM conversation)" :client client))
+      ((string-equal from target)
+       (server:command-message "you can't clear a dm with yourself" :client client))
+      (t
+       (let ((deleted (server:clear-dm-room from target)))
+         (server:command-message
+          (format nil "Deleted ~a message~:p from private conversation with @~a." deleted target)
+          :client client))))))
 
 (define-command /whois (client &optional (username nil))
   "/whois get basic information of a online USERNAME"

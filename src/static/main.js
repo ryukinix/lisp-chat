@@ -12,6 +12,13 @@ import users from './modules/users.js';
 import push from './modules/push.js';
 import lightbox from './modules/lightbox.js';
 import channelsModal from './modules/channels.js';
+import dmsModal from './modules/dms.js';
+
+function getCurrentDmPeer() {
+    const params = new URLSearchParams(window.location.search);
+    const dm = params.get('dm');
+    return dm ? dm.replace(/^@/, '').trim() : '';
+}
 
 function getCurrentChannelName() {
     let channel = window.location.search.substring(1).split('&')[0];
@@ -24,16 +31,43 @@ function getCurrentChannelName() {
 }
 
 function updatePageTitle() {
+    const dmPeer = getCurrentDmPeer();
+    if (dmPeer) {
+        document.title = `Lisp Chat Web: DM @${dmPeer}`;
+        push.clearChannelNotifications(`dm:${dmPeer}`);
+        return;
+    }
     const channelName = getCurrentChannelName();
     document.title = `Lisp Chat Web: #${channelName}`;
     push.clearChannelNotifications(channelName);
+}
+
+function navigateToDm(peerName) {
+    const peer = (peerName || '').replace(/^@/, '').trim();
+    if (!peer) return;
+
+    const cleanPath = window.location.pathname.replace(/\/index\.html$/, '/');
+    const url = new URL(window.location.origin + cleanPath);
+    url.search = `dm=${encodeURIComponent(peer)}`;
+    window.history.pushState({}, '', url);
+    updatePageTitle();
+
+    messages.clearMessages();
+    history.resetReachedEnd();
+    if (network.getWs() && network.getWs().readyState === WebSocket.OPEN) {
+        network.getWs().send(`/dm ${peer}`);
+        network.getWs().send(`/log :depth ${config.LOG_HISTORY_SIZE} :date-format date`);
+    } else {
+        network.connect(messages.addMessage);
+    }
+    input.focus();
 }
 
 function navigateToChannel(channelName) {
     const newChannel = (channelName || 'general').replace(/^#/, '').trim();
     if (!newChannel) return;
 
-    if (newChannel.toLowerCase() === getCurrentChannelName().toLowerCase()) {
+    if (!getCurrentDmPeer() && newChannel.toLowerCase() === getCurrentChannelName().toLowerCase()) {
         input.focus();
         return;
     }
@@ -104,11 +138,42 @@ form.addEventListener("submit", (e) => {
             const opts = channelsModal.parseChannelsCommand(trimmed);
             channelsModal.openModal({
                 ...opts,
-                currentChannel: getCurrentChannelName(),
+                currentChannel: getCurrentDmPeer() ? '' : getCurrentChannelName(),
                 onSelect: navigateToChannel
             });
             input.value = "";
             return;
+        }
+        if (firstWord === "/dms") {
+            dmsModal.openModal({
+                currentPeer: getCurrentDmPeer(),
+                onSelect: navigateToDm,
+                onClear: (peer) => {
+                    if (network.getWs() && network.getWs().readyState === WebSocket.OPEN) {
+                        network.getWs().send(`/dm-clear ${peer}`);
+                        if (getCurrentDmPeer().toLowerCase() === peer.toLowerCase()) {
+                            messages.clearMessages();
+                        }
+                    }
+                }
+            });
+            input.value = "";
+            return;
+        }
+        if (firstWord === "/dm") {
+            const parts = trimmed.split(/\s+/);
+            if (parts.length === 2) {
+                navigateToDm(parts[1]);
+                input.value = "";
+                return;
+            }
+        }
+        if (firstWord === "/dm-clear") {
+            const parts = trimmed.split(/\s+/);
+            const target = (parts[1] || getCurrentDmPeer()).replace(/^@/, '').toLowerCase();
+            if (target && target === getCurrentDmPeer().toLowerCase()) {
+                messages.clearMessages();
+            }
         }
         if (firstWord === "/users") {
             network.incrementUserRequestsPending();
@@ -207,21 +272,11 @@ document.addEventListener('keydown', (e) => {
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('message', event => {
         if (event.data && event.data.type === 'NAVIGATE_CHANNEL' && event.data.channel) {
-            const newChannel = event.data.channel.replace(/^#/, '');
-            const cleanPath = window.location.pathname.replace(/\/index\.html$/, '/');
-            const url = new URL(window.location.origin + cleanPath);
-            url.search = encodeURIComponent(newChannel);
-            window.history.pushState({}, '', url);
-            updatePageTitle();
-
-            messages.clearMessages();
-            history.resetReachedEnd();
-            if (network.getWs() && network.getWs().readyState === WebSocket.OPEN) {
-                network.getWs().send(`/join #${newChannel}`);
-                network.getWs().send(`/log :depth ${config.LOG_HISTORY_SIZE} :date-format date`);
-            } else {
-                network.connect();
+            if (event.data.channel.toLowerCase().startsWith('dm:') && event.data.from) {
+                navigateToDm(event.data.from);
+                return;
             }
+            navigateToChannel(event.data.channel);
         }
     });
 }

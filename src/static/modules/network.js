@@ -65,6 +65,9 @@ function connect(onMessageCallback) {
     // Auto-detect from browser locale
     const tzOffset = -(new Date().getTimezoneOffset() / 60);
     
+    const pageParams = new URLSearchParams(window.location.search);
+    const dmPeer = pageParams.get('dm');
+
     let channel = window.location.search.substring(1).split('&')[0];
     if (!channel || channel.includes('=')) {
         channel = '';
@@ -73,7 +76,9 @@ function connect(onMessageCallback) {
     }
 
     const wsParams = new URLSearchParams();
-    if (channel) {
+    if (dmPeer) {
+        wsParams.set('dm', dmPeer);
+    } else if (channel) {
         wsParams.set('channel', channel);
     }
     wsParams.set('tz', tzOffset);

@@ -48,4 +48,8 @@ async function channels(all = true, usernames = false) {
     return fetchCommand('channels', kwargs);
 }
 
-export default { fetchCommand, log, channels };
+async function dms() {
+    return fetchCommand('dms', {}, true);
+}
+
+export default { fetchCommand, log, channels, dms };
