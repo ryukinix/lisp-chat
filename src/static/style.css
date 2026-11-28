@@ -636,6 +636,235 @@ body.lightbox-open {
     }
 }
 
+/* Channel quick switcher modal */
+.channels-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+.channels-overlay[hidden] {
+    display: none;
+}
+
+.channels-modal {
+    background: #2a2a2a;
+    border: 1px solid #555;
+    border-radius: 8px;
+    padding: 16px 20px;
+    width: 420px;
+    max-width: 100%;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+    color: #eee;
+    font-family: monospace;
+    box-sizing: border-box;
+}
+
+.channels-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.channels-header h3 {
+    margin: 0;
+    font-size: 1.05em;
+}
+
+.channels-close-btn {
+    background: transparent;
+    border: 1px solid #555;
+    border-radius: 4px;
+    color: #ccc;
+    padding: 2px 8px;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.channels-close-btn:hover {
+    background: #444;
+    color: #fff;
+}
+
+.channels-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.channels-filter {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 10px;
+    background: #1e1e1e;
+    border: 1px solid #555;
+    border-radius: 4px;
+    color: #eee;
+    font-family: inherit;
+    font-size: 0.95em;
+}
+
+.channels-filter:focus {
+    outline: none;
+    border-color: #888;
+}
+
+.channels-all-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85em;
+    color: #bbb;
+    cursor: pointer;
+    user-select: none;
+}
+
+.channels-status {
+    font-size: 0.85em;
+    color: #aaa;
+    padding: 8px 4px;
+}
+
+.channels-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    max-height: 48vh;
+    border: 1px solid #3d3d3d;
+    border-radius: 4px;
+}
+
+.channels-list:empty {
+    display: none;
+}
+
+.channel-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 10px;
+    cursor: pointer;
+    border-bottom: 1px solid #353535;
+}
+
+.channel-item:last-child {
+    border-bottom: none;
+}
+
+.channel-item.selected,
+.channel-item:hover {
+    background: #3d3d3d;
+}
+
+.channel-item-name {
+    font-weight: bold;
+    color: #9cdcfe;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.channel-item-meta {
+    font-size: 0.8em;
+    color: #aaa;
+    flex-shrink: 0;
+    max-width: 45%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.channel-current-badge,
+.channel-new-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 0.72em;
+    font-weight: normal;
+    vertical-align: middle;
+}
+
+.channel-current-badge {
+    background: #3a5a40;
+    color: #d8f3dc;
+}
+
+.channel-new-badge {
+    background: #444;
+    color: #ddd;
+}
+
+.channels-hint {
+    font-size: 0.75em;
+    color: #888;
+    text-align: right;
+}
+
+body.light-theme .channels-modal {
+    background: #f9f9f9;
+    border-color: #ccc;
+    color: #222;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+body.light-theme .channels-close-btn {
+    border-color: #ccc;
+    color: #444;
+}
+
+body.light-theme .channels-close-btn:hover {
+    background: #e6e6e6;
+    color: #000;
+}
+
+body.light-theme .channels-filter {
+    background: #fff;
+    border-color: #ccc;
+    color: #222;
+}
+
+body.light-theme .channels-all-toggle,
+body.light-theme .channels-status,
+body.light-theme .channels-hint,
+body.light-theme .channel-item-meta {
+    color: #666;
+}
+
+body.light-theme .channels-list {
+    border-color: #ddd;
+}
+
+body.light-theme .channel-item {
+    border-bottom-color: #eee;
+}
+
+body.light-theme .channel-item.selected,
+body.light-theme .channel-item:hover {
+    background: #e6e6e6;
+}
+
+body.light-theme .channel-item-name {
+    color: #1a5276;
+}
+
+body.light-theme .channel-current-badge {
+    background: #d8f3dc;
+    color: #1b4332;
+}
+
 /* Settings modal */
 .settings-overlay {
     position: fixed;
