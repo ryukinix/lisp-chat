@@ -10,6 +10,7 @@ import reply from "./modules/reply.js";
 import settings from './modules/settings.js';
 import users from './modules/users.js';
 import push from './modules/push.js';
+import lightbox from './modules/lightbox.js';
 
 function getCurrentChannelName() {
     let channel = window.location.search.substring(1).split('&')[0];
@@ -33,6 +34,7 @@ const input = document.getElementById("message-input");
 inputModule.initInputHistory(input);
 inputModule.setupInputOverlay(input);
 reply.setupReplyFocus();
+lightbox.init();
 
 // Initialize settings module (applies theme and image-preview classes)
 settings.init();
