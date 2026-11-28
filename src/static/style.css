@@ -552,7 +552,9 @@ body.lightbox-open {
     display: flex;
     align-items: center;
     justify-content: center;
-    overflow: auto;
+    overflow: hidden;
+    touch-action: none;
+    overscroll-behavior: contain;
 }
 
 .lightbox-img {
@@ -563,11 +565,19 @@ body.lightbox-open {
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
     cursor: zoom-in;
     user-select: none;
+    -webkit-user-select: none;
+    -webkit-user-drag: none;
+    touch-action: none;
+    transform-origin: center center;
+    will-change: transform;
+    transition: transform 0.18s ease-out;
+}
+
+.lightbox-img.dragging {
+    transition: none;
 }
 
 .lightbox-img.zoomed {
-    max-width: none;
-    max-height: none;
     cursor: zoom-out;
 }
 
