@@ -41,10 +41,11 @@ async function log(depth, before, after) {
     return fetchCommand('log', kwargs, true);
 }
 
-async function channels(all = true) {
-    return fetchCommand('channels', {
-        "all": all
-    });
+async function channels(all = true, usernames = false) {
+    const kwargs = {};
+    if (all) kwargs.all = true;
+    if (usernames) kwargs.usernames = true;
+    return fetchCommand('channels', kwargs);
 }
 
 export default { fetchCommand, log, channels };

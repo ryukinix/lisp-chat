@@ -11,6 +11,7 @@ import settings from './modules/settings.js';
 import users from './modules/users.js';
 import push from './modules/push.js';
 import lightbox from './modules/lightbox.js';
+import channelsModal from './modules/channels.js';
 
 function getCurrentChannelName() {
     let channel = window.location.search.substring(1).split('&')[0];
@@ -26,6 +27,32 @@ function updatePageTitle() {
     const channelName = getCurrentChannelName();
     document.title = `Lisp Chat Web: #${channelName}`;
     push.clearChannelNotifications(channelName);
+}
+
+function navigateToChannel(channelName) {
+    const newChannel = (channelName || 'general').replace(/^#/, '').trim();
+    if (!newChannel) return;
+
+    if (newChannel.toLowerCase() === getCurrentChannelName().toLowerCase()) {
+        input.focus();
+        return;
+    }
+
+    const cleanPath = window.location.pathname.replace(/\/index\.html$/, '/');
+    const url = new URL(window.location.origin + cleanPath);
+    url.search = encodeURIComponent(newChannel);
+    window.history.pushState({}, '', url);
+    updatePageTitle();
+
+    messages.clearMessages();
+    history.resetReachedEnd();
+    if (network.getWs() && network.getWs().readyState === WebSocket.OPEN) {
+        network.getWs().send(`/join #${newChannel}`);
+        network.getWs().send(`/log :depth ${config.LOG_HISTORY_SIZE} :date-format date`);
+    } else {
+        network.connect(messages.addMessage);
+    }
+    input.focus();
 }
 
 const form = document.getElementById("input-area");
@@ -73,25 +100,26 @@ form.addEventListener("submit", (e) => {
             return;
         }
         const firstWord = trimmed.split(/\s+/)[0];
+        if (firstWord === "/channels") {
+            const opts = channelsModal.parseChannelsCommand(trimmed);
+            channelsModal.openModal({
+                ...opts,
+                currentChannel: getCurrentChannelName(),
+                onSelect: navigateToChannel
+            });
+            input.value = "";
+            return;
+        }
         if (firstWord === "/users") {
             network.incrementUserRequestsPending();
         }
         if (firstWord === "/join") {
-            messages.clearMessages();
-            history.resetReachedEnd();
-            network.getWs().send(value);
-            network.getWs().send(`/log :depth ${config.LOG_HISTORY_SIZE} :date-format date`);
-
             const parts = trimmed.split(/\s+/);
             if (parts.length > 1) {
-                const newChannel = parts[1].replace(/^#/, '');
-                const cleanPath = window.location.pathname.replace(/\/index\.html$/, '/');
-                const url = new URL(window.location.origin + cleanPath);
-                url.search = newChannel;
-                window.history.pushState({}, '', url);
-                updatePageTitle();
+                navigateToChannel(parts[1]);
+            } else {
+                network.getWs().send(value);
             }
-
             input.value = "";
             input.focus();
             return;
@@ -156,6 +184,23 @@ window.addEventListener('focus', () => {
 document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {
         push.clearChannelNotifications(getCurrentChannelName());
+    }
+});
+
+// Quick channel switcher shortcut (Ctrl+K / Cmd+K)
+document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        if (lightbox.isOpen()) return;
+        e.preventDefault();
+        if (channelsModal.isOpen()) {
+            channelsModal.closeModal();
+        } else {
+            channelsModal.openModal({
+                all: true,
+                currentChannel: getCurrentChannelName(),
+                onSelect: navigateToChannel
+            });
+        }
     }
 });
 
