@@ -14,6 +14,10 @@
            :*push-subscriptions-file*
            :*user-sessions-file*
            :*vapid-keys-file*
+           :*dm-persistence-file*
+           :*dm-cursors-file*
+           :*dm-max-messages-per-room*
+           :*dm-retention-days*
            :*websocket-port*))
 
 (in-package :lisp-chat/config)
@@ -28,6 +32,10 @@
 (defparameter *push-subscriptions-file* "push-subscriptions.sexp")
 (defparameter *user-sessions-file* "user-sessions.sexp")
 (defparameter *vapid-keys-file* "vapid.sexp")
+(defparameter *dm-persistence-file* "dm-messages.sexp")
+(defparameter *dm-cursors-file* "dm-cursors.sexp")
+(defparameter *dm-max-messages-per-room* 200 "Maximum retained DM messages per 1:1 conversation")
+(defparameter *dm-retention-days* 30 "Retention window in days for 1:1 DM messages")
 
 (defun get-version ()
   "Get the application version."

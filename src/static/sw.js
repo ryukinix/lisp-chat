@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lisp-chat-v4';
+const CACHE_NAME = 'lisp-chat-v5';
 const PUSH_META_CACHE = 'lisp-chat-push-meta';
 const PUSH_SESSION_KEY = '/__lisp_chat_push_session__';
 const ASSETS = [
@@ -44,6 +44,16 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
+function getDmPeerFromUrl(urlString) {
+  try {
+    const parsed = new URL(urlString);
+    const dm = parsed.searchParams.get('dm');
+    return dm ? dm.replace(/^@/, '').toLowerCase() : '';
+  } catch (e) {
+    return '';
+  }
+}
+
 function getChannelFromUrl(urlString) {
   try {
     const parsed = new URL(urlString);
@@ -71,6 +81,7 @@ self.addEventListener('push', function(event) {
   let title = "New mention in Lisp Chat";
   let body = "";
   let channel = "#general";
+  let from = "";
   let url = null;
   if (event.data) {
     try {
@@ -78,21 +89,27 @@ self.addEventListener('push', function(event) {
       if (data.title) title = data.title;
       if (data.body) body = data.body;
       if (data.channel) channel = data.channel;
+      if (data.from) from = data.from;
       if (data.url) url = data.url;
     } catch (e) {
       body = event.data.text();
     }
   }
+  const isDm = channel.toLowerCase().startsWith('dm:');
   const channelName = channel.replace(/^#/, '');
   const targetChannelLower = channelName.toLowerCase();
-  const targetPath = url || ('/?' + encodeURIComponent(channelName));
+  const targetPath = url || (isDm && from ? ('/?dm=' + encodeURIComponent(from)) : ('/?' + encodeURIComponent(channelName)));
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
       const isViewingChannel = windowClients.some((client) => {
         if (!client.url.startsWith(self.location.origin)) return false;
         const active = client.focused || client.visibilityState === 'visible';
-        return active && getChannelFromUrl(client.url) === targetChannelLower;
+        if (!active) return false;
+        if (isDm) {
+          return from && getDmPeerFromUrl(client.url) === from.toLowerCase();
+        }
+        return !getDmPeerFromUrl(client.url) && getChannelFromUrl(client.url) === targetChannelLower;
       });
       if (isViewingChannel) {
         return;
@@ -101,9 +118,9 @@ self.addEventListener('push', function(event) {
         body: body,
         icon: '/logo.png',
         badge: '/logo.png',
-        tag: 'lisp-chat-' + channel,
+        tag: isDm && from ? ('lisp-chat-dm:' + from.toLowerCase()) : ('lisp-chat-' + channel),
         renotify: true,
-        data: { channel: channel, url: targetPath }
+        data: { channel: channel, from: from, url: targetPath }
       });
     })
   );
@@ -154,6 +171,7 @@ self.addEventListener('pushsubscriptionchange', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const channel = (event.notification.data && event.notification.data.channel) || '#general';
+  const from = (event.notification.data && event.notification.data.from) || '';
   const channelName = channel.replace(/^#/, '');
   const rawUrl = (event.notification.data && event.notification.data.url) || ('/?' + encodeURIComponent(channelName));
   const targetUrl = new URL(rawUrl, self.location.origin).href;
@@ -162,7 +180,7 @@ self.addEventListener('notificationclick', (event) => {
       for (let i = 0; i < windowClients.length; i++) {
         const client = windowClients[i];
         if (client.url.startsWith(self.location.origin) && 'focus' in client) {
-          client.postMessage({ type: 'NAVIGATE_CHANNEL', channel: channel, url: targetUrl });
+          client.postMessage({ type: 'NAVIGATE_CHANNEL', channel: channel, from: from, url: targetUrl });
           return client.focus();
         }
       }

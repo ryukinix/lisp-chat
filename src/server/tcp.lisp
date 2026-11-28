@@ -11,8 +11,13 @@
           do (send-message client response)
         else
           when (> (length message) 0)
-            do (push-message (client-name client)
-                             message :channel (client-active-channel client))
+            do (let ((active (client-active-channel client)))
+                 (if (dm-room-p active)
+                     (let ((peer (dm-room-peer active (client-name client))))
+                       (when peer
+                         (send-dm (client-name client) peer message)))
+                     (push-message (client-name client)
+                                   message :channel active)))
         finally (client-delete client)))
 
 (defun client-reader (client)
@@ -57,6 +62,7 @@
         (send-message client
                       (command-message (format nil "You were restored to channel ~a" active-channel)
                                        :client client)))
+      (replay-pending-dms client)
       (bt:make-thread
          (lambda () (client-reader client))
          :name (format nil "reader-thread: ~a" (client-name client))))))

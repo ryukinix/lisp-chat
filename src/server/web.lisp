@@ -48,11 +48,22 @@
          (param (find-if (lambda (p) (uiop:string-prefix-p "session_id=" p)) params)))
     (when param (subseq param 11))))
 
+(defun parse-dm-peer (query-string)
+  (let* ((params (uiop:split-string (or query-string "") :separator "&"))
+         (param (find-if (lambda (p) (uiop:string-prefix-p "dm=" p)) params)))
+    (when (and param (> (length param) 3))
+      (handler-case
+          (let ((decoded (quri:url-decode (subseq param 3))))
+            (when (plusp (length decoded))
+              (normalize-username (string-left-trim "@" decoded))))
+        (error () nil)))))
+
 (defun ws-app (env)
   (let* ((ws (make-server env))
          (client nil)
          (query-string (getf env :query-string))
          (channel (parse-channel query-string))
+         (dm-peer (parse-dm-peer query-string))
          (tz (parse-tz query-string))
          (expand-reply (parse-expand-reply query-string))
          (client-session-id (or (parse-session-id query-string)
@@ -65,7 +76,12 @@
                 (if (zerop (length name))
                     (send ws "> Name cannot be empty. Try again: ")
                     (let* ((history-channel (gethash name *user-channels*))
-                           (active-channel (or channel history-channel "#general")))
+                           (active-channel (cond
+                                             ((and dm-peer (not (string-equal dm-peer name)))
+                                              (make-dm-room name dm-peer))
+                                             (channel channel)
+                                             (history-channel history-channel)
+                                             (t "#general"))))
                       (setf client (make-client :name name
                                                 :socket ws
                                                 :address (get-remote-address env)
@@ -75,7 +91,8 @@
                                                 :timezone tz
                                                 :expand-reply expand-reply
                                                 :session-id client-session-id))
-                      (setf (gethash name *user-channels*) active-channel)
+                      (unless (dm-room-p active-channel)
+                        (setf (gethash name *user-channels*) active-channel))
                       (register-user-session name client-session-id)
                       (bt:with-lock-held (*client-lock*)
                         (push client *clients*))
@@ -83,7 +100,9 @@
                         (send-message client
                                       (command-message (format nil "Your nickname was normalized to: @~a" name)
                                                        :client client)))
-                      (user-joined-message client)
+                      (unless (dm-room-p active-channel)
+                        (user-joined-message client))
+                      (replay-pending-dms client)
                       (recalculate-client-latency client)
                       (debug-format t "New web-socket user ~a@~a (session ~a)~%"
                                     name (client-address client) client-session-id))))
@@ -91,7 +110,12 @@
                 (if response
                     (send-message client response)
                     (when (> (length message) 0)
-                      (push-message (client-name client) message :channel (client-active-channel client))))))
+                      (let ((active (client-active-channel client)))
+                        (if (dm-room-p active)
+                            (let ((peer (dm-room-peer active (client-name client))))
+                              (when peer
+                                (send-dm (client-name client) peer message)))
+                            (push-message (client-name client) message :channel active)))))))
           (recalculate-client-latency client)))
     (on :open ws
         (lambda ()

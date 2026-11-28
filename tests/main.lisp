@@ -14,6 +14,8 @@
 (defparameter config:*push-subscriptions-file* "push-subscriptions.test.sexp")
 (defparameter config:*user-sessions-file* "user-sessions.test.sexp")
 (defparameter config:*vapid-keys-file* "vapid.test.sexp")
+(defparameter config:*dm-persistence-file* "dm-messages.test.sexp")
+(defparameter config:*dm-cursors-file* "dm-cursors.test.sexp")
 
 
 (defun start-test-server ()

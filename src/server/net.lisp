@@ -17,10 +17,16 @@
          (truncated (if (> (length readable) max-body)
                         (concatenate 'string (subseq readable 0 (- max-body 3)) "...")
                         readable))
+         (is-dm (and (stringp channel) (startswith (string-downcase channel) "dm:")))
          (channel-name (string-left-trim "#" (or channel "general")))
-         (url (format nil "/?~a" (quri:url-encode channel-name)))
+         (url (if is-dm
+                  (format nil "/?dm=~a" (quri:url-encode from))
+                  (format nil "/?~a" (quri:url-encode channel-name))))
+         (title (if is-dm
+                    (format nil "DM — @~a" from)
+                    (format nil "~a — @~a" channel from)))
          (ht (make-hash-table :test 'equal)))
-    (setf (gethash "title" ht) (format nil "~a — @~a" channel from)
+    (setf (gethash "title" ht) title
           (gethash "body" ht) truncated
           (gethash "channel" ht) channel
           (gethash "from" ht) from
@@ -230,6 +236,8 @@
 (defun message-should-not-be-saved-p (message-raw)
   "Messages that should be saved in the disk"
   (or (gethash (message-channel message-raw) *private-channels*)
+      (and (stringp (message-channel message-raw))
+           (startswith (string-downcase (message-channel message-raw)) "dm:"))
       (equal (message-from message-raw ) "@server")))
 
 (defun message-broadcast ()
