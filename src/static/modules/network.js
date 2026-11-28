@@ -68,6 +68,8 @@ function connect(onMessageCallback) {
     let channel = window.location.search.substring(1).split('&')[0];
     if (!channel || channel.includes('=')) {
         channel = '';
+    } else {
+        try { channel = decodeURIComponent(channel); } catch (e) { /* keep raw */ }
     }
 
     const wsParams = new URLSearchParams();
@@ -76,6 +78,7 @@ function connect(onMessageCallback) {
     }
     wsParams.set('tz', tzOffset);
     wsParams.set('expand_reply', 'false');
+    wsParams.set('session_id', auth.getSessionId());
     
     wsUrl += `?${wsParams.toString()}`;
     

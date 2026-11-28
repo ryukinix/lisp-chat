@@ -60,6 +60,7 @@
                "uuid"
                "ningle"
                "lack"
+               "cl-web-push"
                "lack-middleware-static")
   :pathname "src"
   :components ((:file "config")
@@ -151,5 +152,6 @@
                (:file "main" :depends-on ("package"))
                (:file "unit" :depends-on ("main"))
                (:file "integration" :depends-on ("main"))
-               (:file "api" :depends-on ("main")))
+               (:file "api" :depends-on ("main"))
+               (:file "push-notifications" :depends-on ("main" "integration" "api")))
   :perform (test-op (o c) (symbol-call :lisp-chat/tests :run-tests)))

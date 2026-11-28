@@ -8,3 +8,4 @@ lisp-chat
 *.sexp
 /.qlot/
 .esbuild/
+.env

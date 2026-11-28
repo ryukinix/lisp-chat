@@ -338,6 +338,7 @@
                               normalized-nick)
                       :channel (server:client-active-channel client))
         (setf (server:client-name client) normalized-nick)
+        (server:register-user-session normalized-nick (server:client-session-id client))
         (if modified-p
             (server:command-message (format nil "Your new nick was normalized to: @~a" normalized-nick) :client client)
             (server:command-message (format nil "Your new nick is: @~a" normalized-nick) :client client)))

@@ -82,5 +82,5 @@ check:
 	ros $(ROS_TEST_FLAGS) -e '(asdf:test-system :lisp-chat/tests)'
 
 docker-check: docker-build
-	docker run --rm --entrypoint=ros -e DEBUG -e ACTIONS_STEP_DEBUG \
-           $(DOCKER_IMG) $(ROS_TEST_FLAGS) -e '(asdf:test-system :lisp-chat/tests)'
+	docker run --rm --entrypoint=/root/.roswell/bin/qlot -e DEBUG -e ACTIONS_STEP_DEBUG \
+           $(DOCKER_IMG) exec ros $(ROS_TEST_FLAGS) -e '(asdf:test-system :lisp-chat/tests)'

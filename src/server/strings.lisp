@@ -56,3 +56,45 @@
       (loop for c1 across string
             for c2 across substring
             always (equal c1 c2)))))
+
+(defparameter *reply-reference-regex*
+  "<(#?[A-zÀ-ú0-9_\\-]+):\\s*(\\d{4}-\\d{2}-\\d{2})\\s*(\\d{2}:\\d{2}:\\d{2})\\s*\\[(.*?)\\]>"
+  "Regex matching message reply references <#channel: YYYY-MM-DD HH:MM:SS [user]>.")
+
+(defun extract-mentions (content)
+  "Extract usernames mentioned in the content (e.g., @username)."
+  (let ((mentions nil)
+        (tokens (split content)))
+    (dolist (token tokens)
+      (when (and (> (length token) 1)
+                 (char= (char token 0) #\@))
+        ;; Remove trailing punctuation like @user: or @user,
+        (let ((name (string-right-trim ".,:;!?" (subseq token 1))))
+          (when (plusp (length name))
+            (push name mentions)))))
+    (delete-duplicates (nreverse mentions) :test #'string-equal :from-end t)))
+
+(defun extract-reply-targets (content)
+  "Extract usernames targeted by reply references <#channel: YYYY-MM-DD HH:MM:SS [user]>."
+  (let ((targets nil))
+    (cl-ppcre:do-register-groups (channel date time user)
+        (*reply-reference-regex* content)
+      (declare (ignore channel date time))
+      (let ((trimmed (string-trim '(#\Space #\Tab) (or user ""))))
+        (when (plusp (length trimmed))
+          (push trimmed targets))))
+    (delete-duplicates (nreverse targets) :test #'string-equal :from-end t)))
+
+(defun extract-notification-targets (content)
+  "Extract all unique usernames to notify from mentions and reply references in CONTENT."
+  (delete-duplicates (append (extract-mentions content)
+                             (extract-reply-targets content))
+                     :test #'string-equal
+                     :from-end t))
+
+(defun format-push-body (content)
+  "Replace raw reply reference tags with readable «reply to @user» markers for push notifications."
+  (cl-ppcre:regex-replace-all
+   *reply-reference-regex*
+   content
+   "«reply to @\\4»"))

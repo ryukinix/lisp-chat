@@ -43,13 +43,20 @@
           (not (string-equal val "false")))
         t)))
 
+(defun parse-session-id (query-string)
+  (let* ((params (uiop:split-string (or query-string "") :separator "&"))
+         (param (find-if (lambda (p) (uiop:string-prefix-p "session_id=" p)) params)))
+    (when param (subseq param 11))))
+
 (defun ws-app (env)
   (let* ((ws (make-server env))
          (client nil)
          (query-string (getf env :query-string))
          (channel (parse-channel query-string))
          (tz (parse-tz query-string))
-         (expand-reply (parse-expand-reply query-string)))
+         (expand-reply (parse-expand-reply query-string))
+         (client-session-id (or (parse-session-id query-string)
+                                (princ-to-string (uuid:make-v4-uuid)))))
     (on :message ws
         (lambda (message)
           ;; (debug-format t "Received WS message: ~s~%" message)
@@ -66,8 +73,10 @@
                                                 :user-agent (gethash "user-agent" (getf env :headers))
                                                 :active-channel active-channel
                                                 :timezone tz
-                                                :expand-reply expand-reply))
+                                                :expand-reply expand-reply
+                                                :session-id client-session-id))
                       (setf (gethash name *user-channels*) active-channel)
+                      (register-user-session name client-session-id)
                       (bt:with-lock-held (*client-lock*)
                         (push client *clients*))
                       (when modified-p
@@ -76,7 +85,8 @@
                                                        :client client)))
                       (user-joined-message client)
                       (recalculate-client-latency client)
-                      (debug-format t "New web-socket user ~a@~a~%" name (client-address client)))))
+                      (debug-format t "New web-socket user ~a@~a (session ~a)~%"
+                                    name (client-address client) client-session-id))))
               (let ((response (lisp-chat/commands:call-command client message)))
                 (if response
                     (send-message client response)
@@ -108,6 +118,44 @@
         (let ((command-name (cdr (assoc :command params)))
               (env (lack.request:request-env ningle:*request*)))
           (api-app env (concatenate 'string "/" command-name)))))
+
+(setf (ningle:route *web-app* "/api/notifications/vapid-public-key" :method :GET)
+      (lambda (params)
+        (declare (ignore params))
+        (if *vapid-public-key*
+            `(200 (:content-type "text/plain"
+                   :cache-control "no-store"
+                   :access-control-allow-origin "*")
+                  (,*vapid-public-key*))
+            (json-response 503 '(:error "VAPID keys not initialized")))))
+
+(setf (ningle:route *web-app* "/api/notifications/subscribe-push" :method :POST)
+      (lambda (params)
+        (let* ((content (lack.request:request-content ningle:*request*))
+               (raw-json (when (and content (plusp (length content)))
+                           (babel:octets-to-string content :encoding :utf-8)))
+               (session-id (cdr (assoc "session_id" params :test #'string-equal))))
+          (cond
+            ((or (not session-id) (zerop (length session-id)) (not raw-json))
+             (json-response 400 '(:error "session_id parameter and JSON body are required")))
+            ((not (extract-subscription-endpoint raw-json))
+             (json-response 400 '(:error "Invalid push subscription JSON: missing endpoint")))
+            (t
+             (subscribe-push-session session-id raw-json)
+             (json-response 200 '(:success t)))))))
+
+(setf (ningle:route *web-app* "/api/notifications/unsubscribe-push" :method :POST)
+      (lambda (params)
+        (let* ((content (lack.request:request-content ningle:*request*))
+               (raw-json (when (and content (plusp (length content)))
+                           (babel:octets-to-string content :encoding :utf-8)))
+               (endpoint (when raw-json (extract-subscription-endpoint raw-json)))
+               (session-id (cdr (assoc "session_id" params :test #'string-equal))))
+          (if (or (not session-id) (zerop (length session-id)))
+              (json-response 400 '(:error "session_id parameter is required"))
+              (progn
+                (unsubscribe-push-session session-id endpoint)
+                (json-response 200 '(:success t)))))))
 
 (setf (ningle:route *web-app* "/ws")
       (lambda (params)
