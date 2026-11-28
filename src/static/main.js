@@ -96,6 +96,13 @@ inputModule.initInputHistory(input);
 inputModule.setupInputOverlay(input);
 reply.setupReplyFocus();
 lightbox.init();
+users.initUserListClick((username) => {
+    const me = (auth.getUsername() || '').trim();
+    if (!username || (me && username.toLowerCase() === me.toLowerCase())) {
+        return;
+    }
+    navigateToDm(username);
+});
 
 // Initialize settings module (applies theme and image-preview classes)
 settings.init();

@@ -1,5 +1,22 @@
 import utils from './utils.js';
 
+let userClickCallback = null;
+let clickListenerAttached = false;
+
+function initUserListClick(callback) {
+    userClickCallback = callback;
+    const userList = document.getElementById("user-list");
+    if (!userList || clickListenerAttached) return;
+    clickListenerAttached = true;
+    userList.addEventListener("click", (e) => {
+        const item = e.target && e.target.closest ? e.target.closest(".user-item") : null;
+        if (!item || !item.dataset.username) return;
+        if (typeof userClickCallback === "function") {
+            userClickCallback(item.dataset.username);
+        }
+    });
+}
+
 function getSuperscript(num) {
     const map = {
         '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
@@ -32,6 +49,7 @@ function updateUserList(usersString) {
         li.className = "user-item";
         li.dataset.username = user;
         li.textContent = displayName;
+        li.title = `Open DM with @${user}`;
         li.style.color = utils.getUserColor(user);
         if (window.isLightTheme) {
             li.style.filter = "brightness(0.45) saturate(2)";
@@ -55,4 +73,4 @@ export function refreshUserListColors() {
     });
 }
 
-export default { updateUserList, refreshUserListColors };
+export default { updateUserList, refreshUserListColors, initUserListClick };
